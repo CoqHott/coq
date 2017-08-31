@@ -790,7 +790,7 @@ exception UndefinableExpansion
     build an expansion function.
     The term built is expecting to be substituted first by 
     a substitution of the form [params, x : ind params] *)
-let compute_projections ((kn, _ as ind), u as indu) n x nparamargs params
+let compute_projections ((kn, _ as ind), _ as indu) x nparamargs params
     mind_consnrealdecls mind_consnrealargs paramslet ctx =
   let mp, dp, l = MutInd.repr3 kn in
   (** We build a substitution smashing the lets in the record parameters so
@@ -980,7 +980,7 @@ let build_inductive env prv iu env_ar paramsctxt kn isrecord isfinite inds nmr r
 	(try 
 	   let fields, paramslet = List.chop pkt.mind_consnrealdecls.(0) rctx in
 	   let kns, projs = 
-	     compute_projections indsp pkt.mind_typename rid nparamargs paramsctxt
+             compute_projections indsp rid nparamargs paramsctxt
 	       pkt.mind_consnrealdecls pkt.mind_consnrealargs paramslet fields
 	   in Some (Some (rid, kns, projs))
 	 with UndefinableExpansion -> Some None)
