@@ -62,7 +62,7 @@ val new_type_evar :
   env -> evar_map -> rigid ->
   evar_map * (constr * Sorts.t)
 
-val new_Type : ?rigid:rigid -> env -> evar_map -> evar_map * constr
+val new_Type : ?rigid:rigid -> evar_map -> evar_map * constr
 
 val restrict_evar : evar_map -> Evar.t -> Filter.t ->
   ?src:Evar_kinds.t Loc.located -> constr list option -> evar_map * Evar.t
@@ -272,7 +272,7 @@ val e_new_type_evar : env -> evar_map ref ->
   ?principal:bool -> ?hypnaming:naming_mode -> rigid -> constr * Sorts.t
 [@@ocaml.deprecated "Use [Evarutil.new_type_evar]"]
 
-val e_new_Type : ?rigid:rigid -> env -> evar_map ref -> constr
+val e_new_Type : ?rigid:rigid -> evar_map ref -> constr
 [@@ocaml.deprecated "Use [Evarutil.new_Type]"]
 
 val e_new_global : evar_map ref -> GlobRef.t -> constr
