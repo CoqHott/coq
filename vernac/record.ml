@@ -607,6 +607,7 @@ let definition_structure (kind,cum,poly,finite,(is_coe,((loc,idstruc),pl)),ps,cf
     States.with_state_protection (fun () ->
         typecheck_params_and_fields finite (kind = Class true) idstruc pl s ps notations fs) () in
   let template = not poly && maybe_template in
+  let template = Command.do_infer_template ?loc template in
   let sign = structure_signature (fields@params) in
   let gr = match kind with
   | Class def ->

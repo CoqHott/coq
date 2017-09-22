@@ -70,6 +70,8 @@ type structured_one_inductive_expr = {
 type structured_inductive_expr =
   local_binder_expr list * structured_one_inductive_expr list
 
+val do_infer_template : ?loc:Loc.t -> bool -> bool
+
 val extract_mutual_inductive_declaration_components :
   (one_inductive_expr * decl_notation list) list ->
     structured_inductive_expr * (*coercions:*) qualid list * decl_notation list

@@ -390,6 +390,25 @@ let make_conclusion_flexible evdref ty poly =
 let is_impredicative env u = 
   u = Prop Null || (is_impredicative_set env && u = Prop Pos)
 
+let auto_template_warning =
+  CWarnings.create ~name:"deprecated-template" ~category:"deprecated"
+         (fun () -> strbrk "Template polymorphism is deprecated.")
+
+let do_auto_template = ref true
+
+let _ =
+  Goptions.declare_bool_option
+    { Goptions.optdepr  = false;
+      Goptions.optname  = "Allow Template Polymorphism";
+      Goptions.optkey   = ["Allow";"Template";"Polymorphism"];
+      Goptions.optread  = (fun () -> !do_auto_template);
+      Goptions.optwrite = (:=) do_auto_template }
+
+let do_infer_template ?loc inferred =
+  if !do_auto_template && inferred
+  then begin auto_template_warning ?loc (); true end
+  else false
+
 let interp_ind_arity env ~poly evdref ind =
   let c = intern_gen IsType env ind.ind_arity in
   let impls = Implicit_quantifiers.implicits_of_glob_constr ~with_products:true c in
@@ -586,7 +605,7 @@ let interp_mutual_inductive (paramsl,indl) notations cum poly prv finite =
   let entries = List.map4 (fun ind arity template (cnames,ctypes,cimpls) -> {
     mind_entry_typename = ind.ind_name;
     mind_entry_arity = arity;
-    mind_entry_template = not poly && template;
+    mind_entry_template = do_infer_template (not poly && template);
     mind_entry_consnames = cnames;
     mind_entry_lc = ctypes
   }) indl arities aritypoly constructors in
