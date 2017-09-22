@@ -390,17 +390,17 @@ let make_conclusion_flexible evdref ty poly =
 let is_impredicative env u = 
   u = Prop Null || (is_impredicative_set env && u = Prop Pos)
 
-let interp_ind_arity env evdref ind =
+let interp_ind_arity env ~poly evdref ind =
   let c = intern_gen IsType env ind.ind_arity in
   let impls = Implicit_quantifiers.implicits_of_glob_constr ~with_products:true c in
   let (evd,t) = understand_tcc env !evdref ~expected_type:IsType c in
   evdref := evd;
-  let pseudo_poly = check_anonymous_type c in
+  let maybe_template = check_anonymous_type c in
   let () = if not (Reductionops.is_arity env !evdref t) then
     user_err ?loc:(constr_loc ind.ind_arity) (str "Not an arity")
   in
   let t = EConstr.Unsafe.to_constr t in
-    t, pseudo_poly, impls
+    t, maybe_template, impls
 
 let interp_cstrs evdref env impls mldata arity ind =
   let cnames,ctyps = List.split ind.ind_lc in
@@ -538,7 +538,7 @@ let interp_mutual_inductive (paramsl,indl) notations cum poly prv finite =
   let params = List.map (RelDecl.get_name %> Name.get_id) assums in
 
   (* Interpret the arities *)
-  let arities = List.map (interp_ind_arity env_params evdref) indl in
+  let arities = List.map (interp_ind_arity env_params ~poly evdref) indl in
 
   let fullarities = List.map (fun (c, _, _) -> Term.it_mkProd_or_LetIn c ctx_params) arities in
   let env_ar = push_types env0 indnames fullarities in
@@ -586,7 +586,7 @@ let interp_mutual_inductive (paramsl,indl) notations cum poly prv finite =
   let entries = List.map4 (fun ind arity template (cnames,ctypes,cimpls) -> {
     mind_entry_typename = ind.ind_name;
     mind_entry_arity = arity;
-    mind_entry_template = template;
+    mind_entry_template = not poly && template;
     mind_entry_consnames = cnames;
     mind_entry_lc = ctypes
   }) indl arities aritypoly constructors in
