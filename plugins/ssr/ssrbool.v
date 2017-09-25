@@ -733,7 +733,7 @@ Arguments all_and3 {T P1 P2 P3}.
 Arguments all_and4 {T P1 P2 P3 P4}.
 Arguments all_and5 {T P1 P2 P3 P4 P5}.
 
-Lemma pair_andP P Q : P /\ Q <-> P * Q. Proof. by split; case. Qed.
+(* Lemma pair_andP P Q : P /\ Q <-> P * Q. Proof. by split; case. Qed. *)
 
 Section ReflectConnectives.
 
@@ -1499,11 +1499,11 @@ End PER.
 
 Definition equivalence_rel := forall x y z, R z z * (R x y -> R x z = R y z).
 
-Lemma equivalence_relP : equivalence_rel <-> reflexive /\ left_transitive.
-Proof.
-split=> [eqiR | [Rxx trR] x y z]; last by split=> [|/trR->].
-by split=> [x | x y Rxy z]; [rewrite (eqiR x x x) | rewrite (eqiR x y z)].
-Qed.
+(* Lemma equivalence_relP : equivalence_rel <-> reflexive /\ left_transitive. *)
+(* Proof. *)
+(* split=> [eqiR | [Rxx trR] x y z]; last by split=> [|/trR->]. *)
+(* by split=> [x | x y Rxy z]; [rewrite (eqiR x x x) | rewrite (eqiR x y z)]. *)
+(* Qed. *)
 
 End RelationProperties.
 
@@ -1762,13 +1762,13 @@ Lemma sub_in21 T T3 d d' d3 d3' (P : T -> T -> T3 -> Prop) :
   forall Ph : ph {all3 P}, prop_in21 d' d3' Ph -> prop_in21 d d3 Ph.
 Proof. by move=> /= sub sub3; apply: sub_in111. Qed.
 
-Lemma equivalence_relP_in T (R : rel T) (A : pred T) :
-  {in A & &, equivalence_rel R}
-   <-> {in A, reflexive R} /\ {in A &, forall x y, R x y -> {in A, R x =1 R y}}.
-Proof.
-split=> [eqiR | [Rxx trR] x y z *]; last by split=> [|/trR-> //]; apply: Rxx.
-by split=> [x Ax|x y Ax Ay Rxy z Az]; [rewrite (eqiR x x) | rewrite (eqiR x y)].
-Qed.
+(* Lemma equivalence_relP_in T (R : rel T) (A : pred T) : *)
+(*   {in A & &, equivalence_rel R} *)
+(*    <-> {in A, reflexive R} /\ {in A &, forall x y, R x y -> {in A, R x =1 R y}}. *)
+(* Proof. *)
+(* split=> [eqiR | [Rxx trR] x y z *]; last by split=> [|/trR-> //]; apply: Rxx. *)
+(* by split=> [x Ax|x y Ax Ay Rxy z Az]; [rewrite (eqiR x x) | rewrite (eqiR x y)]. *)
+(* Qed. *)
 
 Section MonoHomoMorphismTheory.
 

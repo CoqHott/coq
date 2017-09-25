@@ -147,7 +147,7 @@ Arguments S _%nat.
 
 (** [option A] is the extension of [A] with an extra element [None] *)
 
-Inductive option (A:Type) : Type :=
+Polymorphic Cumulative Inductive option (A:Type) : Type :=
   | Some : A -> option A
   | None : option A.
 
@@ -162,7 +162,7 @@ Definition option_map (A B:Type) (f:A->B) (o : option A) : option B :=
 
 (** [sum A B], written [A + B], is the disjoint sum of [A] and [B] *)
 
-Inductive sum (A B:Type) : Type :=
+Polymorphic Cumulative Inductive sum (A B:Type) : Type :=
   | inl : A -> sum A B
   | inr : B -> sum A B.
 
@@ -174,7 +174,7 @@ Arguments inr {A B} _ , A [B] _.
 (** [prod A B], written [A * B], is the product of [A] and [B];
     the pair [pair A B a b] of [a] and [b] is abbreviated [(a,b)] *)
 
-Inductive prod (A B:Type) : Type :=
+Polymorphic Cumulative Inductive prod (A B:Type) : Type :=
   pair : A -> B -> prod A B.
 
 Add Printing Let prod.
@@ -221,7 +221,7 @@ Definition prod_curry (A B C:Type) (f:A -> B -> C)
 
 (** Polymorphic lists and some operations *)
 
-Inductive list (A : Type) : Type :=
+Polymorphic Cumulative Inductive list (A : Type) : Type :=
  | nil : list A
  | cons : A -> list A -> list A.
 
@@ -304,7 +304,7 @@ Hint Constructors CompareSpec.
     in Prop. For some situations, it is nonetheless useful to have a
     version in Type. Interestingly, these two versions are equivalent. *)
 
-Inductive CompareSpecT (Peq Plt Pgt : Prop) : comparison -> Type :=
+Polymorphic Cumulative Inductive CompareSpecT (Peq Plt Pgt : Prop) : comparison -> Type :=
  | CompEqT : Peq -> CompareSpecT Peq Plt Pgt Eq
  | CompLtT : Plt -> CompareSpecT Peq Plt Pgt Lt
  | CompGtT : Pgt -> CompareSpecT Peq Plt Pgt Gt.
@@ -338,7 +338,7 @@ Proof. intros. apply CompareSpec2Type; assumption. Defined.
     member is the singleton datatype [identity A a a] whose
     sole inhabitant is denoted [identity_refl A a] *)
 
-Inductive identity (A:Type) (a:A) : A -> Type :=
+Polymorphic Cumulative Inductive identity (A:Type) (a:A) : A -> Type :=
   identity_refl : identity a a.
 Hint Resolve identity_refl: core.
 

@@ -43,8 +43,8 @@ Section Wf_Lexicographic_Exponentiation.
     simpl.
     intros.
     inversion_clear H.
-    apply (Lt_hd A leA); auto with sets.
-    apply (Lt_tl A leA).
+    refine (Lt_hd A leA _ _ _ _ _); auto with sets.
+    apply (Lt_tl A leA _ _ _ _).
     apply (HInd y y0); auto with sets.
   Qed.
 

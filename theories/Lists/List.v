@@ -2068,8 +2068,11 @@ Section NatSeq.
 
   Lemma seq_NoDup len start : NoDup (seq start len).
   Proof.
-   revert start; induction len; simpl; constructor; trivial.
-   rewrite in_seq. intros (H,_). apply (Lt.lt_irrefl _ H).
+    revert start; induction len; simpl.
+    - constructor.
+    - (* constructor. some meta related error? *)
+      intros;refine (NoDup_cons _ _ _);trivial.
+      intros;rewrite in_seq. intros (H,_). apply (Lt.lt_irrefl _ H).
   Qed.
 
 End NatSeq.

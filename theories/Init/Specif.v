@@ -22,19 +22,19 @@ Require Import Logic.
     Similarly [(sig2 A P Q)], or [{x:A | P x & Q x}], denotes the subset
     of elements of the type [A] which satisfy both [P] and [Q]. *)
 
-Inductive sig (A:Type) (P:A -> Prop) : Type :=
+Polymorphic Cumulative Inductive sig (A:Type) (P:A -> Prop) : Type :=
     exist : forall x:A, P x -> sig P.
 
-Inductive sig2 (A:Type) (P Q:A -> Prop) : Type :=
+Polymorphic Cumulative Inductive sig2 (A:Type) (P Q:A -> Prop) : Type :=
     exist2 : forall x:A, P x -> Q x -> sig2 P Q.
 
 (** [(sigT A P)], or more suggestively [{x:A & (P x)}] is a Sigma-type.
     Similarly for [(sigT2 A P Q)], also written [{x:A & (P x) & (Q x)}]. *)
 
-Inductive sigT (A:Type) (P:A -> Type) : Type :=
+Polymorphic Cumulative Inductive sigT (A:Type) (P:A -> Type) : Type :=
     existT : forall x:A, P x -> sigT P.
 
-Inductive sigT2 (A:Type) (P Q:A -> Type) : Type :=
+Polymorphic Cumulative Inductive sigT2 (A:Type) (P Q:A -> Type) : Type :=
     existT2 : forall x:A, P x -> Q x -> sigT2 P Q.
 
 (* Notations *)
@@ -66,7 +66,9 @@ Add Printing Let sigT2.
     [(proj1_sig y)] is the witness [a] and [(proj2_sig y)] is the
     proof of [(P a)] *)
 
-(* Set Universe Polymorphism. *)
+Set Universe Polymorphism.
+(* tactics/equality.ml decomp_tuple_term assumes that projections of
+sig/sigT are as polymorphic as the type. *)
 Section Subset_projections.
 
   Variable A : Type.
@@ -82,7 +84,7 @@ Section Subset_projections.
     end.
 
 End Subset_projections.
-
+Unset Universe Polymorphism.
 
 (** [sig2] of a predicate can be projected to a [sig].
 
@@ -125,7 +127,7 @@ End Subset_projections2.
     second projection, the type of which depends on the [projT1]. *)
 
 
-
+Set Universe Polymorphism. (* see proj1_sig *)
 Section Projections.
 
   Variable A : Type.
@@ -141,6 +143,7 @@ Section Projections.
     end.
 
 End Projections.
+Unset Universe Polymorphism.
 
 (** [sigT2] of a predicate can be projected to a [sigT].
 
@@ -275,12 +278,12 @@ Section sigT.
   (** Equivalence of equality of [sigT] with a [sigT] of equality *)
   (** We could actually prove an isomorphism here, and not just [<->],
       but for simplicity, we don't. *)
-  Definition eq_sigT_uncurried_iff {A P}
-             (u v : { a : A & P a })
-    : u = v <-> { p : projT1 u = projT1 v & rew p in projT2 u = projT2 v }.
-  Proof.
-    split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sigT_uncurried ].
-  Defined.
+  (* Definition eq_sigT_uncurried_iff {A P} *)
+  (*            (u v : { a : A & P a }) *)
+  (*   : u = v <-> { p : projT1 u = projT1 v & rew p in projT2 u = projT2 v }. *)
+  (* Proof. *)
+  (*   split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sigT_uncurried ]. *)
+  (* Defined. *)
 
   (** Induction principle for [@eq (sigT _)] *)
   Definition eq_sigT_rect {A P} {u v : { a : A & P a }} (Q : u = v -> Type)
@@ -370,12 +373,12 @@ Section sig.
   (** Equivalence of equality of [sig] with a [sig] of equality *)
   (** We could actually prove an isomorphism here, and not just [<->],
       but for simplicity, we don't. *)
-  Definition eq_sig_uncurried_iff {A} {P : A -> Prop}
-             (u v : { a : A | P a })
-    : u = v <-> { p : proj1_sig u = proj1_sig v | rew p in proj2_sig u = proj2_sig v }.
-  Proof.
-    split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sig_uncurried ].
-  Defined.
+  (* Definition eq_sig_uncurried_iff {A} {P : A -> Prop} *)
+  (*            (u v : { a : A | P a }) *)
+  (*   : u = v <-> { p : proj1_sig u = proj1_sig v | rew p in proj2_sig u = proj2_sig v }. *)
+  (* Proof. *)
+  (*   split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sig_uncurried ]. *)
+  (* Defined. *)
 
   (** Equivalence of equality of [sig] involving hProps with equality of the first components *)
   Definition eq_sig_hprop_iff {A} {P : A -> Prop} (P_hprop : forall (x : A) (p q : P x), p = q)
@@ -457,14 +460,14 @@ Section sigT2.
   (** Equivalence of equality of [sigT2] with a [sigT2] of equality *)
   (** We could actually prove an isomorphism here, and not just [<->],
       but for simplicity, we don't. *)
-  Definition eq_sigT2_uncurried_iff {A P Q}
-             (u v : { a : A & P a & Q a })
-    : u = v
-      <-> { p : projT1 u = projT1 v
-          & rew p in projT2 u = projT2 v & rew p in projT3 u = projT3 v }.
-  Proof.
-    split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sigT2_uncurried ].
-  Defined.
+  (* Definition eq_sigT2_uncurried_iff {A P Q} *)
+  (*            (u v : { a : A & P a & Q a }) *)
+  (*   : u = v *)
+  (*     <-> { p : projT1 u = projT1 v *)
+  (*         & rew p in projT2 u = projT2 v & rew p in projT3 u = projT3 v }. *)
+  (* Proof. *)
+  (*   split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sigT2_uncurried ]. *)
+  (* Defined. *)
 
   (** Induction principle for [@eq (sigT2 _ _)] *)
   Definition eq_sigT2_rect {A P Q} {u v : { a : A & P a & Q a }} (R : u = v -> Type)
@@ -569,14 +572,14 @@ Section sig2.
   (** Equivalence of equality of [sig2] with a [sig2] of equality *)
   (** We could actually prove an isomorphism here, and not just [<->],
       but for simplicity, we don't. *)
-  Definition eq_sig2_uncurried_iff {A P Q}
-             (u v : { a : A | P a & Q a })
-    : u = v
-      <-> { p : proj1_sig u = proj1_sig v
-          | rew p in proj2_sig u = proj2_sig v & rew p in proj3_sig u = proj3_sig v }.
-  Proof.
-    split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sig2_uncurried ].
-  Defined.
+  (* Definition eq_sig2_uncurried_iff {A P Q} *)
+  (*            (u v : { a : A | P a & Q a }) *)
+  (*   : u = v *)
+  (*     <-> { p : proj1_sig u = proj1_sig v *)
+  (*         | rew p in proj2_sig u = proj2_sig v & rew p in proj3_sig u = proj3_sig v }. *)
+  (* Proof. *)
+  (*   split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sig2_uncurried ]. *)
+  (* Defined. *)
 
   (** Induction principle for [@eq (sig2 _ _)] *)
   Definition eq_sig2_rect {A P Q} {u v : { a : A | P a & Q a }} (R : u = v -> Type)
@@ -635,7 +638,7 @@ Arguments right {A B} _ , A [B] _.
 (** [sumor] is an option type equipped with the justification of why
     it may not be a regular value *)
 
-Inductive sumor (A:Type) (B:Prop) : Type :=
+Polymorphic Cumulative Inductive sumor (A:Type) (B:Prop) : Type :=
   | inleft : A -> A + {B}
   | inright : B -> A + {B}
  where "A + { B }" := (sumor A B) : type_scope.
@@ -728,7 +731,7 @@ Proof.
   apply (h2 h1).
 Defined.
 
-Hint Resolve left right inleft inright: core.
+Polymorphic Hint Resolve left right inleft inright: core.
 Hint Resolve exist exist2 existT existT2: core.
 
 (* Compatibility *)
