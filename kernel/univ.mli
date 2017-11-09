@@ -341,35 +341,45 @@ end
 
 type abstract_universe_context = AUContext.t
 
-(** Universe info for inductive types: A context of universe levels
-    with universe constraints, representing local universe variables
-    and constraints, together with a context of universe levels with
-    universe constraints, representing conditions for subtyping used
-    for inductive types.
+module Variance :
+sig
+  (** A universe position in the instance given to a cumulative
+     inductive can be the following. Note there is no Contravariant
+     case because [forall x : A, B <= forall x : A', B'] requires [A =
+     A'] as opposed to [A' <= A]. *)
+  type t = Irrelevant | Covariant | Invariant
 
-    This data structure maintains the invariant that the context for
-    subtyping constraints is exactly twice as big as the context for
-    universe constraints. *)
+  val sup : t -> t -> t
+
+  val pr : t -> Pp.t
+
+  val leq_constraints : t array -> Instance.t constraint_function
+  val eq_constraints : t array -> Instance.t constraint_function
+end
+
+(** Universe info for cumulative inductive types: A context of
+   universe levels with universe constraints, representing local
+   universe variables and constraints, together with an array of
+   Variance.t.
+
+    This data structure maintains the invariant that the variance
+   array has the same length as the universe instance. *)
 module CumulativityInfo :
 sig
   type t
 
-  val make : universe_context * universe_context -> t
+  val make : universe_context * Variance.t array -> t
 
   val empty : t
   val is_empty : t -> bool
 
   val univ_context : t -> universe_context
-  val subtyp_context : t -> universe_context
+  val variance : t -> Variance.t array
 
   (** This function takes a universe context representing constraints
-      of an inductive and a Instance.t of fresh universe names for the
-      subtyping (with the same length as the context in the given
-      universe context) and produces a UInfoInd.t that with the
-      trivial subtyping relation. *)
-  val from_universe_context : universe_context -> universe_instance -> t
-
-  val subtyping_subst : t -> universe_level_subst
+     of an inductive and produces a CumulativityInfo.t with the
+     trivial subtyping relation. *)
+  val from_universe_context : universe_context -> t
 
 end
 
@@ -380,7 +390,7 @@ sig
   type t
 
   val univ_context : t -> abstract_universe_context
-  val subtyp_context : t -> abstract_universe_context
+  val variance : t -> Variance.t array
 end
 
 type abstract_cumulativity_info = ACumulativityInfo.t

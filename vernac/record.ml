@@ -494,7 +494,7 @@ let declare_class finite def cum poly ctx id idbuild paramimpls params arity
        let univs =
          if poly then
            if cum then
-             Cumulative_ind_entry (Universes.univ_inf_ind_from_universe_context ctx)
+             Cumulative_ind_entry (Univ.CumulativityInfo.from_universe_context ctx)
            else
              Polymorphic_ind_entry ctx
          else
@@ -621,7 +621,7 @@ let definition_structure (kind,cum,poly,finite,(is_coe,((loc,idstruc),pl)),ps,cf
       let univs =
         if poly then
           if cum then
-            Cumulative_ind_entry (Universes.univ_inf_ind_from_universe_context ctx)
+            Cumulative_ind_entry (Univ.CumulativityInfo.from_universe_context ctx)
           else
             Polymorphic_ind_entry ctx
         else

@@ -12,6 +12,9 @@ open Constr
 
 type conv_pb = CONV | CUMUL
 
+val get_cumulativity_constraints : conv_pb -> Univ.ACumulativityInfo.t ->
+  Univ.Instance.t -> Univ.Instance.t -> Univ.Constraint.t
+
 val convert_inductives_gen : (Univ.Instance.t -> Univ.Instance.t -> 'a -> 'a) ->
   (Univ.Constraint.t -> 'a -> 'a) ->
   conv_pb -> Declarations.mutual_inductive_body * int -> Int.t ->

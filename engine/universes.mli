@@ -188,9 +188,3 @@ val pr_universe_opt_subst : universe_opt_subst -> Pp.t
 
 val solve_constraints_system : universe option array -> universe array -> universe array ->
   universe array
-
-(** Operations for universe_info_ind *)
-
-(** Given a universe context representing constraints of an inductive
-    this function produces a UInfoInd.t that with the trivial subtyping relation. *)
-val univ_inf_ind_from_universe_context : universe_context -> cumulativity_info

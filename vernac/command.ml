@@ -599,7 +599,7 @@ let interp_mutual_inductive (paramsl,indl) notations cum poly prv finite =
   let univs =
     if poly then
       if cum then
-        Cumulative_ind_entry (Universes.univ_inf_ind_from_universe_context uctx)
+        Cumulative_ind_entry (Univ.CumulativityInfo.from_universe_context uctx)
       else Polymorphic_ind_entry uctx
     else
       Monomorphic_ind_entry uctx
