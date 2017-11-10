@@ -417,7 +417,7 @@ let declare_structure finite univs id idbuild paramimpls params arity template
     if poly then
       begin
         let env = Global.env () in
-        Inductiveops.infer_inductive_subtyping env mie
+        InferCumulativity.infer_inductive env mie
       end
     else
        mie

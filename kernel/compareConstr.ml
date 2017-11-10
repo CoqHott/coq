@@ -21,6 +21,10 @@ let get_cumulativity_constraints cv_pb cumi u u' =
     Univ.Variance.leq_constraints (Univ.ACumulativityInfo.variance cumi)
       u u' Univ.Constraint.empty
 
+let inductive_cumulativity_arguments (mind,ind) =
+  mind.Declarations.mind_nparams +
+  mind.Declarations.mind_packets.(ind).Declarations.mind_nrealargs
+
 let convert_inductives_gen cmp_instances cmp_cumul cv_pb (mind,ind) nargs u1 u2 s =
   match mind.Declarations.mind_universes with
   | Declarations.Monomorphic_ind _ ->
@@ -29,15 +33,19 @@ let convert_inductives_gen cmp_instances cmp_cumul cv_pb (mind,ind) nargs u1 u2 
   | Declarations.Polymorphic_ind _ ->
     cmp_instances u1 u2 s
   | Declarations.Cumulative_ind cumi ->
-    let num_param_arity =
-      mind.Declarations.mind_nparams +
-      mind.Declarations.mind_packets.(ind).Declarations.mind_nrealargs
-    in
+    let num_param_arity = inductive_cumulativity_arguments (mind,ind) in
     if not (Int.equal num_param_arity nargs) then
       cmp_instances u1 u2 s
     else
       let csts = get_cumulativity_constraints cv_pb cumi u1 u2 in
       cmp_cumul csts s
+
+let constructor_cumulativity_arguments (mind, ind, ctor) =
+  let nparamsctxt =
+    mind.Declarations.mind_nparams +
+    mind.Declarations.mind_packets.(ind).Declarations.mind_nrealargs
+    (* Context.Rel.length mind.Declarations.mind_params_ctxt *) in
+  nparamsctxt + mind.Declarations.mind_packets.(ind).Declarations.mind_consnrealargs.(ctor - 1)
 
 let convert_constructors_gen cmp_instances cmp_cumul (mind, ind, cns) nargs u1 u2 s =
   match mind.Declarations.mind_universes with
@@ -47,13 +55,7 @@ let convert_constructors_gen cmp_instances cmp_cumul (mind, ind, cns) nargs u1 u
   | Declarations.Polymorphic_ind _ ->
     cmp_instances u1 u2 s
   | Declarations.Cumulative_ind cumi ->
-    let num_cnstr_args =
-      let nparamsctxt =
-        mind.Declarations.mind_nparams +
-        mind.Declarations.mind_packets.(ind).Declarations.mind_nrealargs
-        (* Context.Rel.length mind.Declarations.mind_params_ctxt *) in
-      nparamsctxt + mind.Declarations.mind_packets.(ind).Declarations.mind_consnrealargs.(cns - 1)
-    in
+    let num_cnstr_args = constructor_cumulativity_arguments (mind, ind, cns) in
     if not (Int.equal num_cnstr_args nargs) then
       cmp_instances u1 u2 s
     else

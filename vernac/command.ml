@@ -615,7 +615,7 @@ let interp_mutual_inductive (paramsl,indl) notations cum poly prv finite =
     }
   in
   (if poly && cum then
-      Inductiveops.infer_inductive_subtyping env0 mind_ent
+      InferCumulativity.infer_inductive env0 mind_ent
    else mind_ent), pl, impls
 
 (* Very syntactical equality *)
