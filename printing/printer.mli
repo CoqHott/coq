@@ -101,7 +101,8 @@ val pr_sort                : evar_map -> sorts -> Pp.t
 val pr_polymorphic         : bool -> Pp.t
 val pr_cumulative          : bool -> bool -> Pp.t
 val pr_universe_instance   : evar_map -> Univ.universe_context -> Pp.t
-val pr_universe_ctx        : evar_map -> Univ.universe_context -> Pp.t
+val pr_universe_ctx        : evar_map -> ?variance:Univ.Variance.t array ->
+  Univ.universe_context -> Pp.t
 val pr_cumulativity_info   : evar_map -> Univ.cumulativity_info -> Pp.t
 
 (** Printing global references using names as short as possible *)
