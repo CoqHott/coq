@@ -15,11 +15,9 @@ type conv_pb = CONV | CUMUL
 let get_cumulativity_constraints cv_pb cumi u u' =
   match cv_pb with
   | CONV ->
-    Univ.Variance.eq_constraints (Univ.ACumulativityInfo.variance cumi)
-      u u' Univ.Constraint.empty
+    Univ.ACumulativityInfo.eq_constraints cumi u u' Univ.Constraint.empty
   | CUMUL ->
-    Univ.Variance.leq_constraints (Univ.ACumulativityInfo.variance cumi)
-      u u' Univ.Constraint.empty
+    Univ.ACumulativityInfo.leq_constraints cumi u u' Univ.Constraint.empty
 
 let inductive_cumulativity_arguments (mind,ind) =
   mind.Declarations.mind_nparams +

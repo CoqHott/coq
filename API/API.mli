@@ -351,13 +351,18 @@ sig
 
   type universe = Universe.t
 
+  module Variance :
+  sig
+    type t
+  end
+
   module Instance :
   sig
     type t
     val empty : t
     val of_array : Level.t array -> t
     val to_array : t -> Level.t array
-    val pr : (Level.t -> Pp.t) -> t -> Pp.t
+    val pr : (Level.t -> Pp.t) -> ?variance:Variance.t array -> t -> Pp.t
   end
 
   type 'a puniverses = 'a * Instance.t
@@ -436,7 +441,8 @@ sig
 
   val enforce_leq : Universe.t constraint_function
   val pr_uni : Universe.t -> Pp.t
-  val pr_universe_context : (Level.t -> Pp.t) -> UContext.t -> Pp.t
+  val pr_universe_context : (Level.t -> Pp.t) -> ?variance:Variance.t array ->
+    UContext.t -> Pp.t
   val pr_universe_context_set : (Level.t -> Pp.t) -> ContextSet.t -> Pp.t
   val pr_universe_subst : universe_subst -> Pp.t
   val pr_universe_level_subst : universe_level_subst -> Pp.t
