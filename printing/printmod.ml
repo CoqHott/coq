@@ -64,9 +64,10 @@ let get_new_id locals id =
       if not (Nametab.exists_module dir) then
 	id
       else
-	get_id (id::l) (Namegen.next_ident_away id l)
+	get_id (Id.Set.add id l) (Namegen.next_ident_away id l)
   in
-    get_id (List.map snd locals) id
+  let avoid = List.fold_left (fun accu (_, id) -> Id.Set.add id accu) Id.Set.empty locals in
+    get_id avoid id
 
 (** Inductive declarations *)
 
@@ -113,13 +114,12 @@ let print_one_inductive env sigma mib ((_,i) as ind) =
 let instantiate_cumulativity_info cumi =
   let open Univ in
   let univs = ACumulativityInfo.univ_context cumi in
-  let subtyp = ACumulativityInfo.subtyp_context cumi in
   let expose ctx =
     let inst = AUContext.instance ctx in
     let cst = AUContext.instantiate inst ctx in
     UContext.make (inst, cst)
   in
-  CumulativityInfo.make (expose univs, expose subtyp)
+  CumulativityInfo.make (expose univs, ACumulativityInfo.variance cumi)
 
 let print_mutual_inductive env mind mib =
   let inds = List.init (Array.length mib.mind_packets) (fun x -> (mind, x))

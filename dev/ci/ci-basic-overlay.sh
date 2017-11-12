@@ -28,11 +28,11 @@
 ########################################################################
 # Mathclasses + Corn
 ########################################################################
-: ${math_classes_CI_BRANCH:=external-bignums}
-: ${math_classes_CI_GITURL:=https://github.com/letouzey/math-classes.git}
+: ${math_classes_CI_BRANCH:=master}
+: ${math_classes_CI_GITURL:=https://github.com/math-classes/math-classes.git}
 
-: ${Corn_CI_BRANCH:=external-bignums}
-: ${Corn_CI_GITURL:=https://github.com/letouzey/corn.git}
+: ${Corn_CI_BRANCH:=master}
+: ${Corn_CI_GITURL:=https://github.com/c-corn/corn.git}
 
 ########################################################################
 # Iris
@@ -43,14 +43,14 @@
 : ${Iris_CI_BRANCH:=master}
 : ${Iris_CI_GITURL:=https://gitlab.mpi-sws.org/FP/iris-coq.git}
 
+: ${lambdaRust_CI_BRANCH:=master}
+: ${lambdaRust_CI_GITURL:=https://gitlab.mpi-sws.org/FP/LambdaRust-coq.git}
+
 ########################################################################
 # HoTT
 ########################################################################
-# Temporary overlay
-: ${HoTT_CI_BRANCH:=ocaml.4.02.3}
-: ${HoTT_CI_GITURL:=https://github.com/ejgallego/HoTT.git}
-# : ${HoTT_CI_BRANCH:=master}
-# : ${HoTT_CI_GITURL:=https://github.com/HoTT/HoTT.git}
+: ${HoTT_CI_BRANCH:=master}
+: ${HoTT_CI_GITURL:=https://github.com/HoTT/HoTT.git}
 
 ########################################################################
 # GeoCoq
@@ -73,14 +73,14 @@
 ########################################################################
 # CompCert
 ########################################################################
-: ${CompCert_CI_BRANCH:=less_init_plugins}
-: ${CompCert_CI_GITURL:=https://github.com/letouzey/CompCert.git}
+: ${CompCert_CI_BRANCH:=master}
+: ${CompCert_CI_GITURL:=https://github.com/AbsInt/CompCert.git}
 
 ########################################################################
 # VST
 ########################################################################
 : ${VST_CI_BRANCH:=master}
-: ${VST_CI_GITURL:=https://github.com/Zimmi48/VST.git}
+: ${VST_CI_GITURL:=https://github.com/PrincetonUniversity/VST.git}
 
 ########################################################################
 # fiat_parsers
@@ -127,5 +127,5 @@
 ########################################################################
 # Bignums
 ########################################################################
-: ${bignums_CI_BRANCH:=fix-thunk-printer}
-: ${bignums_CI_GITURL:=https://github.com/ppedrot/bignums.git}
+: ${bignums_CI_BRANCH:=master}
+: ${bignums_CI_GITURL:=https://github.com/coq/bignums.git}

@@ -327,11 +327,11 @@ let pr_evar_constraints sigma pbs =
       Namegen.make_all_name_different env sigma
     in
     print_env_short env ++ spc () ++ str "|-" ++ spc () ++
-      print_constr_env env sigma (EConstr.of_constr t1) ++ spc () ++
+      protect (print_constr_env env sigma) (EConstr.of_constr t1) ++ spc () ++
       str (match pbty with
             | Reduction.CONV -> "=="
             | Reduction.CUMUL -> "<=") ++
-      spc () ++ print_constr_env env Evd.empty (EConstr.of_constr t2)
+      spc () ++ protect (print_constr_env env Evd.empty) (EConstr.of_constr t2)
   in
   prlist_with_sep fnl pr_evconstr pbs
 
@@ -358,37 +358,37 @@ let pr_evar_list sigma l =
     h 0 (str (string_of_existential ev) ++
       str "==" ++ pr_evar_info evi ++
       (if evi.evar_body == Evar_empty
-       then str " {" ++  pr_existential_key sigma ev ++ str "}"
+       then str " {" ++ pr_existential_key sigma ev ++ str "}"
        else mt ()))
   in
   h 0 (prlist_with_sep fnl pr l)
 
+let to_list d =
+  let open Evd in
+  (* Workaround for change in Map.fold behavior in ocaml 3.08.4 *)
+  let l = ref [] in
+  let fold_def evk evi () = match evi.evar_body with
+    | Evar_defined _ -> l := (evk, evi) :: !l
+    | Evar_empty -> ()
+  in
+  let fold_undef evk evi () = match evi.evar_body with
+    | Evar_empty -> l := (evk, evi) :: !l
+    | Evar_defined _ -> ()
+  in
+  Evd.fold fold_def d ();
+  Evd.fold fold_undef d ();
+  !l
+
 let pr_evar_by_depth depth sigma = match depth with
 | None ->
   (* Print all evars *)
-  let to_list d =
-    let open Evd in
-    (* Workaround for change in Map.fold behavior in ocaml 3.08.4 *)
-    let l = ref [] in
-    let fold_def evk evi () = match evi.evar_body with
-    | Evar_defined _ -> l := (evk, evi) :: !l
-    | Evar_empty -> ()
-    in
-    let fold_undef evk evi () = match evi.evar_body with
-    | Evar_empty -> l := (evk, evi) :: !l
-    | Evar_defined _ -> ()
-    in
-    Evd.fold fold_def d ();
-    Evd.fold fold_undef d ();
-    !l
-  in
-  str"EVARS:"++brk(0,1)++pr_evar_list sigma (to_list sigma)++fnl()
+  str"EVARS:" ++ brk(0,1) ++ pr_evar_list sigma (to_list sigma) ++ fnl()
 | Some n ->
-  (* Print all evars *)
+  (* Print closure of undefined evars *)
   str"UNDEFINED EVARS:"++
   (if Int.equal n 0 then mt() else str" (+level "++int n++str" closure):")++
   brk(0,1)++
-  pr_evar_list sigma (evar_dependency_closure n sigma)++fnl()
+  pr_evar_list sigma (evar_dependency_closure n sigma) ++ fnl()
 
 let pr_evar_by_filter filter sigma =
   let open Evd in
@@ -912,12 +912,9 @@ let vars_of_global_reference env gr =
 (* Tests whether [m] is a subterm of [t]:
    [m] is appropriately lifted through abstractions of [t] *)
 
-let dependent_main noevar univs sigma m t =
+let dependent_main noevar sigma m t =
   let open EConstr in
-  let eqc x y =
-    if univs then not (Option.is_empty (eq_constr_universes sigma x y))
-    else eq_constr_nounivs sigma x y
-  in
+  let eqc x y = eq_constr_nounivs sigma x y in
   let rec deprec m t =
     if eqc m t then
       raise Occur
@@ -934,11 +931,8 @@ let dependent_main noevar univs sigma m t =
   in
   try deprec m t; false with Occur -> true
 
-let dependent sigma c t = dependent_main false false sigma c t
-let dependent_no_evar sigma c t = dependent_main true false sigma c t
-
-let dependent_univs sigma c t = dependent_main false true sigma c t
-let dependent_univs_no_evar sigma c t = dependent_main true true sigma c t
+let dependent sigma c t = dependent_main false sigma c t
+let dependent_no_evar sigma c t = dependent_main true sigma c t
 
 let dependent_in_decl sigma a decl =
   let open NamedDecl in
@@ -1071,9 +1065,9 @@ let replace_term_gen sigma eq_fun c by_c in_t =
 let replace_term sigma c byc t = replace_term_gen sigma EConstr.eq_constr c byc t
 
 let vars_of_env env =
-  let s =
-    Context.Named.fold_outside (fun decl s -> Id.Set.add (NamedDecl.get_id decl) s)
-      (named_context env) ~init:Id.Set.empty in
+  let s = Environ.ids_of_named_context_val (Environ.named_context_val env) in
+  if List.is_empty (Environ.rel_context env) then s
+  else
   Context.Rel.fold_outside
     (fun decl s -> match RelDecl.get_name decl with Name id -> Id.Set.add id s | _ -> s)
     (rel_context env) ~init:s

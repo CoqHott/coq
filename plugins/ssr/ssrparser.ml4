@@ -342,7 +342,7 @@ let interp_index ist gl idx =
         | None ->
         begin match Tacinterp.Value.to_constr v with
         | Some c ->
-          let rc = Detyping.detype Detyping.Now false [] (pf_env gl) (project gl) c in
+          let rc = Detyping.detype Detyping.Now false Id.Set.empty (pf_env gl) (project gl) c in
           begin match Notation.uninterp_prim_token rc with
           | _, Constrexpr.Numeral (s,b) ->
              let n = int_of_string s in if b then n else -n
@@ -1554,8 +1554,8 @@ END
 let ssrautoprop gl =
   try 
     let tacname = 
-      try Nametab.locate_tactic (qualid_of_ident (Id.of_string "ssrautoprop"))
-      with Not_found -> Nametab.locate_tactic (ssrqid "ssrautoprop") in
+      try Tacenv.locate_tactic (qualid_of_ident (Id.of_string "ssrautoprop"))
+      with Not_found -> Tacenv.locate_tactic (ssrqid "ssrautoprop") in
     let tacexpr = Loc.tag @@ Tacexpr.Reference (ArgArg (Loc.tag @@ tacname)) in
     Proofview.V82.of_tactic (eval_tactic (Tacexpr.TacArg tacexpr)) gl
   with Not_found -> Proofview.V82.of_tactic (Auto.full_trivial []) gl

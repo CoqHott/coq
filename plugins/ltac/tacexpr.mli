@@ -10,12 +10,13 @@ open Loc
 open Names
 open Constrexpr
 open Libnames
-open Nametab
 open Genredexpr
 open Genarg
 open Pattern
 open Misctypes
 open Locus
+
+type ltac_constant = KerName.t
 
 type direction_flag = bool (* true = Left-to-right    false = right-to-right *)
 type lazy_flag =
@@ -385,7 +386,7 @@ type ltac_call_kind =
   | LtacNameCall of ltac_constant
   | LtacAtomCall of glob_atomic_tactic_expr
   | LtacVarCall of Id.t * glob_tactic_expr
-  | LtacConstrInterp of Glob_term.glob_constr * Glob_term.ltac_var_map
+  | LtacConstrInterp of Glob_term.glob_constr * Ltac_pretype.ltac_var_map
 
 type ltac_trace = ltac_call_kind Loc.located list
 

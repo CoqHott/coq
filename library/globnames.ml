@@ -13,7 +13,7 @@ open Mod_subst
 open Libnames
 
 (*s Global reference is a kernel side type for all references together *)
-type global_reference =
+type global_reference = Names.global_reference =
   | VarRef of variable           (** A reference to the section-context. *)
   | ConstRef of constant         (** A reference to the environment. *)
   | IndRef of inductive          (** A reference to an inductive type. *)
@@ -84,7 +84,7 @@ let is_global c t =
   | ConstRef c, Const (c', _) -> eq_constant c c'
   | IndRef i, Ind (i', _) -> eq_ind i i'
   | ConstructRef i, Construct (i', _) -> eq_constructor i i'
-  | VarRef id, Var id' -> id_eq id id'
+  | VarRef id, Var id' -> Id.equal id id'
   | _ -> false
 
 let printable_constr_of_global = function

@@ -11,14 +11,10 @@
 (** Command-line flags  *)
 
 val boot : bool ref
-val load_init : bool ref
 
-(* Will affect STM caching *)
-val batch_mode : bool ref
-
-type compilation_mode = BuildVo | BuildVio | Vio2Vo
-val compilation_mode : compilation_mode ref
-val compilation_output_name : string option ref
+(** Set by coqtop to tell the kernel to output to the aux file; will
+    be eventually removed by cleanups such as PR#1103 *)
+val record_aux_file : bool ref
 
 (* Flag set when the test-suite is called. Its only effect to display
    verbose information for `Fail` *)
@@ -90,14 +86,6 @@ val silently : ('a -> 'b) -> 'a -> 'b
 val verbosely : ('a -> 'b) -> 'a -> 'b
 val if_silent : ('a -> unit) -> 'a -> unit
 val if_verbose : ('a -> unit) -> 'a -> unit
-
-(* Deprecated *)
-val make_silent : bool -> unit
-[@@ocaml.deprecated "Please use Flags.quiet"]
-val is_silent : unit -> bool
-[@@ocaml.deprecated "Please use Flags.quiet"]
-val is_verbose : unit -> bool
-[@@ocaml.deprecated "Please use Flags.quiet"]
 
 (* Miscellaneus flags for vernac *)
 val make_auto_intros : bool -> unit

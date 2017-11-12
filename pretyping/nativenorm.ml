@@ -5,13 +5,11 @@
 (*    //   *      This file is distributed under the terms of the       *)
 (*         *       GNU Lesser General Public License Version 2.1        *)
 (************************************************************************)
-open Pp
 open CErrors
 open Term
 open Vars
 open Environ
 open Reduction
-open Univ
 open Declarations
 open Names
 open Inductive
@@ -19,8 +17,6 @@ open Util
 open Nativecode
 open Nativevalues
 open Context.Rel.Declaration
-
-module RelDecl = Context.Rel.Declaration
 
 (** This module implements normalization by evaluation to OCaml code *)
 
@@ -92,7 +88,7 @@ let invert_tag cst tag reloc_tbl =
 let decompose_prod env t =
   let (name,dom,codom as res) = destProd (whd_all env t) in
   match name with
-  | Anonymous -> (Name (id_of_string "x"),dom,codom)
+  | Anonymous -> (Name (Id.of_string "x"),dom,codom)
   | _ -> res
 
 let app_type env c =
@@ -176,44 +172,6 @@ let build_branches_type env sigma (mind,_ as _ind) mib mip u params dep p =
 let build_case_type dep p realargs c = 
   if dep then mkApp(mkApp(p, realargs), [|c|])
   else mkApp(p, realargs)
-
-(* TODO move this function *)
-let type_of_rel env n =
-  env |> lookup_rel n |> RelDecl.get_type |> lift n
-
-let type_of_prop = mkSort type1_sort
-
-let type_of_sort s = 
-  match s with
-  | Prop _ -> type_of_prop
-  | Type u -> mkType (Univ.super u)
-
-let type_of_var env id =
-  let open Context.Named.Declaration in
-  try env |> lookup_named id |> get_type
-  with Not_found ->
-    anomaly ~label:"type_of_var" (str "variable " ++ Id.print id ++ str " unbound.")
-
-let sort_of_product env domsort rangsort =
-  match (domsort, rangsort) with
-    (* Product rule (s,Prop,Prop) *)
-    | (_,       Prop Null)  -> rangsort
-    (* Product rule (Prop/Set,Set,Set) *)
-    | (Prop _,  Prop Pos) -> rangsort
-    (* Product rule (Type,Set,?) *)
-    | (Type u1, Prop Pos) ->
-        if is_impredicative_set env then
-          (* Rule is (Type,Set,Set) in the Set-impredicative calculus *)
-          rangsort
-        else
-          (* Rule is (Type_i,Set,Type_i) in the Set-predicative calculus *)
-          Type (sup u1 type0_univ)
-    (* Product rule (Prop,Type_i,Type_i) *)
-    | (Prop Pos,  Type u2)  -> Type (sup type0_univ u2)
-    (* Product rule (Prop,Type_i,Type_i) *)
-    | (Prop Null, Type _)  -> rangsort
-    (* Product rule (Type_i,Type_i,Type_i) *)
-    | (Type u1, Type u2) -> Type (sup u1 u2)
 
 (* normalisation of values *)
 
@@ -328,15 +286,15 @@ and nf_atom_type env sigma atom =
   match atom with
   | Arel i ->
       let n = (nb_rel env - i) in
-      mkRel n, type_of_rel env n
+      mkRel n, Typeops.type_of_relative env n
   | Aconstant cst ->
       mkConstU cst, Typeops.type_of_constant_in env cst
   | Aind ind ->
       mkIndU ind, Inductiveops.type_of_inductive env ind
   | Asort s ->
-      mkSort s, type_of_sort s
+      mkSort s, Typeops.type_of_sort s
   | Avar id ->
-      mkVar id, type_of_var env id
+      mkVar id, Typeops.type_of_variable env id
   | Acase(ans,accu,p,bs) ->
       let a,ta = nf_accu_type env sigma accu in
       let ((mind,_),u as ind),allargs = find_rectype_a env ta in
@@ -363,7 +321,7 @@ and nf_atom_type env sigma atom =
       mkCase(ci, p, a, branchs), tcase 
   | Afix(tt,ft,rp,s) ->
       let tt = Array.map (fun t -> nf_type env sigma t) tt in
-      let name = Array.map (fun _ -> (Name (id_of_string "Ffix"))) tt in
+      let name = Array.map (fun _ -> (Name (Id.of_string "Ffix"))) tt in
       let lvl = nb_rel env in
       let nbfix = Array.length ft in
       let fargs = mk_rels_accu lvl (Array.length ft) in
@@ -376,7 +334,7 @@ and nf_atom_type env sigma atom =
       mkFix((rp,s),(name,tt,ft)), tt.(s)
   | Acofix(tt,ft,s,_) | Acofixe(tt,ft,s,_) ->
       let tt = Array.map (nf_type env sigma) tt in
-      let name = Array.map (fun _ -> (Name (id_of_string "Fcofix"))) tt in
+      let name = Array.map (fun _ -> (Name (Id.of_string "Fcofix"))) tt in
       let lvl = nb_rel env in
       let fargs = mk_rels_accu lvl (Array.length ft) in
       let env = push_rec_types (name,tt,[||]) env in
@@ -387,7 +345,7 @@ and nf_atom_type env sigma atom =
       let vn = mk_rel_accu (nb_rel env) in
       let env = push_rel (LocalAssum (n,dom)) env in
       let codom,s2 = nf_type_sort env sigma (codom vn) in
-      mkProd(n,dom,codom), mkSort (sort_of_product env s1 s2)
+      mkProd(n,dom,codom), Typeops.type_of_product env n s1 s2
   | Aevar(ev,ty) ->
      let ty = nf_type env sigma ty in
      mkEvar ev, ty
@@ -418,7 +376,7 @@ and  nf_predicate env sigma ind mip params v pT =
   | Vfun f, _ -> 
       let k = nb_rel env in
       let vb = f (mk_rel_accu k) in
-      let name = Name (id_of_string "c") in
+      let name = Name (Id.of_string "c") in
       let n = mip.mind_nrealargs in
       let rargs = Array.init n (fun i -> mkRel (n-i)) in
       let params = if Int.equal n 0 then params else Array.map (lift n) params in

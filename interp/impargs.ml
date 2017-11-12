@@ -255,7 +255,7 @@ let compute_implicits_gen strict strongly_strict revpat contextual all env t =
   in
   match kind_of_term (whd_all env t) with
     | Prod (na,a,b) ->
-	let na',avoid = find_displayed_name_in all [] na ([],b) in
+	let na',avoid = find_displayed_name_in all Id.Set.empty na ([],b) in
 	let v = aux (push_rel (LocalAssum (na',a)) env) avoid 1 [na'] b in
 	!rigid, Array.to_list v
     | _ -> true, []
@@ -485,7 +485,7 @@ type implicit_discharge_request =
   | ImplLocal
   | ImplConstant of constant * implicits_flags
   | ImplMutualInductive of mutual_inductive * implicits_flags
-  | ImplInteractive of global_reference * implicits_flags *
+  | ImplInteractive of Names.global_reference * implicits_flags *
       implicit_interactive_request
 
 let implicits_table = Summary.ref Refmap.empty ~name:"implicits"
@@ -606,7 +606,7 @@ let classify_implicits (req,_ as obj) = match req with
 
 type implicits_obj =
     implicit_discharge_request *
-      (global_reference * implicits_list list) list
+      (Names.global_reference * implicits_list list) list
 
 let inImplicits : implicits_obj -> obj =
   declare_object {(default_object "IMPLICITS") with

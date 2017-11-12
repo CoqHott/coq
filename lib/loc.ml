@@ -62,6 +62,8 @@ let merge_opt l1 l2 = match l1, l2 with
 
 let unloc loc = (loc.bp, loc.ep)
 
+let shift_loc kb kp loc = { loc with bp = loc.bp + kb ; ep = loc.ep + kp }
+
 (** Located type *)
 type 'a located = t option * 'a
 
@@ -81,10 +83,4 @@ let raise ?loc e =
   | Some loc ->
     let info = Exninfo.add Exninfo.null location loc in
     Exninfo.iraise (e, info)
-
-(** Deprecated *)
-let located_fold_left f x (_,a) = f x a
-let located_iter2 f (_,a) (_,b) = f a b
-let down_located f (_,a) = f a
-
 

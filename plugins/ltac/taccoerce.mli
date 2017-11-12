@@ -10,7 +10,6 @@ open Util
 open Names
 open EConstr
 open Misctypes
-open Pattern
 open Genarg
 open Geninterp
 
@@ -37,8 +36,8 @@ sig
 
   val of_constr : constr -> t
   val to_constr : t -> constr option
-  val of_uconstr : Glob_term.closed_glob_constr -> t
-  val to_uconstr : t -> Glob_term.closed_glob_constr option
+  val of_uconstr : Ltac_pretype.closed_glob_constr -> t
+  val to_uconstr : t -> Ltac_pretype.closed_glob_constr option
   val of_int : int -> t
   val to_int : t -> int option
   val to_list : t -> t list option
@@ -63,9 +62,9 @@ val coerce_to_hint_base : Value.t -> string
 
 val coerce_to_int : Value.t -> int
 
-val coerce_to_constr : Environ.env -> Value.t -> constr_under_binders
+val coerce_to_constr : Environ.env -> Value.t -> Ltac_pretype.constr_under_binders
 
-val coerce_to_uconstr : Environ.env -> Value.t -> Glob_term.closed_glob_constr
+val coerce_to_uconstr : Environ.env -> Value.t -> Ltac_pretype.closed_glob_constr
 
 val coerce_to_closed_constr : Environ.env -> Value.t -> constr
 
@@ -81,7 +80,7 @@ val coerce_to_hyp : Environ.env -> Evd.evar_map -> Value.t -> Id.t
 
 val coerce_to_hyp_list : Environ.env -> Evd.evar_map -> Value.t -> Id.t list
 
-val coerce_to_reference : Environ.env -> Evd.evar_map -> Value.t -> Globnames.global_reference
+val coerce_to_reference : Environ.env -> Evd.evar_map -> Value.t -> global_reference
 
 val coerce_to_quantified_hypothesis : Evd.evar_map -> Value.t -> quantified_hypothesis
 
@@ -93,4 +92,4 @@ val coerce_to_int_or_var_list : Value.t -> int or_var list
 
 val wit_constr_context : (Empty.t, Empty.t, EConstr.constr) genarg_type
 
-val wit_constr_under_binders : (Empty.t, Empty.t, constr_under_binders) genarg_type
+val wit_constr_under_binders : (Empty.t, Empty.t, Ltac_pretype.constr_under_binders) genarg_type

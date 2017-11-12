@@ -365,10 +365,13 @@ let parse_args argv =
 (* To prevent from doing the initialization twice *)
 let initialized = ref false
 
+(* XXX: At some point we need to either port the checker to use the
+   feedback system or to remove its use completely. *)
 let init_with_argv argv =
   if not !initialized then begin
     initialized := true;
     Sys.catch_break false; (* Ctrl-C is fatal during the initialisation *)
+    let _fhandle = Feedback.(add_feeder (console_feedback_listener Format.err_formatter)) in
     try
       parse_args argv;
       if !Flags.debug then Printexc.record_backtrace true;

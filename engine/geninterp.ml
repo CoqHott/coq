@@ -9,11 +9,11 @@
 open Names
 open Genarg
 
-module TacStore = Store.Make(struct end)
+module TacStore = Store.Make ()
 
 (** Dynamic toplevel values *)
 
-module ValT = Dyn.Make(struct end)
+module ValT = Dyn.Make ()
 
 module Val =
 struct
@@ -46,6 +46,8 @@ struct
     Dyn (typ_pair, (inject tag1 (fst x), inject tag2 (snd x)))
 
 end
+
+module ValTMap = ValT.Map
 
 module ValReprObj =
 struct

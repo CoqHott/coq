@@ -620,25 +620,6 @@ let check_coq_overwriting p id =
       (str "Cannot build module " ++ pr_dirpath p ++ str "." ++ pr_id id ++ str "." ++ spc () ++
       str "it starts with prefix \"Coq\" which is reserved for the Coq library.")
 
-(* Verifies that a string starts by a letter and do not contain
-   others caracters than letters, digits, or `_` *)
-
-let check_module_name s =
-  let msg c =
-    strbrk "Invalid module name: " ++ str s ++ strbrk " character " ++
-    (if c = '\'' then str "\"'\"" else (str "'" ++ str (String.make 1 c) ++ str "'")) ++
-    strbrk " is not allowed in module names\n"
-  in
-  let err c = user_err  (msg c) in
-  match String.get s 0 with
-    | 'a' .. 'z' | 'A' .. 'Z' ->
-        for i = 1 to (String.length s)-1 do
-          match String.get s i with
-            | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '_'  -> ()
-            | c -> err c
-        done
-    | c -> err c
-
 let start_library fo =
   let ldir0 =
     try
@@ -648,7 +629,6 @@ let start_library fo =
   in
   let file = Filename.chop_extension (Filename.basename fo) in
   let id = Id.of_string file in
-  check_module_name file;
   check_coq_overwriting ldir0 id;
   let ldir = add_dirpath_suffix ldir0 id in
   Declaremods.start_library ldir;
@@ -703,7 +683,8 @@ let error_recursively_dependent_library dir =
 let save_library_to ?todo dir f otab =
   let except = match todo with
     | None ->
-        assert(!Flags.compilation_mode = Flags.BuildVo);
+        (* XXX *)
+        (* assert(!Flags.compilation_mode = Flags.BuildVo); *)
         assert(Filename.check_suffix f ".vo");
         Future.UUIDSet.empty
     | Some (l,_) ->

@@ -22,6 +22,7 @@ open Pattern
 open Patternops
 open Misctypes
 open Context.Rel.Declaration
+open Ltac_pretype
 (*i*)
 
 (* Given a term with second-order variables in it,
@@ -178,7 +179,7 @@ let push_binder na1 na2 t ctx =
   let id2 = match na2 with
   | Name id2 -> id2
   | Anonymous ->
-     let avoid = List.map pi2 ctx in
+     let avoid = Id.Set.of_list (List.map pi2 ctx) in
      Namegen.next_ident_away Namegen.default_non_dependent_ident avoid in
   (na1, id2, t) :: ctx
 
@@ -212,7 +213,7 @@ let matches_core env sigma convert allow_partial_app allow_bound_rels
   let open EConstr in
   let convref ref c = 
     match ref, EConstr.kind sigma c with
-    | VarRef id, Var id' -> Names.id_eq id id'
+    | VarRef id, Var id' -> Names.Id.equal id id'
     | ConstRef c, Const (c',_) -> Names.eq_constant c c'
     | IndRef i, Ind (i', _) -> Names.eq_ind i i'
     | ConstructRef c, Construct (c',u) -> Names.eq_constructor c c'

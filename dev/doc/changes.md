@@ -1,5 +1,17 @@
 ## Changes between Coq 8.7 and Coq 8.8
 
+### Bug tracker
+
+As of 18/10/2017, Coq uses [GitHub issues](https://github.com/coq/coq/issues)
+as bug tracker.
+Old bug reports were migrated from Bugzilla to GitHub issues using
+[this migration script](https://gist.github.com/Zimmi48/d923e52f64fe17c72852d9c148bfcdc6#file-bugzilla2github)
+as detailed in [this blog post](https://www.theozimmermann.net/2017/10/bugzilla-to-github/).
+
+All the bugs with a number below 1154 had to be renumbered, you can find
+a correspondence table [here](/dev/bugzilla2github_stripped.csv).
+All the other bugs kept their number.
+
 ### Plugin API
 
 Coq 8.8 offers a new module overlay containing a proposed plugin API
@@ -11,6 +23,12 @@ However, `coq_makefile` can be instructed not to enable this flag by
 passing `-bypass-API`.
 
 ### ML API
+
+General deprecation
+
+- All functions marked [@@ocaml.deprecated] in 8.7 have been
+  removed. Please, make sure your plugin is warning-free in 8.7 before
+  trying to port it over 8.8.
 
 We removed the following functions:
 
@@ -32,6 +50,19 @@ We renamed the following datatypes:
 
 - `Pp.std_ppcmds` -> `Pp.t`
 
+Some tactics and related functions now support static configurability, e.g.:
+
+- injectable, dEq, etc. takes an argument ~keep_proofs which,
+  - if None, tells to behave as told with the flag Keep Proof Equalities
+  - if Some b, tells to keep proof equalities iff b is true
+
+Declaration of printers for arguments used only in vernac command
+
+- It should now use "declare_extra_vernac_genarg_pprule" rather than
+  "declare_extra_genarg_pprule", otherwise, a failure at runtime might
+  happen. An alternative is to register the corresponding argument as
+  a value, using "Geninterp.register_val0 wit None".
+
 ## Changes between Coq 8.6 and Coq 8.7
 
 ### Ocaml
@@ -39,6 +70,9 @@ We renamed the following datatypes:
 Coq is compiled with `-safe-string` enabled and requires plugins to do
 the same. This means that code using `String` in an imperative way
 will fail to compile now. They should switch to `Bytes.t`
+
+Configure supports passing flambda options, use `-flambda-opts OPTS`
+with a flambda-enabled Ocaml to tweak the compilation to your taste.
 
 ### ML API
 
@@ -640,6 +674,12 @@ val get_id_for_feedback : unit -> edit_or_state_id * route_id
 The main search functions now take a function iterating over the
 results. This allows for clients to use streaming or more economic
 printing.
+
+### XML Protocol
+
+- In several places, flat text wrapped in `<string>` tags now appears as structured text inside `<richpp>` tags.
+
+- The "errormsg" feedback has been replaced by a "message" feedback which contains `<feedback\_content>` tag, with a message_level attribute of "error".
 
 ## Changes between Coq 8.4 and Coq 8.5
 

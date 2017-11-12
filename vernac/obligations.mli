@@ -10,7 +10,6 @@ open Environ
 open Term
 open Evd
 open Names
-open Globnames
 
 (* This is a hack to make it possible for Obligations to craft a Qed
  * behind the scenes.  The fix_exn the Stm attaches to the Future proof
@@ -53,7 +52,7 @@ val default_tactic : unit Proofview.tactic ref
 
 val add_definition : Names.Id.t -> ?term:Term.constr -> Term.types -> 
   Evd.evar_universe_context ->
-  ?pl:(Id.t Loc.located list) -> (* Universe binders *)
+  ?univdecl:Univdecls.universe_decl -> (* Universe binders and constraints *)
   ?implicits:(Constrexpr.explicitation * (bool * bool * bool)) list ->
   ?kind:Decl_kinds.definition_kind ->
   ?tactic:unit Proofview.tactic ->
@@ -71,7 +70,7 @@ val add_mutual_definitions :
   (Names.Id.t * Term.constr * Term.types *
       (Constrexpr.explicitation * (bool * bool * bool)) list * obligation_info) list ->
   Evd.evar_universe_context ->
-  ?pl:(Id.t Loc.located list) -> (* Universe binders *)
+  ?univdecl:Univdecls.universe_decl -> (* Universe binders and constraints *)
   ?tactic:unit Proofview.tactic ->
   ?kind:Decl_kinds.definition_kind ->
   ?reduce:(Term.constr -> Term.constr) ->

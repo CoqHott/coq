@@ -14,7 +14,7 @@ open Environ
 open Univ
 open Globnames
 
-let pr_with_global_universes l = 
+let pr_with_global_universes l =
   try Nameops.pr_id (LMap.find l (snd (Global.global_universe_names ())))
   with Not_found -> Level.pr l
 
@@ -31,7 +31,7 @@ let universe_binders_of_global ref =
 
 let register_universe_binders ref l =
   universe_binders_table := Refmap.add ref l !universe_binders_table
-		     
+
 (* To disallow minimization to Set *)
 
 let set_minimization = ref true
@@ -131,6 +131,18 @@ let to_constraints g s =
 		   "to_constraints: non-trivial algebraic constraint between universes")
   in Constraints.fold tr s Constraint.empty
 
+let of_constraints strict c =
+  let eq = if strict then ULub else UEq in
+  Univ.Constraint.fold (fun (l,d,r) cstrs ->
+      let d' = match d with
+        | Univ.Le -> ULe
+        | Univ.Eq -> eq
+        | Univ.Lt -> CErrors.anomaly ~label:"EConstr.cmp_inductives"
+                       Pp.(str "inductive subtyping produced a strict inequality")
+      in
+      Constraints.add (Univ.Universe.make l,d',Univ.Universe.make r) cstrs)
+    c Constraints.empty
+
 (** Variant of [eq_constr_univs_infer] taking kind-of-term functions,
     to expose subterms of [m] and [n], arguments. *)
 let eq_constr_univs_infer_with kind1 kind2 univs fold m n accu =
@@ -141,7 +153,8 @@ let eq_constr_univs_infer_with kind1 kind2 univs fold m n accu =
      [kind1,kind2], because [kind1] and [kind2] may be different,
      typically evaluating [m] and [n] in different evar maps. *)
   let cstrs = ref accu in
-  let eq_universes strict = UGraph.check_eq_instances univs in
+  (* TODO upto cumulativity of inductives? *)
+  let eq_universes _ _ = UGraph.check_eq_instances univs in
   let eq_sorts s1 s2 = 
     if Sorts.equal s1 s2 then true
     else
@@ -155,39 +168,6 @@ let eq_constr_univs_infer_with kind1 kind2 univs fold m n accu =
   in
   let res = Constr.compare_head_gen_with kind1 kind2 eq_universes eq_sorts eq_constr' m n in
   if res then Some !cstrs else None
-
-let compare_head_gen_proj env equ eqs eqc' m n =
-  match kind_of_term m, kind_of_term n with
-  | Proj (p, c), App (f, args)
-  | App (f, args), Proj (p, c) -> 
-      (match kind_of_term f with
-      | Const (p', u) when eq_constant (Projection.constant p) p' -> 
-          let pb = Environ.lookup_projection p env in
-          let npars = pb.Declarations.proj_npars in
-	  if Array.length args == npars + 1 then
-	    eqc' c args.(npars)
-	  else false
-      | _ -> false)
-  | _ -> Constr.compare_head_gen equ eqs eqc' m n
-      
-let eq_constr_universes_proj env m n =
-  if m == n then true, Constraints.empty
-  else 
-    let cstrs = ref Constraints.empty in
-    let eq_universes strict l l' = 
-      cstrs := enforce_eq_instances_univs strict l l' !cstrs; true in
-    let eq_sorts s1 s2 = 
-      if Sorts.equal s1 s2 then true
-      else
-	(cstrs := Constraints.add 
-	   (Sorts.univ_of_sort s1, UEq, Sorts.univ_of_sort s2) !cstrs;
-	 true)
-    in
-    let rec eq_constr' m n = 
-      m == n ||	compare_head_gen_proj env eq_universes eq_sorts eq_constr' m n
-    in
-    let res = eq_constr' m n in
-    res, !cstrs
 
 (* Generator of levels *)
 let new_univ_level, set_remote_new_univ_level =
@@ -955,14 +935,3 @@ let solve_constraints_system levels level_bounds level_min =
     done;
   done;
   v
-
-
-(** Operations for universe_info_ind *)
-
-(** Given a universe context representing constraints of an inductive
-    this function produces a UInfoInd.t that with the trivial subtyping relation. *)
-let univ_inf_ind_from_universe_context univcst =
-  let freshunivs = Instance.of_array
-      (Array.map (fun _ -> new_univ_level ())
-         (Instance.to_array (UContext.instance univcst)))
-  in CumulativityInfo.from_universe_context univcst freshunivs

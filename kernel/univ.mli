@@ -235,6 +235,20 @@ type universe_level_subst = universe_level universe_map
 
 val level_subst_of : universe_subst_fn -> universe_level_subst_fn
 
+module Variance :
+sig
+  (** A universe position in the instance given to a cumulative
+     inductive can be the following. Note there is no Contravariant
+     case because [forall x : A, B <= forall x : A', B'] requires [A =
+     A'] as opposed to [A' <= A]. *)
+  type t = Irrelevant | Covariant | Invariant
+
+  val sup : t -> t -> t
+
+  val pr : t -> Pp.t
+
+end
+
 (** {6 Universe instances} *)
 
 module Instance : 
@@ -270,7 +284,7 @@ sig
   val subst_fn : universe_level_subst_fn -> t -> t
   (** Substitution by a level-to-level function. *)
 
-  val pr : (Level.t -> Pp.t) -> t -> Pp.t
+  val pr : (Level.t -> Pp.t) -> ?variance:Variance.t array -> t -> Pp.t
   (** Pretty-printing, no comments *)
 
   val levels : t -> LSet.t
@@ -341,36 +355,32 @@ end
 
 type abstract_universe_context = AUContext.t
 
-(** Universe info for inductive types: A context of universe levels
-    with universe constraints, representing local universe variables
-    and constraints, together with a context of universe levels with
-    universe constraints, representing conditions for subtyping used
-    for inductive types.
+(** Universe info for cumulative inductive types: A context of
+   universe levels with universe constraints, representing local
+   universe variables and constraints, together with an array of
+   Variance.t.
 
-    This data structure maintains the invariant that the context for
-    subtyping constraints is exactly twice as big as the context for
-    universe constraints. *)
+    This data structure maintains the invariant that the variance
+   array has the same length as the universe instance. *)
 module CumulativityInfo :
 sig
   type t
 
-  val make : universe_context * universe_context -> t
+  val make : universe_context * Variance.t array -> t
 
   val empty : t
   val is_empty : t -> bool
 
   val univ_context : t -> universe_context
-  val subtyp_context : t -> universe_context
+  val variance : t -> Variance.t array
 
   (** This function takes a universe context representing constraints
-      of an inductive and a Instance.t of fresh universe names for the
-      subtyping (with the same length as the context in the given
-      universe context) and produces a UInfoInd.t that with the
-      trivial subtyping relation. *)
-  val from_universe_context : universe_context -> universe_instance -> t
+     of an inductive and produces a CumulativityInfo.t with the
+     trivial subtyping relation. *)
+  val from_universe_context : universe_context -> t
 
-  val subtyping_susbst : t -> universe_level_subst
-
+  val leq_constraints : t -> Instance.t constraint_function
+  val eq_constraints : t -> Instance.t constraint_function
 end
 
 type cumulativity_info = CumulativityInfo.t
@@ -380,7 +390,9 @@ sig
   type t
 
   val univ_context : t -> abstract_universe_context
-  val subtyp_context : t -> abstract_universe_context
+  val variance : t -> Variance.t array
+  val leq_constraints : t -> Instance.t constraint_function
+  val eq_constraints : t -> Instance.t constraint_function
 end
 
 type abstract_cumulativity_info = ACumulativityInfo.t
@@ -411,6 +423,7 @@ sig
   val add_instance : Instance.t -> t -> t
 
   (** Arbitrary choice of linear order of the variables *)
+  val sort_levels : Level.t array -> Level.t array
   val to_context : t -> universe_context
   val of_context : universe_context -> t
 
@@ -465,9 +478,11 @@ val make_abstract_instance : abstract_universe_context -> universe_instance
 
 val pr_constraint_type : constraint_type -> Pp.t
 val pr_constraints : (Level.t -> Pp.t) -> constraints -> Pp.t
-val pr_universe_context : (Level.t -> Pp.t) -> universe_context -> Pp.t
+val pr_universe_context : (Level.t -> Pp.t) -> ?variance:Variance.t array ->
+  universe_context -> Pp.t
 val pr_cumulativity_info : (Level.t -> Pp.t) -> cumulativity_info -> Pp.t
-val pr_abstract_universe_context : (Level.t -> Pp.t) -> abstract_universe_context -> Pp.t
+val pr_abstract_universe_context : (Level.t -> Pp.t) -> ?variance:Variance.t array ->
+  abstract_universe_context -> Pp.t
 val pr_abstract_cumulativity_info : (Level.t -> Pp.t) -> abstract_cumulativity_info -> Pp.t
 val pr_universe_context_set : (Level.t -> Pp.t) -> universe_context_set -> Pp.t
 val explain_universe_inconsistency : (Level.t -> Pp.t) -> 

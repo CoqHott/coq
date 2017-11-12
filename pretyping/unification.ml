@@ -194,6 +194,10 @@ let pose_all_metas_as_evars env evd t =
         let {rebus=ty;freemetas=mvs} = Evd.meta_ftype evd mv in
         let ty = EConstr.of_constr ty in
         let ty = if Evd.Metaset.is_empty mvs then ty else aux ty in
+        let ty =
+          if Flags.version_strictly_greater Flags.V8_6 || Flags.version_less_or_equal Flags.VOld
+          then nf_betaiota evd ty (* How it was in Coq <= 8.4 (but done in logic.ml at this time) *)
+          else ty (* some beta-iota-normalization "regression" in 8.5 and 8.6 *) in
         let src = Evd.evar_source_of_meta mv !evdref in
         let ev = Evarutil.e_new_evar env evdref ~src ty in
         evdref := meta_assign mv (EConstr.Unsafe.to_constr ev,(Conv,TypeNotProcessed)) !evdref;
@@ -501,6 +505,10 @@ let expand_key ts env sigma = function
     in if EConstr.eq_constr sigma (EConstr.mkProj (p, c)) red then None else Some red
   | None -> None
 
+let isApp_or_Proj sigma c =
+  match kind sigma c with
+  | App _ | Proj _ -> true
+  | _ -> false
   
 type unirec_flags = {
   at_top: bool;
@@ -574,10 +582,10 @@ let force_eqs c =
 	Universes.Constraints.add c' acc) 
     c Universes.Constraints.empty
 
-let constr_cmp pb sigma flags t u =
+let constr_cmp pb env sigma flags t u =
   let cstrs =
-    if pb == Reduction.CONV then EConstr.eq_constr_universes sigma t u
-    else EConstr.leq_constr_universes sigma t u
+    if pb == Reduction.CONV then EConstr.eq_constr_universes env sigma t u
+    else EConstr.leq_constr_universes env sigma t u
   in 
   match cstrs with
   | Some cstrs ->
@@ -739,7 +747,7 @@ let rec unify_0_with_initial_metas (sigma,ms,es as subst : subst0) conv_at_top e
 	| Evar (evk,_ as ev), Evar (evk',_)
             when not (Evar.Set.mem evk flags.frozen_evars)
               && Evar.equal evk evk' ->
-            let sigma',b = constr_cmp cv_pb sigma flags cM cN in
+            let sigma',b = constr_cmp cv_pb env sigma flags cM cN in
             if b then
 	      sigma',metasubst,evarsubst
             else
@@ -921,7 +929,7 @@ let rec unify_0_with_initial_metas (sigma,ms,es as subst : subst0) conv_at_top e
   and unify_not_same_head curenvnb pb opt (sigma, metas, evars as substn : subst0) cM cN =
     try canonical_projections curenvnb pb opt cM cN substn
     with ex when precatchable_exception ex ->
-    let sigma', b = constr_cmp cv_pb sigma flags cM cN in
+    let sigma', b = constr_cmp cv_pb env sigma flags cM cN in
       if b then (sigma', metas, evars)
       else
 	try reduce curenvnb pb opt substn cM cN
@@ -1020,7 +1028,7 @@ let rec unify_0_with_initial_metas (sigma,ms,es as subst : subst0) conv_at_top e
 
   and canonical_projections (curenv, _ as curenvnb) pb opt cM cN (sigma,_,_ as substn) =
     let f1 () =
-      if isApp sigma cM then
+      if isApp_or_Proj sigma cM then
 	let f1l1 = whd_nored_state sigma (cM,Stack.empty) in
 	  if is_open_canonical_projection curenv sigma f1l1 then
 	    let f2l2 = whd_nored_state sigma (cN,Stack.empty) in
@@ -1036,7 +1044,7 @@ let rec unify_0_with_initial_metas (sigma,ms,es as subst : subst0) conv_at_top e
 	error_cannot_unify (fst curenvnb) sigma (cM,cN)
       else
 	try f1 () with e when precatchable_exception e ->
-	  if isApp sigma cN then
+	  if isApp_or_Proj sigma cN then
 	    let f2l2 = whd_nored_state sigma (cN, Stack.empty) in
 	      if is_open_canonical_projection curenv sigma f2l2 then
 		let f1l1 = whd_nored_state sigma (cM, Stack.empty) in
@@ -1090,7 +1098,7 @@ let rec unify_0_with_initial_metas (sigma,ms,es as subst : subst0) conv_at_top e
     else 
       let sigma, b = match flags.modulo_conv_on_closed_terms with
 	| Some convflags -> infer_conv ~pb:cv_pb ~ts:convflags env sigma m n
-	| _ -> constr_cmp cv_pb sigma flags m n in
+        | _ -> constr_cmp cv_pb env sigma flags m n in
 	if b then Some sigma
 	else if (match flags.modulo_conv_on_closed_terms, flags.modulo_delta with
         | Some (cv_id, cv_k), (dl_id, dl_k) ->
@@ -1616,7 +1624,7 @@ let make_abstraction_core name (test,out) env sigma c ty occs check_occs concl =
   let id =
     let t = match ty with Some t -> t | None -> get_type_of env sigma c in
     let x = id_of_name_using_hdchar (Global.env()) sigma t name in
-    let ids = ids_of_named_context (named_context env) in
+    let ids = Environ.ids_of_named_context_val (named_context_val env) in
     if name == Anonymous then next_ident_away_in_goal x ids else
     if mem_named_context_val x (named_context_val env) then
       user_err ~hdr:"Unification.make_abstraction_core"

@@ -445,6 +445,7 @@ module Prim =
     let name = Gram.entry_create "Prim.name"
     let identref = Gram.entry_create "Prim.identref"
     let pidentref = Gram.entry_create "Prim.pidentref"
+    let ident_decl = Gram.entry_create "Prim.ident_decl"
     let pattern_ident = Gram.entry_create "pattern_ident"
     let pattern_identref = Gram.entry_create "pattern_identref"
 
@@ -542,11 +543,11 @@ let epsilon_value f e =
 
 (** Synchronized grammar extensions *)
 
-module GramState = Store.Make(struct end)
+module GramState = Store.Make ()
 
 type 'a grammar_extension = 'a -> GramState.t -> extend_rule list * GramState.t
 
-module GrammarCommand = Dyn.Make(struct end)
+module GrammarCommand = Dyn.Make ()
 module GrammarInterp = struct type 'a t = 'a grammar_extension end
 module GrammarInterpMap = GrammarCommand.Map(GrammarInterp)
 

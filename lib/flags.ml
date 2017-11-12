@@ -42,12 +42,8 @@ let with_extra_values o l f x =
     Exninfo.iraise reraise
 
 let boot = ref false
-let load_init = ref true
-let batch_mode = ref false
 
-type compilation_mode = BuildVo | BuildVio | Vio2Vo
-let compilation_mode = ref BuildVo
-let compilation_output_name = ref None
+let record_aux_file = ref false
 
 let test_mode = ref false
 
@@ -143,10 +139,6 @@ let verbosely f x = without_option quiet f x
 
 let if_silent f x = if !quiet then f x
 let if_verbose f x = if not !quiet then f x
-
-let make_silent flag = quiet := flag
-let is_silent () = !quiet
-let is_verbose () = not !quiet
 
 let auto_intros = ref true
 let make_auto_intros flag = auto_intros := flag

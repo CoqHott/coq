@@ -73,7 +73,7 @@ let generalize_right mk typ c1 c2 =
     let env = Proofview.Goal.env gl in
     let store = Proofview.Goal.extra gl in
   Refine.refine ~typecheck:false begin fun sigma ->
-    let na = Name (next_name_away_with_default "x" Anonymous (Termops.ids_of_context env)) in
+    let na = Name (next_name_away_with_default "x" Anonymous (Termops.vars_of_env env)) in
     let newconcl = mkProd (na, typ, mk typ c1 (mkRel 1)) in
     let (sigma, x) = Evarutil.new_evar env sigma ~principal:true ~store newconcl in
     (sigma, mkApp (x, [|c2|]))
@@ -88,6 +88,12 @@ let mkBranches (eqonleft,mk,c1,c2,typ) =
      onLastHyp Simple.case;
      clear_last;
      intros]
+
+let inj_flags = Some {
+    Equality.keep_proof_equalities = true; (* necessary *)
+    Equality.injection_in_context = true; (* does not matter here *)
+    Equality.injection_pattern_l2r_order = true; (* does not matter here *)
+  }
 
 let discrHyp id =
   let c env sigma = (sigma, (mkVar id, NoBindings)) in
@@ -114,7 +120,7 @@ let idx = Id.of_string "x"
 let idy = Id.of_string "y"
 
 let mkGenDecideEqGoal rectype ops g =
-  let hypnames = pf_ids_of_hyps g in
+  let hypnames = pf_ids_set_of_hyps g in
   let xname    = next_ident_away idx hypnames
   and yname    = next_ident_away idy hypnames in
   (mkNamedProd xname rectype
@@ -136,7 +142,7 @@ let eqCase tac =
 
 let injHyp id =
   let c env sigma = (sigma, (mkVar id, NoBindings)) in
-  let tac c = Equality.injClause None false (Some (None, ElimOnConstr c)) in
+  let tac c = Equality.injClause inj_flags None false (Some (None, ElimOnConstr c)) in
   Tacticals.New.tclDELAYEDWITHHOLES false c tac
 
 let diseqCase hyps eqonleft =

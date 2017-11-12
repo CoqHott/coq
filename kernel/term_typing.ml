@@ -266,7 +266,7 @@ let infer_declaration (type a) ~(trust : a trust) env kn (dcl : a constant_entry
       let { const_entry_body = body; const_entry_feedback = feedback_id } = c in
       let tyj = infer_type env typ in
       let proofterm =
-        Future.chain ~pure:true body (fun ((body,uctx),side_eff) ->
+        Future.chain body (fun ((body,uctx),side_eff) ->
           let j, uctx = match trust with
           | Pure ->
             let env = push_context_set uctx env in
@@ -367,7 +367,7 @@ let infer_declaration (type a) ~(trust : a trust) env kn (dcl : a constant_entry
       cook_context = None;
     }
 
-let record_aux env s_ty s_bo suggested_expr =
+let record_aux env s_ty s_bo =
   let in_ty = keep_hyps env s_ty in
   let v =
     String.concat " "
@@ -376,10 +376,7 @@ let record_aux env s_ty s_bo suggested_expr =
           if List.exists (NamedDecl.get_id %> Id.equal id) in_ty then None
           else Some (Id.to_string id))
         (keep_hyps env s_bo)) in
-  Aux_file.record_in_aux "context_used" (v ^ ";" ^ suggested_expr)
-
-let suggest_proof_using = ref (fun _ _ _ _ _ -> "")
-let set_suggest_proof_using f = suggest_proof_using := f
+  Aux_file.record_in_aux "context_used" v
 
 let build_constant_declaration kn env result =
   let open Cooking in
@@ -388,10 +385,10 @@ let build_constant_declaration kn env result =
     let mk_set l = List.fold_right Id.Set.add (List.map NamedDecl.get_id l) Id.Set.empty in
     let inferred_set, declared_set = mk_set inferred, mk_set declared in
     if not (Id.Set.subset inferred_set declared_set) then
-      let l = Id.Set.elements (Idset.diff inferred_set declared_set) in
+      let l = Id.Set.elements (Id.Set.diff inferred_set declared_set) in
       let n = List.length l in
-      let declared_vars = Pp.pr_sequence Id.print (Idset.elements declared_set) in
-      let inferred_vars = Pp.pr_sequence Id.print (Idset.elements inferred_set) in
+      let declared_vars = Pp.pr_sequence Id.print (Id.Set.elements declared_set) in
+      let inferred_vars = Pp.pr_sequence Id.print (Id.Set.elements inferred_set) in
       let missing_vars  = Pp.pr_sequence Id.print (List.rev l) in
       user_err Pp.(prlist str
          ["The following section "; (String.plural n "variable"); " ";
@@ -417,7 +414,7 @@ let build_constant_declaration kn env result =
            we must look at the body NOW, if any *)
         let ids_typ = global_vars_set env typ in
         let ids_def = match def with
-        | Undef _ -> Idset.empty
+        | Undef _ -> Id.Set.empty
         | Def cs -> global_vars_set env (Mod_subst.force_constr cs)
         | OpaqueDef lc ->
             let vars =
@@ -425,17 +422,13 @@ let build_constant_declaration kn env result =
                 (Opaqueproof.force_proof (opaque_tables env) lc) in
             (* we force so that cst are added to the env immediately after *)
             ignore(Opaqueproof.force_constraints (opaque_tables env) lc);
-            let expr =
-              !suggest_proof_using (Constant.to_string kn)
-                env vars ids_typ context_ids in
-            if !Flags.compilation_mode = Flags.BuildVo then
-              record_aux env ids_typ vars expr;
+            if !Flags.record_aux_file then record_aux env ids_typ vars;
             vars
         in
-        keep_hyps env (Idset.union ids_typ ids_def), def
+        keep_hyps env (Id.Set.union ids_typ ids_def), def
     | None ->
-        if !Flags.compilation_mode = Flags.BuildVo then
-          record_aux env Id.Set.empty Id.Set.empty "";
+        if !Flags.record_aux_file then
+          record_aux env Id.Set.empty Id.Set.empty;
         [], def (* Empty section context: no need to check *)
     | Some declared ->
         (* We use the declared set and chain a check of correctness *)
@@ -445,14 +438,14 @@ let build_constant_declaration kn env result =
         | Def cs as x ->
             let ids_typ = global_vars_set env typ in
             let ids_def = global_vars_set env (Mod_subst.force_constr cs) in
-            let inferred = keep_hyps env (Idset.union ids_typ ids_def) in
+            let inferred = keep_hyps env (Id.Set.union ids_typ ids_def) in
             check declared inferred;
             x
         | OpaqueDef lc -> (* In this case we can postpone the check *)
             OpaqueDef (Opaqueproof.iter_direct_opaque (fun c ->
               let ids_typ = global_vars_set env typ in
               let ids_def = global_vars_set env c in
-              let inferred = keep_hyps env (Idset.union ids_typ ids_def) in
+              let inferred = keep_hyps env (Id.Set.union ids_typ ids_def) in
               check declared inferred) lc) in
   let univs = result.cook_universes in
   let tps = 
@@ -542,7 +535,7 @@ let export_side_effects mb env ce =
       let { const_entry_body = body } = c in
       let _, eff = Future.force body in
       let ce = DefinitionEntry { c with
-        const_entry_body = Future.chain ~pure:true body
+        const_entry_body = Future.chain body
           (fun (b_ctx, _) -> b_ctx, ()) } in
       let not_exists (c,_,_,_) =
         try ignore(Environ.lookup_constant c env); false
@@ -614,19 +607,15 @@ let translate_local_def mb env id centry =
   let open Cooking in
   let decl = infer_declaration ~trust:mb env None (DefinitionEntry centry) in
   let typ = decl.cook_type in
-  if Option.is_empty decl.cook_context && !Flags.compilation_mode = Flags.BuildVo then begin
+  if Option.is_empty decl.cook_context && !Flags.record_aux_file then begin
     match decl.cook_body with
     | Undef _ -> ()
     | Def _ -> ()
     | OpaqueDef lc ->
-       let context_ids = List.map NamedDecl.get_id (named_context env) in
        let ids_typ = global_vars_set env typ in
        let ids_def = global_vars_set env
          (Opaqueproof.force_proof (opaque_tables env) lc) in
-       let expr =
-         !suggest_proof_using (Id.to_string id)
-           env ids_def ids_typ context_ids in
-       record_aux env ids_typ ids_def expr
+       record_aux env ids_typ ids_def
   end;
   let univs = match decl.cook_universes with
   | Monomorphic_const ctx -> ctx
@@ -639,7 +628,7 @@ let translate_local_def mb env id centry =
 let translate_mind env kn mie = Indtypes.check_inductive env kn mie
 
 let inline_entry_side_effects env ce = { ce with
-  const_entry_body = Future.chain ~pure:true
+  const_entry_body = Future.chain
     ce.const_entry_body (fun ((body, ctx), side_eff) ->
       let body, ctx',_ = inline_side_effects env body ctx side_eff in
       (body, ctx'), ());

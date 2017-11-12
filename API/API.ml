@@ -131,6 +131,7 @@ module Geninterp = Geninterp
 (******************************************************************************)
 (* Pretyping                                                                  *)
 (******************************************************************************)
+module Ltac_pretype = Ltac_pretype
 module Locusops = Locusops
 module Pretype_errors = Pretype_errors
 module Reductionops = Reductionops
@@ -162,6 +163,7 @@ module Indrec = Indrec
 (* module Cases *)
 module Pretyping = Pretyping
 module Unification = Unification
+module Univdecls = Univdecls
 (******************************************************************************)
 (* interp                                                                     *)
 (******************************************************************************)
@@ -211,7 +213,7 @@ module Pputils = Pputils
 module Ppconstr = Ppconstr
 module Printer = Printer
 (* module Printmod *)
-(* module Prettyp *)
+module Prettyp = Prettyp
 module Ppvernac = Ppvernac
 
 (******************************************************************************)

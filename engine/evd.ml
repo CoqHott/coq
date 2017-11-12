@@ -124,8 +124,7 @@ end
 
 (* The type of mappings for existential variables *)
 
-module Dummy = struct end
-module Store = Store.Make(Dummy)
+module Store = Store.Make ()
 
 type evar = Term.existential_key
 
@@ -371,17 +370,17 @@ val key : Id.t -> t -> Evar.t
 end =
 struct
 
-type t = Id.t EvMap.t * existential_key Idmap.t
+type t = Id.t EvMap.t * existential_key Id.Map.t
 
-let empty = (EvMap.empty, Idmap.empty)
+let empty = (EvMap.empty, Id.Map.empty)
 
 let add_name_newly_undefined id evk evi (evtoid, idtoev as names) =
   match id with
   | None -> names
   | Some id ->
-    if Idmap.mem id idtoev then
+    if Id.Map.mem id idtoev then
       user_err  (str "Already an existential evar of name " ++ pr_id id);
-    (EvMap.add evk id evtoid, Idmap.add id evk idtoev)
+    (EvMap.add evk id evtoid, Id.Map.add id evk idtoev)
 
 let add_name_undefined naming evk evi (evtoid,idtoev as evar_names) =
   if EvMap.mem evk evtoid then
@@ -393,15 +392,15 @@ let remove_name_defined evk (evtoid, idtoev as names) =
   let id = try Some (EvMap.find evk evtoid) with Not_found -> None in
   match id with
   | None -> names
-  | Some id -> (EvMap.remove evk evtoid, Idmap.remove id idtoev)
+  | Some id -> (EvMap.remove evk evtoid, Id.Map.remove id idtoev)
 
 let rename evk id (evtoid, idtoev) =
   let id' = try Some (EvMap.find evk evtoid) with Not_found -> None in
   match id' with
-  | None -> (EvMap.add evk id evtoid, Idmap.add id evk idtoev)
+  | None -> (EvMap.add evk id evtoid, Id.Map.add id evk idtoev)
   | Some id' ->
-    if Idmap.mem id idtoev then anomaly (str "Evar name already in use.");
-    (EvMap.update evk id evtoid (* overwrite old name *), Idmap.add id evk (Idmap.remove id' idtoev))
+    if Id.Map.mem id idtoev then anomaly (str "Evar name already in use.");
+    (EvMap.update evk id evtoid (* overwrite old name *), Id.Map.add id evk (Id.Map.remove id' idtoev))
 
 let reassign_name_defined evk evk' (evtoid, idtoev as names) =
   let id = try Some (EvMap.find evk evtoid) with Not_found -> None in
@@ -409,13 +408,13 @@ let reassign_name_defined evk evk' (evtoid, idtoev as names) =
   | None -> names (** evk' must not be defined *)
   | Some id ->
     (EvMap.add evk' id (EvMap.remove evk evtoid),
-    Idmap.add id evk' (Idmap.remove id idtoev))
+    Id.Map.add id evk' (Id.Map.remove id idtoev))
 
 let ident evk (evtoid, _) =
   try Some (EvMap.find evk evtoid) with Not_found -> None
 
 let key id (_, idtoev) =
-  Idmap.find id idtoev
+  Id.Map.find id idtoev
 
 end
 
@@ -630,7 +629,9 @@ let evar_source evk d = (find d evk).evar_source
 let evar_ident evk evd = EvNames.ident evk evd.evar_names
 let evar_key id evd = EvNames.key id evd.evar_names
 
-let define_aux def undef evk body =
+let restricted = Store.field ()
+
+let define_aux ?dorestrict def undef evk body =
   let oldinfo =
     try EvMap.find evk undef
     with Not_found ->
@@ -640,7 +641,10 @@ let define_aux def undef evk body =
         anomaly ~label:"Evd.define" (Pp.str "cannot define undeclared evar.")
   in
   let () = assert (oldinfo.evar_body == Evar_empty) in
-  let newinfo = { oldinfo with evar_body = Evar_defined body } in
+  let evar_extra = match dorestrict with
+    | Some evk' -> Store.set oldinfo.evar_extra restricted evk'
+    | None -> oldinfo.evar_extra in
+  let newinfo = { oldinfo with evar_body = Evar_defined body; evar_extra } in
   EvMap.add evk newinfo def, EvMap.remove evk undef
 
 (* define the existential of section path sp as the constr body *)
@@ -652,6 +656,9 @@ let define evk body evd =
   in
   let evar_names = EvNames.remove_name_defined evk evd.evar_names in
   { evd with defn_evars; undf_evars; last_mods; evar_names }
+
+let is_restricted_evar evi =
+  Store.get evi.evar_extra restricted
 
 let restrict evk filter ?candidates ?src evd =
   let evk' = new_untyped_evar () in
@@ -667,7 +674,7 @@ let restrict evk filter ?candidates ?src evd =
   let ctxt = Filter.filter_list filter (evar_context evar_info) in
   let id_inst = Array.map_of_list (NamedDecl.get_id %> mkVar) ctxt in
   let body = mkEvar(evk',id_inst) in
-  let (defn_evars, undf_evars) = define_aux evd.defn_evars evd.undf_evars evk body in
+  let (defn_evars, undf_evars) = define_aux ~dorestrict:evk' evd.defn_evars evd.undf_evars evk body in
   { evd with undf_evars = EvMap.add evk' evar_info' undf_evars;
     defn_evars; last_mods; evar_names }, evk'
 
@@ -748,7 +755,10 @@ let evar_universe_context d = d.universes
 
 let universe_context_set d = UState.context_set d.universes
 
-let universe_context ?names evd = UState.universe_context ?names evd.universes
+let universe_context ~names ~extensible evd =
+  UState.universe_context ~names ~extensible evd.universes
+
+let check_univ_decl evd decl = UState.check_univ_decl evd.universes decl
 
 let restrict_universe_context evd vars =
   { evd with universes = UState.restrict evd.universes vars }

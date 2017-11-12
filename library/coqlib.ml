@@ -9,9 +9,9 @@
 open CErrors
 open Util
 open Pp
-open Names
 open Libnames
 open Globnames
+open Names
 open Nametab
 
 let coq = Nameops.coq_string (* "Coq" *)
@@ -377,7 +377,3 @@ let coq_sumbool_ref = lazy (init_reference ["Specif"] "sumbool")
 let coq_sig_ref = lazy (init_reference ["Specif"] "sig")
 let coq_or_ref     = lazy (init_reference ["Logic"] "or")
 let coq_iff_ref    = lazy (init_reference ["Logic"] "iff")
-
-(* Deprecated *)
-let gen_reference = coq_reference
-

@@ -98,18 +98,24 @@ let pr_grammar = function
 
 let parse_format ((loc, str) : lstring) =
   let len = String.length str in
-  let push_token a = function
-    | cur::l -> (a::cur)::l
-    | [] -> [[a]] in
-  let push_white n l =
-    if Int.equal n 0 then l else push_token (UnpTerminal (String.make n ' ')) l in
-  let close_box i b = function
-    | a::(_::_ as l) -> push_token (UnpBox (b,a)) l
-    | _ -> user_err Pp.(str "Non terminated box in format.") in
-  let close_quotation i =
-    if i < len && str.[i] == '\'' && (Int.equal (i+1) len || str.[i+1] == ' ')
-    then i+1
-    else user_err Pp.(str "Incorrectly terminated quoted expression.") in
+  (* TODO: update the line of the location when the string contains newlines *)
+  let make_loc i j = Option.map (Loc.shift_loc (i+1) (j-len)) loc in
+  let push_token loc a = function
+    | (i,cur)::l -> (i,(loc,a)::cur)::l
+    | [] -> assert false in
+  let push_white i n l =
+    if Int.equal n 0 then l else push_token (make_loc i (i+n)) (UnpTerminal (String.make n ' ')) l in
+  let close_box start stop b = function
+    | (_,a)::(_::_ as l) -> push_token (make_loc start stop) (UnpBox (b,a)) l
+    | [a] -> user_err ?loc:(make_loc start stop) Pp.(str "Non terminated box in format.")
+    | [] -> assert false in
+  let close_quotation start i =
+    if i < len && str.[i] == '\'' then
+      if (Int.equal (i+1) len || str.[i+1] == ' ')
+      then i+1
+      else user_err ?loc:(make_loc (i+1) (i+1)) Pp.(str "Space expected after quoted expression.")
+    else
+      user_err ?loc:(make_loc start (i-1)) Pp.(str "Beginning of quoted expression expected to be ended by a quote.") in
   let rec spaces n i =
     if i < len && str.[i] == ' ' then spaces (n+1) (i+1)
     else n in
@@ -117,81 +123,78 @@ let parse_format ((loc, str) : lstring) =
     if i < len && str.[i] != ' ' then
       if str.[i] == '\'' && quoted &&
         (i+1 >= len || str.[i+1] == ' ')
-      then if Int.equal n 0 then user_err Pp.(str "Empty quoted token.") else n
+      then if Int.equal n 0 then user_err ?loc:(make_loc (i-1) i) Pp.(str "Empty quoted token.") else n
       else nonspaces quoted (n+1) (i+1)
     else
-      if quoted then user_err Pp.(str "Spaces are not allowed in (quoted) symbols.")
+      if quoted then user_err ?loc:(make_loc i i) Pp.(str "Spaces are not allowed in (quoted) symbols.")
       else n in
   let rec parse_non_format i =
     let n = nonspaces false 0 i in
-    push_token (UnpTerminal (String.sub str i n)) (parse_token 1 (i+n))
+    push_token (make_loc i (i+n-1)) (UnpTerminal (String.sub str i n)) (parse_token 1 (i+n))
   and parse_quoted n i =
     if i < len then match str.[i] with
       (* Parse " // " *)
-      | '/' when i <= len && str.[i+1] == '/' ->
-          (* We forget the useless n spaces... *)
-	  push_token (UnpCut PpFnl)
-            (parse_token 1 (close_quotation (i+2)))
+      | '/' when i+1 < len && str.[i+1] == '/' ->
+          (* We discard the useless n spaces... *)
+	  push_token (make_loc (i-n) (i+1)) (UnpCut PpFnl)
+            (parse_token 1 (close_quotation i (i+2)))
       (* Parse " .. / .. " *)
-      | '/' when i <= len ->
+      | '/' when i+1 < len ->
 	  let p = spaces 0 (i+1) in
-	  push_token (UnpCut (PpBrk (n,p)))
-            (parse_token 1 (close_quotation (i+p+1)))
+	  push_token (make_loc (i-n) (i+p)) (UnpCut (PpBrk (n,p)))
+            (parse_token 1 (close_quotation i (i+p+1)))
       | c ->
       (* The spaces are real spaces *)
-      push_white n (match c with
+      push_white i n (match c with
       | '[' ->
-	  if i <= len then match str.[i+1] with
+	  if i+1 < len then match str.[i+1] with
 	    (* Parse " [h .. ",  *)
 	    | 'h' when i+1 <= len && str.[i+2] == 'v' ->
-		  (parse_box (fun n -> PpHVB n) (i+3))
+		  (parse_box i (fun n -> PpHVB n) (i+3))
 		(* Parse " [v .. ",  *)
 	    | 'v' ->
-		    parse_box (fun n -> PpVB n) (i+2)
+		    parse_box i (fun n -> PpVB n) (i+2)
 		(* Parse " [ .. ",  *)
 	    | ' ' | '\'' ->
-		parse_box (fun n -> PpHOVB n) (i+1)
-	    | _ -> user_err Pp.(str "\"v\", \"hv\", \" \" expected after \"[\" in format.")
-	  else user_err Pp.(str "\"v\", \"hv\" or \" \" expected after \"[\" in format.")
+		parse_box i (fun n -> PpHOVB n) (i+1)
+	    | _ -> user_err ?loc:(make_loc i i) Pp.(str "\"v\", \"hv\", \" \" expected after \"[\" in format.")
+	  else user_err ?loc:(make_loc i i) Pp.(str "\"v\", \"hv\" or \" \" expected after \"[\" in format.")
       (* Parse "]"  *)
       | ']' ->
-	  ([] :: parse_token 1 (close_quotation (i+1)))
+	  ((i,[]) :: parse_token 1 (close_quotation i (i+1)))
       (* Parse a non formatting token *)
       | c ->
 	  let n = nonspaces true 0 i in
-	  push_token (UnpTerminal (String.sub str (i-1) (n+2)))
-	    (parse_token 1 (close_quotation (i+n))))
+	  push_token (make_loc i (i+n-1)) (UnpTerminal (String.sub str (i-1) (n+2)))
+	    (parse_token 1 (close_quotation i (i+n))))
     else
       if Int.equal n 0 then []
-      else user_err Pp.(str "Ending spaces non part of a format annotation.")
-  and parse_box box i =
+      else user_err ?loc:(make_loc (len-n) len) Pp.(str "Ending spaces non part of a format annotation.")
+  and parse_box start box i =
     let n = spaces 0 i in
-    close_box i (box n) (parse_token 1 (close_quotation (i+n)))
+    close_box start (i+n-1) (box n) (parse_token 1 (close_quotation i (i+n)))
   and parse_token k i =
     let n = spaces 0 i in
     let i = i+n in
     if i < len then match str.[i] with
       (* Parse a ' *)
       |	'\'' when i+1 >= len || str.[i+1] == ' ' ->
-	  push_white (n-k) (push_token (UnpTerminal "'") (parse_token 1 (i+1)))
+	  push_white (i-n) (n-k) (push_token (make_loc i (i+1)) (UnpTerminal "'") (parse_token 1 (i+1)))
       (* Parse the beginning of a quoted expression *)
       |	'\'' ->
           parse_quoted (n-k) (i+1)
       (* Otherwise *)
       | _ ->
-          push_white (n-k) (parse_non_format i)
-    else push_white n [[]]
+          push_white (i-n) (n-k) (parse_non_format i)
+    else push_white (i-n) n [(len,[])]
   in
-  try
-    if not (String.is_empty str) then match parse_token 0 0 with
-      | [l] -> l
-      | _ -> user_err Pp.(str "Box closed without being opened in format.")
-    else
-      []
-  with reraise ->
-    let (e, info) = CErrors.push reraise in
-    let info = Option.cata (Loc.add_loc info) info loc in
-    iraise (e, info)
+  if not (String.is_empty str) then
+    match parse_token 0 0 with
+    | [_,l] -> l
+    | (i,_)::_ -> user_err ?loc:(make_loc i i) Pp.(str "Box closed without being opened.")
+    | [] -> assert false
+  else
+    []
 
 (***********************)
 (* Analyzing notations *)
@@ -382,11 +385,11 @@ let is_next_terminal = function Terminal _ :: _ -> true | _ -> false
 
 let is_next_break = function Break _ :: _ -> true | _ -> false
 
-let add_break n l = UnpCut (PpBrk(n,0)) :: l
+let add_break n l = (None,UnpCut (PpBrk(n,0))) :: l
 
 let add_break_if_none n = function
-  | ((UnpCut (PpBrk _) :: _) | []) as l -> l
-  | l -> UnpCut (PpBrk(n,0)) :: l
+  | (((_,UnpCut (PpBrk _)) :: _) | []) as l -> l
+  | l -> (None,UnpCut (PpBrk(n,0))) :: l
 
 let check_open_binder isopen sl m =
   let pr_token = function
@@ -412,30 +415,30 @@ let make_hunks etyps symbols from =
 	let _,prec = precedence_of_entry_type from (List.nth typs (i-1)) in
 	let u = UnpMetaVar (i,prec) in
 	if is_next_non_terminal prods then
-	  u :: add_break_if_none 1 (make prods)
+	  (None,u) :: add_break_if_none 1 (make prods)
 	else
-	  u :: make_with_space prods
+	  (None,u) :: make_with_space prods
     | Terminal s :: prods when List.exists is_non_terminal prods ->
         if (is_comma s || is_operator s) then
           (* Always a breakable space after comma or separator *)
-	  UnpTerminal s :: add_break_if_none 1 (make prods)
+	  (None,UnpTerminal s) :: add_break_if_none 1 (make prods)
 	else if is_right_bracket s && is_next_terminal prods then
           (* Always no space after right bracked, but possibly a break *)
-	  UnpTerminal s :: add_break_if_none 0 (make prods)
+	  (None,UnpTerminal s) :: add_break_if_none 0 (make prods)
         else if is_left_bracket s  && is_next_non_terminal prods then
-	  UnpTerminal s :: make prods
+	  (None,UnpTerminal s) :: make prods
 	else if not (is_next_break prods) then
           (* Add rigid space, no break, unless user asked for something *)
-          UnpTerminal (s^" ") :: make prods
+          (None,UnpTerminal (s^" ")) :: make prods
         else
           (* Rely on user spaces *)
-          UnpTerminal s :: make prods
+          (None,UnpTerminal s) :: make prods
 
     | Terminal s :: prods ->
         (* Separate but do not cut a trailing sequence of terminal *)
         (match prods with
-        | Terminal _ :: _ -> UnpTerminal (s^" ") :: make prods
-        | _ -> UnpTerminal s :: make prods)
+        | Terminal _ :: _ -> (None,UnpTerminal (s^" ")) :: make prods
+        | _ -> (None,UnpTerminal s) :: make prods)
 
     | Break n :: prods ->
 	add_break n (make prods)
@@ -450,12 +453,12 @@ let make_hunks etyps symbols from =
           (* We add NonTerminal for simulation but remove it afterwards *)
 	  else snd (List.sep_last (make (sl@[NonTerminal m]))) in
 	let hunk = match typ with
-	  | ETConstr _ -> UnpListMetaVar (i,prec,sl')
+	  | ETConstr _ -> UnpListMetaVar (i,prec,List.map snd sl')
 	  | ETBinder isopen ->
 	      check_open_binder isopen sl m;
-	      UnpBinderListMetaVar (i,isopen,sl')
+	      UnpBinderListMetaVar (i,isopen,List.map snd sl')
 	  | _ -> assert false in
-	hunk :: make_with_space prods
+	(None,hunk) :: make_with_space prods
 
     | [] -> []
 
@@ -464,7 +467,7 @@ let make_hunks etyps symbols from =
     | Terminal s' :: prods'->
         if is_operator s' then
           (* A rigid space before operator and a breakable after *)
-          UnpTerminal (" "^s') :: add_break_if_none 1 (make prods')
+          (None,UnpTerminal (" "^s')) :: add_break_if_none 1 (make prods')
         else if is_comma s' then
           (* No space whatsoever before comma *)
           make prods
@@ -485,58 +488,63 @@ let make_hunks etyps symbols from =
 
 (* Build default printing rules from explicit format *)
 
-let error_format () = user_err Pp.(str "The format does not match the notation.")
+let error_format ?loc () = user_err ?loc Pp.(str "The format does not match the notation.")
 
 let rec split_format_at_ldots hd = function
-  | UnpTerminal s :: fmt when String.equal s (Id.to_string ldots_var) -> List.rev hd, fmt
+  | (loc,UnpTerminal s) :: fmt when String.equal s (Id.to_string ldots_var) -> loc, List.rev hd, fmt
   | u :: fmt ->
       check_no_ldots_in_box u;
       split_format_at_ldots (u::hd) fmt
   | [] -> raise Exit
 
 and check_no_ldots_in_box = function
-  | UnpBox (_,fmt) ->
+  | (_,UnpBox (_,fmt)) ->
       (try
-        let _ = split_format_at_ldots [] fmt in
-        user_err Pp.(str ("The special symbol \"..\" must occur at the same formatting depth than the variables of which it is the ellipse."))
+        let loc,_,_ = split_format_at_ldots [] fmt in
+        user_err ?loc Pp.(str ("The special symbol \"..\" must occur at the same formatting depth than the variables of which it is the ellipse."))
       with Exit -> ())
   | _ -> ()
 
+let error_not_same ?loc () =
+  user_err ?loc Pp.(str "The format is not the same on the right- and left-hand sides of the special token \"..\".")
+
 let skip_var_in_recursive_format = function
-  | UnpTerminal _ :: sl (* skip first var *) ->
+  | (_,UnpTerminal s) :: sl (* skip first var *) when not (List.for_all (fun c -> c = " ") (String.explode s)) ->
       (* To do, though not so important: check that the names match
          the names in the notation *)
       sl
-  | _ -> error_format ()
+  | (loc,_) :: _ -> error_not_same ?loc ()
+  | [] -> assert false
 
 let read_recursive_format sl fmt =
   let get_head fmt =
     let sl = skip_var_in_recursive_format fmt in
-    try split_format_at_ldots [] sl with Exit -> error_format () in
+    try split_format_at_ldots [] sl with Exit -> error_not_same ?loc:(fst (List.last (if sl = [] then fmt else sl))) () in
   let rec get_tail = function
-    | a :: sepfmt, b :: fmt when Pervasives.(=) a b -> get_tail (sepfmt, fmt) (* FIXME *)
+    | (loc,a) :: sepfmt, (_,b) :: fmt when Pervasives.(=) a b -> get_tail (sepfmt, fmt) (* FIXME *)
     | [], tail -> skip_var_in_recursive_format tail
-    | _ -> user_err Pp.(str "The format is not the same on the right and left hand side of the special token \"..\".") in
-  let slfmt, fmt = get_head fmt in
+    | (loc,_) :: _, ([] | (_,UnpTerminal _) :: _)-> error_not_same ?loc ()
+    | _, (loc,_)::_ -> error_not_same ?loc () in
+  let loc, slfmt, fmt = get_head fmt in
   slfmt, get_tail (slfmt, fmt)
 
 let hunks_of_format (from,(vars,typs)) symfmt =
   let rec aux = function
-  | symbs, (UnpTerminal s' as u) :: fmt
+  | symbs, (_,(UnpTerminal s' as u)) :: fmt
       when String.equal s' (String.make (String.length s') ' ') ->
       let symbs, l = aux (symbs,fmt) in symbs, u :: l
-  | Terminal s :: symbs, (UnpTerminal s') :: fmt
+  | Terminal s :: symbs, (_,UnpTerminal s') :: fmt
       when String.equal s (String.drop_simple_quotes s') ->
       let symbs, l = aux (symbs,fmt) in symbs, UnpTerminal s :: l
-  | NonTerminal s :: symbs, UnpTerminal s' :: fmt when Id.equal s (Id.of_string s') ->
+  | NonTerminal s :: symbs, (_,UnpTerminal s') :: fmt when Id.equal s (Id.of_string s') ->
       let i = index_id s vars in
       let _,prec = precedence_of_entry_type from (List.nth typs (i-1)) in
       let symbs, l = aux (symbs,fmt) in symbs, UnpMetaVar (i,prec) :: l
-  | symbs, UnpBox (a,b) :: fmt ->
+  | symbs, (_,UnpBox (a,b)) :: fmt ->
       let symbs', b' = aux (symbs,b) in
       let symbs', l = aux (symbs',fmt) in
-      symbs', UnpBox (a,b') :: l
-  | symbs, (UnpCut _ as u) :: fmt ->
+      symbs', UnpBox (a,List.map (fun x -> (None,x)) b') :: l
+  | symbs, (_,(UnpCut _ as u)) :: fmt ->
       let symbs, l = aux (symbs,fmt) in symbs, u :: l
   | SProdList (m,sl) :: symbs, fmt ->
       let i = index_id m vars in
@@ -544,7 +552,7 @@ let hunks_of_format (from,(vars,typs)) symfmt =
       let _,prec = precedence_of_entry_type from typ in
       let slfmt,fmt = read_recursive_format sl fmt in
       let sl, slfmt = aux (sl,slfmt) in
-      if not (List.is_empty sl) then error_format ();
+      if not (List.is_empty sl) then error_format ?loc:(fst (List.last fmt)) ();
       let symbs, l = aux (symbs,fmt) in
       let hunk = match typ with
 	| ETConstr _ -> UnpListMetaVar (i,prec,slfmt)
@@ -554,7 +562,7 @@ let hunks_of_format (from,(vars,typs)) symfmt =
 	| _ -> assert false in
       symbs, hunk :: l
   | symbs, [] -> symbs, []
-  | _, _ -> error_format ()
+  | _, fmt -> error_format ?loc:(fst (List.hd fmt)) ()
   in
   match aux symfmt with
   | [], l -> l
@@ -983,7 +991,7 @@ let is_not_printable onlyparse nonreversible = function
      (warn_non_reversible_notation (); true)
   else onlyparse
 
-let find_precedence lev etyps symbols =
+let find_precedence lev etyps symbols onlyprint =
   let first_symbol =
     let rec aux = function
       | Break _ :: t -> aux t
@@ -1001,8 +1009,13 @@ let find_precedence lev etyps symbols =
   | None -> [],0
   | Some (NonTerminal x) ->
       (try match List.assoc x etyps with
-	| ETConstr _ ->
-	    user_err Pp.(str "The level of the leftmost non-terminal cannot be changed.")
+        | ETConstr _ ->
+	   if onlyprint then
+	     if Option.is_empty lev then
+	       user_err Pp.(str "Explicit level needed in only-printing mode when the level of the leftmost non-terminal is given.")
+	     else [],Option.get lev
+	   else
+	     user_err Pp.(str "The level of the leftmost non-terminal cannot be changed.")
 	| ETName | ETBigint | ETReference ->
             begin match lev with
             | None ->
@@ -1126,7 +1139,7 @@ let compute_syntax_data df modifiers =
   let need_squash = not (List.equal Notation.symbol_eq symbols symbols_for_grammar) in
   let ntn_for_grammar = if need_squash then make_notation_key symbols_for_grammar else ntn_for_interp in
   if not onlyprint then check_rule_productivity symbols_for_grammar;
-  let msgs,n = find_precedence mods.level mods.etyps symbols in
+  let msgs,n = find_precedence mods.level mods.etyps symbols onlyprint in
   (* To globalize... *)
   let etyps = join_auxiliary_recursive_types recvars mods.etyps in
   let sy_typs, prec =
@@ -1305,7 +1318,7 @@ let to_map l =
   let fold accu (x, v) = Id.Map.add x v accu in
   List.fold_left fold Id.Map.empty l
 
-let add_notation_in_scope local df c mods scope =
+let add_notation_in_scope local df env c mods scope =
   let open SynData in
   let sd = compute_syntax_data df mods in
   (* Prepare the interpretation *)
@@ -1316,7 +1329,7 @@ let add_notation_in_scope local df c mods scope =
     ninterp_var_type = to_map i_vars;
     ninterp_rec_vars = to_map sd.recvars;
   } in
-  let (acvars, ac, reversible) = interp_notation_constr nenv c in
+  let (acvars, ac, reversible) = interp_notation_constr env nenv c in
   let interp = make_interpretation_vars sd.recvars acvars in
   let map (x, _) = try Some (x, Id.Map.find x interp) with Not_found -> None in
   let onlyparse = is_not_printable sd.only_parsing (not reversible) ac in
@@ -1336,7 +1349,7 @@ let add_notation_in_scope local df c mods scope =
   Lib.add_anonymous_leaf (inNotation notation);
   sd.info
 
-let add_notation_interpretation_core local df ?(impls=empty_internalization_env) c scope onlyparse onlyprint compat =
+let add_notation_interpretation_core local df env ?(impls=empty_internalization_env) c scope onlyparse onlyprint compat =
   let dfs = split_notation_string df in
   let (recvars,mainvars,symbs) = analyze_notation_tokens ~onlyprint dfs in
   (* Recover types of variables and pa/pp rules; redeclare them if needed *)
@@ -1355,7 +1368,7 @@ let add_notation_interpretation_core local df ?(impls=empty_internalization_env)
     ninterp_var_type = to_map i_vars;
     ninterp_rec_vars = to_map recvars;
   } in
-  let (acvars, ac, reversible) = interp_notation_constr ~impls nenv c in
+  let (acvars, ac, reversible) = interp_notation_constr env ~impls nenv c in
   let interp = make_interpretation_vars recvars acvars in
   let map (x, _) = try Some (x, Id.Map.find x interp) with Not_found -> None in
   let onlyparse = is_not_printable onlyparse (not reversible) ac in
@@ -1382,33 +1395,33 @@ let add_syntax_extension local ((loc,df),mods) = let open SynData in
 
 (* Notations with only interpretation *)
 
-let add_notation_interpretation ((loc,df),c,sc) =
-  let df' = add_notation_interpretation_core false df c sc false false None in
+let add_notation_interpretation env ((loc,df),c,sc) =
+  let df' = add_notation_interpretation_core false df env c sc false false None in
   Dumpglob.dump_notation (loc,df') sc true
 
-let set_notation_for_interpretation impls ((_,df),c,sc) =
+let set_notation_for_interpretation env impls ((_,df),c,sc) =
   (try ignore
-    (Flags.silently (fun () -> add_notation_interpretation_core false df ~impls c sc false false None) ());
+    (Flags.silently (fun () -> add_notation_interpretation_core false df env ~impls c sc false false None) ());
   with NoSyntaxRule ->
     user_err Pp.(str "Parsing rule for this notation has to be previously declared."));
   Option.iter (fun sc -> Notation.open_close_scope (false,true,sc)) sc
 
 (* Main entry point *)
 
-let add_notation local c ((loc,df),modifiers) sc =
+let add_notation local env c ((loc,df),modifiers) sc =
   let df' =
    if no_syntax_modifiers modifiers then
     (* No syntax data: try to rely on a previously declared rule *)
     let onlyparse = is_only_parsing modifiers in
     let onlyprint = is_only_printing modifiers in
     let compat = get_compat_version modifiers in
-    try add_notation_interpretation_core local df c sc onlyparse onlyprint compat
+    try add_notation_interpretation_core local df env c sc onlyparse onlyprint compat
     with NoSyntaxRule ->
       (* Try to determine a default syntax rule *)
-      add_notation_in_scope local df c modifiers sc
+      add_notation_in_scope local df env c modifiers sc
    else
     (* Declare both syntax and interpretation *)
-    add_notation_in_scope local df c modifiers sc
+    add_notation_in_scope local df env c modifiers sc
   in
   Dumpglob.dump_notation (loc,df') sc true
 
@@ -1423,13 +1436,13 @@ let add_notation_extra_printing_rule df k v =
 
 let inject_var x = CAst.make @@ CRef (Ident (Loc.tag @@ Id.of_string x),None)
 
-let add_infix local ((loc,inf),modifiers) pr sc =
+let add_infix local env ((loc,inf),modifiers) pr sc =
   check_infix_modifiers modifiers;
   (* check the precedence *)
   let metas = [inject_var "x"; inject_var "y"] in
   let c = mkAppC (pr,metas) in
   let df = "x "^(quote_notation_token inf)^" y" in
-  add_notation local c ((loc,df),modifiers) sc
+  add_notation local env c ((loc,df),modifiers) sc
 
 (**********************************************************************)
 (* Delimiters and classes bound to scopes                             *)
@@ -1485,7 +1498,7 @@ let try_interp_name_alias = function
   | [], { CAst.v = CRef (ref,_) } -> intern_reference ref
   | _ -> raise Not_found
 
-let add_syntactic_definition ident (vars,c) local onlyparse =
+let add_syntactic_definition env ident (vars,c) local onlyparse =
   let nonprintable = ref false in
   let vars,pat =
     try [], NRef (try_interp_name_alias (vars,c))
@@ -1496,7 +1509,7 @@ let add_syntactic_definition ident (vars,c) local onlyparse =
         ninterp_var_type = i_vars;
         ninterp_rec_vars = Id.Map.empty;
       } in
-      let nvars, pat, reversible = interp_notation_constr nenv c in
+      let nvars, pat, reversible = interp_notation_constr env nenv c in
       let () = nonprintable := not reversible in
       let map id = let (_,sc,_) = Id.Map.find id nvars in (id, sc) in
       List.map map vars, pat

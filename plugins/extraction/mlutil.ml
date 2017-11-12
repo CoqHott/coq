@@ -127,11 +127,15 @@ let rec mgu = function
   | Taxiom, Taxiom -> ()
   | _ -> raise Impossible
 
-let needs_magic p = try mgu p; false with Impossible -> true
+let skip_typing () = lang () == Scheme || is_extrcompute ()
 
-let put_magic_if b a = if b && lang () != Scheme then MLmagic a else a
+let needs_magic p =
+  if skip_typing () then false
+  else try mgu p; false with Impossible -> true
 
-let put_magic p a = if needs_magic p && lang () != Scheme then MLmagic a else a
+let put_magic_if b a = if b then MLmagic a else a
+
+let put_magic p a = if needs_magic p then MLmagic a else a
 
 let generalizable a =
   lang () != Ocaml ||
@@ -264,7 +268,7 @@ let rec var2var' = function
   | Tglob (r,l) -> Tglob (r, List.map var2var' l)
   | a -> a
 
-type abbrev_map = global_reference -> ml_type option
+type abbrev_map = Names.global_reference -> ml_type option
 
 (*s Delta-reduction of type constants everywhere in a ML type [t].
    [env] is a function of type [ml_type_env]. *)
@@ -769,6 +773,20 @@ let eta_red e =
 	else e
     | _ -> e
 
+(* Performs an eta-reduction when the core is atomic,
+   or otherwise returns None *)
+
+let atomic_eta_red e =
+  let ids,t = collect_lams e in
+  let n = List.length ids in
+  match t with
+  | MLapp (f,a) when test_eta_args_lift 0 n a ->
+     (match f with
+      | MLrel k when k>n -> Some (MLrel (k-n))
+      | MLglob _ | MLexn _ | MLdummy _ -> Some f
+      | _ -> None)
+  | _ -> None
+
 (*s Computes all head linear beta-reductions possible in [(t a)].
   Non-linear head beta-redex become let-in. *)
 
@@ -1053,6 +1071,10 @@ let rec simpl o = function
      simpl o (MLcase(typ,e,br'))
   | MLmagic(MLdummy _ as e) when lang () == Haskell -> e
   | MLmagic(MLexn _ as e) -> e
+  | MLlam _ as e ->
+     (match atomic_eta_red e with
+      | Some e' -> e'
+      | None -> ast_map (simpl o) e)
   | a -> ast_map (simpl o) a
 
 (* invariant : list [a] of arguments is non-empty *)

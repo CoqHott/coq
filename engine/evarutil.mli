@@ -68,8 +68,8 @@ val restrict_evar : evar_map -> existential_key -> Filter.t ->
 
 (** Polymorphic constants *)
 
-val new_global : evar_map -> Globnames.global_reference -> evar_map * constr
-val e_new_global : evar_map ref -> Globnames.global_reference -> constr
+val new_global : evar_map -> global_reference -> evar_map * constr
+val e_new_global : evar_map ref -> global_reference -> constr
 
 (** Create a fresh evar in a context different from its definition context:
    [new_evar_instance sign evd ty inst] creates a new evar of context
@@ -204,10 +204,6 @@ type clear_dependency_error =
 
 exception ClearDependencyError of Id.t * clear_dependency_error
 
-(* spiwack: marks an evar that has been "defined" by clear.
-    used by [Goal] and (indirectly) [Proofview] to handle the clear tactic gracefully*)
-val cleared : bool Store.field
-
 val clear_hyps_in_evi : env -> evar_map ref -> named_context_val -> types ->
   Id.Set.t -> named_context_val * types
 
@@ -227,7 +223,7 @@ val push_rel_decl_to_named_context :
   evar_map -> rel_declaration -> ext_named_context -> ext_named_context
 
 val push_rel_context_to_named_context : Environ.env -> evar_map -> types ->
-  named_context_val * types * constr list * csubst * (identifier*constr) list
+  named_context_val * types * constr list * csubst * (Id.t*constr) list
 
 val generalize_evar_over_rels : evar_map -> existential -> types * constr list
 

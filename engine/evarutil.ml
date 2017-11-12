@@ -306,7 +306,7 @@ let push_rel_decl_to_named_context sigma decl (subst, vsubst, avoid, nc) =
   in
   let extract_if_neq id = function
     | Anonymous -> None
-    | Name id' when id_ord id id' = 0 -> None
+    | Name id' when Id.compare id id' = 0 -> None
     | Name id' -> Some id'
   in
   let na = RelDecl.get_name decl in
@@ -478,8 +478,6 @@ type clear_dependency_error =
 
 exception ClearDependencyError of Id.t * clear_dependency_error
 
-let cleared = Store.field ()
-
 exception Depends of Id.t
 
 let rec check_and_clear_in_constr env evdref err ids global c =
@@ -552,13 +550,6 @@ let rec check_and_clear_in_constr env evdref err ids global c =
               let evd = !evdref in
               let (evd,_) = restrict_evar evd evk filter None in
               evdref := evd;
-	    (* spiwack: hacking session to mark the old [evk] as having been "cleared" *)
-	      let evi = Evd.find !evdref evk in
-	      let extra = evi.evar_extra in
-	      let extra' = Store.set extra cleared true in
-	      let evi' = { evi with evar_extra = extra' } in
-	      evdref := Evd.add !evdref evk evi' ;
-	    (* spiwack: /hacking session *)
               Evd.existential_value !evdref ev
 
       | _ -> map_constr (check_and_clear_in_constr env evdref err ids global) c
@@ -665,11 +656,9 @@ let rec advance sigma evk =
   match evi.evar_body with
   | Evar_empty -> Some evk
   | Evar_defined v ->
-      if Option.default false (Store.get evi.evar_extra cleared) then
-        let (evk,_) = Term.destEvar v in
-        advance sigma evk
-      else
-        None
+      match is_restricted_evar evi with
+      | Some evk -> advance sigma evk
+      | None -> None
 
 (** The following functions return the set of undefined evars
     contained in the object, the defined evars being traversed.

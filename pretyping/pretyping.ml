@@ -43,6 +43,7 @@ open Glob_term
 open Glob_ops
 open Evarconv
 open Misctypes
+open Ltac_pretype
 
 module NamedDecl = Context.Named.Declaration
 
@@ -201,7 +202,7 @@ let interp_universe_level_name ~anon_rigidity evd (loc, s) =
        with Not_found ->
 	 try
 	   let id = try Id.of_string s with _ -> raise Not_found in
-           evd, snd (Idmap.find id names)
+           evd, snd (Id.Map.find id names)
 	 with Not_found ->
 	   if not (is_strict_universe_declarations ()) then
   	     new_univ_level_variable ?loc ~name:s univ_rigid evd
@@ -887,6 +888,9 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
 	  | [], [] -> []
 	  | _ -> assert false
 	in aux 1 1 (List.rev nal) cs.cs_args, true in
+    let fsign = if Flags.version_strictly_greater Flags.V8_6 || Flags.version_less_or_equal Flags.VOld
+                then Context.Rel.map (whd_betaiota !evdref) fsign
+                else fsign (* beta-iota-normalization regression in 8.5 and 8.6 *) in
     let obj ind p v f =
       if not record then 
         let nal = List.map (fun na -> ltac_interp_name lvar na) nal in
@@ -996,6 +1000,10 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
 	let pi = lift n pred in (* liftn n 2 pred ? *)
 	let pi = beta_applist !evdref (pi, [EConstr.of_constr (build_dependent_constructor cs)]) in
         let cs_args = List.map (fun d -> map_rel_decl EConstr.of_constr d) cs.cs_args in
+        let cs_args =
+          if Flags.version_strictly_greater Flags.V8_6 || Flags.version_less_or_equal Flags.VOld
+          then Context.Rel.map (whd_betaiota !evdref) cs_args
+          else cs_args (* beta-iota-normalization regression in 8.5 and 8.6 *) in
 	let csgn =
           List.map (set_name Anonymous) cs_args
         in

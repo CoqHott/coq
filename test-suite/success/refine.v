@@ -31,7 +31,7 @@ Proof.
   end).
 Abort.
 
-(* Submitted by Roland Zumkeller (bug #888) *)
+(* Submitted by Roland Zumkeller (BZ#888) *)
 
 (* The Fix and CoFix rules expect a subgoal even for closed components of the
    (co-)fixpoint *)
@@ -43,7 +43,7 @@ Goal nat -> nat.
 exact 0.
 Qed.
 
-(* Submitted by Roland Zumkeller (bug #889) *)
+(* Submitted by Roland Zumkeller (BZ#889) *)
 
 (* The types of metas were in metamap and they were not updated when
    passing through a binder *)
@@ -56,7 +56,7 @@ Goal forall n : nat, nat -> n = 0.
                                       end).
 Abort.
 
-(* Submitted by Roland Zumkeller (bug #931) *)
+(* Submitted by Roland Zumkeller (BZ#931) *)
 (* Don't turn dependent evar into metas *)
 
 Goal (forall n : nat, n = 0 -> Prop) -> Prop.
@@ -65,7 +65,7 @@ intro P.
 reflexivity.
 Abort.
 
-(* Submitted by Jacek Chrzaszcz (bug #1102) *)
+(* Submitted by Jacek Chrzaszcz (BZ#1102) *)
 
 (* le problème a été résolu ici par normalisation des evars présentes
    dans les types d'evars, mais le problème reste a priori ouvert dans
@@ -122,3 +122,13 @@ Abort.
 
 Goal (forall A : Prop, A -> ~~A).
 Proof. refine(fun A a f => _).
+
+(* Checking beta-iota normalization of hypotheses in created evars *)
+
+Goal {x|x=0} -> True.
+refine (fun y => let (x,a) := y in _).
+match goal with a:_=0 |- _ => idtac end.
+
+Goal (forall P, {P 0}+{P 1}) -> True.
+refine (fun H => if H (fun x => x=x) then _ else _).
+match goal with _:0=0 |- _ => idtac end.

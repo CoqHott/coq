@@ -31,13 +31,16 @@ env:
   # system is == 4.02.3
   - COMPILER="system"
   - CAMLP5_VER="6.14"
+  - FINDLIB_VER="1.4.1"
   - NATIVE_COMP="yes"
   - COQ_DEST="-local"
   # Main test suites
   matrix:
   - TEST_TARGET="test-suite" COMPILER="4.02.3+32bit"
+  - TEST_TARGET="test-suite" COMPILER="4.06.0+trunk" CAMLP5_VER="7.03" EXTRA_OPAM="num" FINDLIB_VER="1.7.3"
   - TEST_TARGET="validate"                           TW="travis_wait"
   - TEST_TARGET="validate"   COMPILER="4.02.3+32bit" TW="travis_wait"
+  - TEST_TARGET="validate"   COMPILER="4.06.0+trunk+flambda" CAMLP5_VER="7.03" NATIVE_COMP="no" EXTRA_CONF="-flambda-opts -O3" EXTRA_OPAM="num" FINDLIB_VER="1.7.3"
   - TEST_TARGET="ci-bignums TIMED=1"
   - TEST_TARGET="ci-color TIMED=1"
   - TEST_TARGET="ci-compcert TIMED=1"
@@ -49,7 +52,7 @@ env:
   - TEST_TARGET="ci-flocq TIMED=1"
   - TEST_TARGET="ci-formal-topology TIMED=1"
   - TEST_TARGET="ci-hott TIMED=1"
-  - TEST_TARGET="ci-iris-coq TIMED=1"
+  - TEST_TARGET="ci-iris-lambda-rust TIMED=1"
   - TEST_TARGET="ci-math-classes TIMED=1"
   - TEST_TARGET="ci-math-comp TIMED=1"
   - TEST_TARGET="ci-sf TIMED=1"
@@ -62,10 +65,18 @@ env:
 
 matrix:
 
-  allow_failures:
-  - env: TEST_TARGET="ci-geocoq TIMED=1"
-
   include:
+    - env:
+      - TEST_TARGET="lint"
+      install: []
+      before_script: []
+      addons:
+      apt:
+        sources: []
+        packages: []
+      script:
+        - dev/lint-repository.sh
+
     # Full Coq test-suite with two compilers
     - env:
       - TEST_TARGET="test-suite"
@@ -95,8 +106,24 @@ matrix:
     - env:
       - TEST_TARGET="test-suite"
       - COMPILER="4.05.0"
-      - CAMLP5_VER="7.01"
+      - FINDLIB_VER="1.7.3"
+      - CAMLP5_VER="7.03"
       - EXTRA_CONF="-coqide opt -with-doc yes"
+      - EXTRA_OPAM="lablgtk-extras hevea"
+      addons:
+        apt:
+          sources:
+          - avsm
+          packages: *extra-packages
+
+    # Full test-suite with flambda
+    - env:
+      - TEST_TARGET="test-suite"
+      - COMPILER="4.05.0+flambda"
+      - FINDLIB_VER="1.7.3"
+      - CAMLP5_VER="7.03"
+      - NATIVE_COMP="no"
+      - EXTRA_CONF="-coqide opt -with-doc yes -flambda-opts -O3"
       - EXTRA_OPAM="lablgtk-extras hevea"
       addons:
         apt:
@@ -124,7 +151,8 @@ matrix:
     - env:
       - TEST_TARGET="coqocaml"
       - COMPILER="4.05.0"
-      - CAMLP5_VER="7.01"
+      - CAMLP5_VER="7.03"
+      - FINDLIB_VER="1.7.3"
       - EXTRA_CONF="-coqide opt -warn-error"
       - EXTRA_OPAM="lablgtk-extras hevea"
       # dummy target
@@ -136,19 +164,18 @@ matrix:
           packages: *coqide-packages
 
     - os: osx
-      osx_image: xcode8.3
       env:
       - TEST_TARGET="test-suite"
       - COMPILER="4.02.3"
-      - CAMLP5_VER="6.17"      
+      - CAMLP5_VER="6.17"
       - NATIVE_COMP="no"
       - COQ_DEST="-local"
       before_install:
-      - brew update --debug --verbose
+      - brew update
       - brew install opam gnu-time
 
-    - os: osx
-      osx_image: xcode8.3
+    - if: NOT (type = pull_request)
+      os: osx
       env:
       - TEST_TARGET=""
       - COMPILER="4.02.3"
@@ -158,7 +185,7 @@ matrix:
       - EXTRA_CONF="-coqide opt -warn-error"
       - EXTRA_OPAM="lablgtk-extras"
       before_install:
-      - brew update --debug --verbose
+      - brew update
       - brew install opam gnu-time gtk+ expat gtksourceview libxml2 gdk-pixbuf python3
       - pip3 install macpack
       before_deploy:
@@ -172,14 +199,6 @@ matrix:
         skip_cleanup: true
         on:
           all_branches: true
-      - provider: releases
-        api_key:
-          secure: "Z/ewvydCLXEhlBBtQGYm2nZ8o+2RP+MwA5uEDuu6mEpZttUZAYaoHivChxADLXz8LNKvUloIeBeIL/PrLk6QnhSur/s2iEYHssrnl99SkAPtoWggyfsdacuKLMkpLoZGOBIEYKPuXuEZyqvugSUO42rSya1zdjcnXc4l+E/bXMc="
-        file: _build/*.dmg
-        skip_cleanup: true
-        on:
-          tags: true
-          repo: coq/coq
 
 before_install:
 - if [ "${TRAVIS_PULL_REQUEST}" != "false" ]; then echo "Tested commit (followed by parent commits):"; git log -1; for commit in `git log -1 --format="%P"`; do echo; git log -1 $commit; done; fi
@@ -188,7 +207,7 @@ install:
 - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
 - eval $(opam config env)
 - opam config list
-- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind ${EXTRA_OPAM}
+- opam install -j ${NJOBS} -y camlp5.${CAMLP5_VER} ocamlfind.${FINDLIB_VER} ${EXTRA_OPAM}
 - opam list
 
 script:

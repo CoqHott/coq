@@ -14,6 +14,7 @@ open EConstr
 open Inductiveops
 open Glob_term
 open Evarutil
+open Ltac_pretype
 
 (** {5 Compilation of pattern-matching } *)
 
@@ -49,16 +50,16 @@ val constr_of_pat :
            Evd.evar_map ref ->
            rel_context ->
            Glob_term.cases_pattern ->
-           Names.Id.t list ->
+           Names.Id.Set.t ->
            Glob_term.cases_pattern *
            (rel_context * constr *
             (types * constr list) * Glob_term.cases_pattern) *
-           Names.Id.t list
+           Names.Id.Set.t
 
 type 'a rhs =
     { rhs_env    : env;
-      rhs_vars   : Id.t list;
-      avoid_ids  : Id.t list;
+      rhs_vars   : Id.Set.t;
+      avoid_ids  : Id.Set.t;
       it         : 'a option}
 
 type 'a equation =
@@ -101,7 +102,7 @@ and pattern_continuation =
 
 type 'a pattern_matching_problem =
     { env       : env;
-      lvar      : Glob_term.ltac_var_map;
+      lvar      : Ltac_pretype.ltac_var_map;
       evdref    : evar_map ref;
       pred      : constr;
       tomatch   : tomatch_stack;
@@ -119,11 +120,11 @@ val prepare_predicate : ?loc:Loc.t ->
             Environ.env -> Evd.evar_map ref -> ltac_var_map -> glob_constr -> unsafe_judgment) ->
            Environ.env ->
            Evd.evar_map ->
-           Glob_term.ltac_var_map ->
+           Ltac_pretype.ltac_var_map ->
            (types * tomatch_type) list ->
            (rel_context * rel_context) list ->
            constr option ->
            glob_constr option -> (Evd.evar_map * Names.name list * constr) list
 
 val make_return_predicate_ltac_lvar : Evd.evar_map -> Names.name ->
-  Glob_term.glob_constr -> constr -> Glob_term.ltac_var_map -> Glob_term.ltac_var_map
+  Glob_term.glob_constr -> constr -> Ltac_pretype.ltac_var_map -> ltac_var_map

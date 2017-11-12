@@ -17,6 +17,7 @@ open Refiner
 open Evd
 open Locus
 open Context.Named.Declaration
+open Ltac_pretype
 
 module NamedDecl = Context.Named.Declaration
 
@@ -27,7 +28,7 @@ let instantiate_evar evk (ist,rawc) sigma =
   let filtered = Evd.evar_filtered_env evi in
   let constrvars = Tacinterp.extract_ltac_constr_values ist filtered in
   let lvar = {
-    Glob_term.ltac_constrs = constrvars;
+    ltac_constrs = constrvars;
     ltac_uconstrs = Names.Id.Map.empty;
     ltac_idents = Names.Id.Map.empty;
     ltac_genargs = ist.Geninterp.lfun;
@@ -88,7 +89,7 @@ let let_evar name typ =
     let id = match name with
     | Name.Anonymous ->
       let id = Namegen.id_of_name_using_hdchar env sigma typ name in
-      Namegen.next_ident_away_in_goal id (Termops.ids_of_named_context (Environ.named_context env))
+      Namegen.next_ident_away_in_goal id (Termops.vars_of_env env)
     | Name.Name id -> id
     in
     let (sigma, evar) = Evarutil.new_evar env sigma ~src ~naming:(Misctypes.IntroFresh id) typ in

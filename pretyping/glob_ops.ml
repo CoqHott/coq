@@ -13,6 +13,7 @@ open Globnames
 open Misctypes
 open Glob_term
 open Evar_kinds
+open Ltac_pretype
 
 (* Untyped intermediate terms, after ASTs and before constr. *)
 
@@ -234,7 +235,8 @@ let fold_glob_constr_with_binders g f v acc = DAst.(with_val (function
     let acc = Option.fold_left (f v') acc rtntypopt in
     List.fold_left fold_pattern acc pl
   | GLetTuple (nal,rtntyp,b,c) ->
-    f v (f v (fold_return_type_with_binders f g v acc rtntyp) b) c
+    f (List.fold_right (Name.fold_right g) nal v)
+      (f v (fold_return_type_with_binders f g v acc rtntyp) b) c
   | GIf (c,rtntyp,b1,b2) ->
     f v (f v (f v (fold_return_type_with_binders f g v acc rtntyp) c) b1) b2
   | GRec (_,idl,bll,tyl,bv) ->
@@ -272,17 +274,17 @@ let free_glob_vars =
     | _ -> fold_glob_constr_with_binders Id.Set.add vars bound vs c in
   fun rt ->
     let vs = vars Id.Set.empty Id.Set.empty rt in
-    Id.Set.elements vs
+    vs
 
 let glob_visible_short_qualid c =
   let rec aux acc c = match DAst.get c with
     | GRef (c,_) ->
         let qualid = Nametab.shortest_qualid_of_global Id.Set.empty c in
         let dir,id = Libnames.repr_qualid  qualid in
-        if DirPath.is_empty dir then id :: acc else acc
+        if DirPath.is_empty dir then Id.Set.add id acc else acc
     | _ ->
         fold_glob_constr aux acc c
-  in aux [] c
+  in aux Id.Set.empty c
 
 let warn_variable_collision =
   let open Pp in

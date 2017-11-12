@@ -679,6 +679,7 @@ let materialize_evar define_fun env evd k (evk1,args1) ty_in_env =
   let filter1 = evar_filter evi1 in
   let src = subterm_source evk1 evi1.evar_source in
   let ids1 = List.map get_id (named_context_of_val sign1) in
+  let avoid = Environ.ids_of_named_context_val sign1 in
   let inst_in_sign = List.map mkVar (Filter.filter_list filter1 ids1) in
   let open Context.Rel.Declaration in
   let (sign2,filter2,inst2_in_env,inst2_in_sign,_,evd,_) =
@@ -700,9 +701,9 @@ let materialize_evar define_fun env evd k (evk1,args1) ty_in_env =
       (push_named_context_val d' sign, Filter.extend 1 filter,
        (mkRel 1)::(List.map (lift 1) inst_in_env),
        (mkRel 1)::(List.map (lift 1) inst_in_sign),
-       push_rel d env,evd,id::avoid))
+       push_rel d env,evd,Id.Set.add id avoid))
       rel_sign
-      (sign1,filter1,Array.to_list args1,inst_in_sign,env1,evd,ids1)
+      (sign1,filter1,Array.to_list args1,inst_in_sign,env1,evd,avoid)
   in
   let evd,ev2ty_in_sign =
     let s = Retyping.get_sort_of env evd ty_in_env in
@@ -840,6 +841,25 @@ let rec find_solution_type evarenv = function
   | [id,ProjectEvar _] -> (* bugged *) get_type (lookup_named id evarenv)
   | (id,ProjectEvar _)::l -> find_solution_type evarenv l
   | [] -> assert false
+
+let is_preferred_projection_over sign (id,p) (id',p') =
+  (* We give priority to projection of variables over instantiation of
+     an evar considering that the latter is a stronger decision which
+     may even procude an incorrect (ill-typed) solution *)
+  match p, p' with
+  | ProjectEvar _, ProjectVar -> false
+  | ProjectVar, ProjectEvar _ -> true
+  | _, _ ->
+     List.index Id.equal id sign < List.index Id.equal id' sign
+
+let choose_projection evi sols =
+  let sign = List.map get_id (evar_filtered_context evi) in
+  match sols with
+  | y::l ->
+     List.fold_right (fun (id,p as x) (id',_ as y) ->
+         if is_preferred_projection_over sign x y then x else y)
+    l y
+  | _ -> assert false
 
 (* In case the solution to a projection problem requires the instantiation of
  * subsidiary evars, [do_projection_effects] performs them; it
@@ -1001,7 +1021,7 @@ let closure_of_filter evd evk = function
   | Some filter ->
   let evi = Evd.find_undefined evd evk in
   let vars = collect_vars evd (EConstr.of_constr (evar_concl evi)) in
-  let test b decl = b || Idset.mem (get_id decl) vars ||
+  let test b decl = b || Id.Set.mem (get_id decl) vars ||
                     match decl with
                     | LocalAssum _ ->
                        false
@@ -1314,7 +1334,7 @@ type conv_fun_bool =
 
 let solve_refl ?(can_drop=false) conv_algo env evd pbty evk argsv1 argsv2 =
   let evdref = ref evd in
-  let eq_constr c1 c2 = match EConstr.eq_constr_universes !evdref c1 c2 with
+  let eq_constr c1 c2 = match EConstr.eq_constr_universes env !evdref c1 c2 with
   | None -> false
   | Some cstr ->
     try ignore (Evd.add_universe_constraints !evdref cstr); true
@@ -1428,8 +1448,12 @@ let rec invert_definition conv_algo choose env evd pbty (evk,argsv as ev) rhs =
       let c, p = match sols with
         | [] -> raise Not_found
         | [id,p] -> (mkVar id, p)
-        | (id,p)::_::_ ->
-            if choose then (mkVar id, p) else raise (NotUniqueInType sols)
+        | _ ->
+            if choose then
+              let (id,p) = choose_projection evi sols in
+              (mkVar id, p)
+            else
+              raise (NotUniqueInType sols)
       in
       let ty = lazy (Retyping.get_type_of env !evdref (of_alias t)) in
       let evd = do_projection_effects (evar_define conv_algo ~choose) env ty !evdref p in
@@ -1550,19 +1574,19 @@ let rec invert_definition conv_algo choose env evd pbty (evk,argsv as ev) rhs =
   let rhs = whd_beta evd rhs (* heuristic *) in
   let fast rhs = 
     let filter_ctxt = evar_filtered_context evi in
-    let names = ref Idset.empty in
+    let names = ref Id.Set.empty in
     let rec is_id_subst ctxt s =
       match ctxt, s with
       | (decl :: ctxt'), (c :: s') ->
         let id = get_id decl in
-        names := Idset.add id !names;
+        names := Id.Set.add id !names;
         isVarId evd id c && is_id_subst ctxt' s'
       | [], [] -> true
       | _ -> false 
     in
       is_id_subst filter_ctxt (Array.to_list argsv) &&
       closed0 evd rhs &&
-      Idset.subset (collect_vars evd rhs) !names 
+      Id.Set.subset (collect_vars evd rhs) !names 
   in
   let body =
     if fast rhs then EConstr.of_constr (EConstr.to_constr evd rhs) (** FIXME? *)

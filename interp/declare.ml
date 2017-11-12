@@ -353,13 +353,8 @@ let infer_inductive_subtyping (pth, mind_ent) =
   | Cumulative_ind_entry cumi ->
     begin
       let env = Global.env () in
-      let env' =
-        Environ.push_context
-          (Univ.CumulativityInfo.univ_context cumi) env
-      in
       (* let (env'', typed_params) = Typeops.infer_local_decls env' (mind_ent.mind_entry_params) in *)
-      let evd = Evd.from_env env' in
-        (pth, Inductiveops.infer_inductive_subtyping env' evd mind_ent)
+        (pth, InferCumulativity.infer_inductive env mind_ent)
     end
 
 type inductive_obj = Dischargedhypsmap.discharged_hyps * mutual_inductive_entry
@@ -464,7 +459,7 @@ let cache_universes (p, l) =
   let glob = Global.global_universe_names () in
   let glob', ctx =
     List.fold_left (fun ((idl,lid),ctx) (id, lev) ->
-        ((Idmap.add id (p, lev) idl,
+        ((Id.Map.add id (p, lev) idl,
           Univ.LMap.add lev id lid),
          Univ.ContextSet.add_universe lev ctx))
       (glob, Univ.ContextSet.empty) l
@@ -525,7 +520,7 @@ let do_constraint poly l =
                      (str "Cannot declare constraints on anonymous universes")
     | GType (Some (loc, Name id)) ->
        let names, _ = Global.global_universe_names () in
-       try loc, Idmap.find id names
+       try loc, Id.Map.find id names
        with Not_found ->
          user_err ?loc ~hdr:"Constraint" (str "Undeclared universe " ++ pr_id id)
   in

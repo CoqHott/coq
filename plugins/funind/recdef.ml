@@ -18,7 +18,6 @@ open Entries
 open Pp
 open Names
 open Libnames
-open Globnames
 open Nameops
 open CErrors
 open Util
@@ -115,13 +114,17 @@ let nf_betaiotazeta = (* Reductionops.local_strong Reductionops.whd_betaiotazeta
 (* Generic values *)
 let pf_get_new_ids idl g =
   let ids = pf_ids_of_hyps g in
+  let ids = Id.Set.of_list ids in
   List.fold_right
-    (fun id acc -> next_global_ident_away id (acc@ids)::acc)
+    (fun id acc -> next_global_ident_away id (Id.Set.union (Id.Set.of_list acc) ids)::acc)
     idl
     []
 
+let next_ident_away_in_goal ids avoid =
+  next_ident_away_in_goal ids (Id.Set.of_list avoid)
+
 let compute_renamed_type gls c =
-  rename_bound_vars_as_displayed (project gls) (*no avoid*) [] (*no rels*) []
+  rename_bound_vars_as_displayed (project gls) (*no avoid*) Id.Set.empty (*no rels*) []
     (pf_unsafe_type_of gls c)
 let h'_id = Id.of_string "h'"
 let teq_id = Id.of_string "teq"
@@ -195,7 +198,7 @@ let (value_f:Term.constr list -> global_reference -> Term.constr) =
 	(RegularStyle,None,
 	 [DAst.make @@ GApp(DAst.make @@ GRef(fterm,None), List.rev_map (fun x_id -> DAst.make @@ GVar x_id) rev_x_id_l),
 	  (Anonymous,None)],
-	 [Loc.tag ([v_id], [DAst.make @@ PatCstr ((destIndRef (delayed_force coq_sig_ref),1),
+         [Loc.tag ([v_id], [DAst.make @@ PatCstr ((Globnames.destIndRef (delayed_force coq_sig_ref),1),
 			   [DAst.make @@ PatVar(Name v_id); DAst.make @@ PatVar Anonymous],
                            Anonymous)],
 	    DAst.make @@ GVar v_id)])
@@ -1288,8 +1291,8 @@ let build_new_goal_type () =
 let is_opaque_constant c =
   let cb = Global.lookup_constant c in
   match cb.Declarations.const_body with
-    | Declarations.OpaqueDef _ -> Vernacexpr.Opaque None
-    | Declarations.Undef _ -> Vernacexpr.Opaque None
+    | Declarations.OpaqueDef _ -> Vernacexpr.Opaque
+    | Declarations.Undef _ -> Vernacexpr.Opaque
     | Declarations.Def _ -> Vernacexpr.Transparent
 
 let open_new_goal build_proof sigma using_lemmas ref_ goal_name (gls_type,decompose_and_tac,nb_goal)   =
@@ -1302,7 +1305,7 @@ let open_new_goal build_proof sigma using_lemmas ref_ goal_name (gls_type,decomp
 	with e when CErrors.noncritical e ->
           anomaly (Pp.str "open_new_goal with an unamed theorem.")
   in
-  let na = next_global_ident_away name [] in
+  let na = next_global_ident_away name Id.Set.empty in
   if Termops.occur_existential sigma gls_type then
     CErrors.user_err Pp.(str "\"abstract\" cannot handle existentials");
   let hook _ _ =
@@ -1543,7 +1546,10 @@ let recursive_definition is_mes function_name rec_impls type_of_f r rec_arg_num 
   let equation_id = add_suffix function_name "_equation" in
   let functional_id =  add_suffix function_name "_F" in
   let term_id = add_suffix function_name "_terminate" in
-  let functional_ref = declare_fun functional_id (IsDefinition Decl_kinds.Definition) ~ctx:(snd (Evd.universe_context evm)) res in
+  let functional_ref =
+    let ctx = (snd (Evd.universe_context ~names:[] ~extensible:true evm)) in
+    declare_fun functional_id (IsDefinition Decl_kinds.Definition) ~ctx res
+  in
   (* Refresh the global universes, now including those of _F *)
   let evm = Evd.from_env (Global.env ()) in
   let env_with_pre_rec_args = push_rel_context(List.map (function (x,t) -> LocalAssum (x,t)) pre_rec_args) env in
@@ -1588,7 +1594,8 @@ let recursive_definition is_mes function_name rec_impls type_of_f r rec_arg_num 
 			   spc () ++ str"is defined" )
       )
   in
-  States.with_state_protection_on_exception (fun () ->
+  (* XXX STATE Why do we need this... why is the toplevel protection not enought *)
+  funind_purify (fun () ->
     com_terminate
       tcc_lemma_name
       tcc_lemma_constr

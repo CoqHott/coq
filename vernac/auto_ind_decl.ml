@@ -17,7 +17,6 @@ open Vars
 open Termops
 open Declarations
 open Names
-open Globnames
 open Nameops
 open Inductiveops
 open Tactics
@@ -90,6 +89,15 @@ let destruct_on_using c id =
 
 let destruct_on_as c l =
   destruct false None c (Some (Loc.tag l)) None
+
+let inj_flags = Some {
+    Equality.keep_proof_equalities = true; (* necessary *)
+    injection_in_context = true; (* does not matter here *)
+    Equality.injection_pattern_l2r_order = true; (* does not matter here *)
+  }
+
+let my_discr_tac = Equality.discr_tac false None
+let my_inj_tac x = Equality.inj inj_flags None false None (EConstr.mkVar x,NoBindings)
 
 (* reconstruct the inductive with the correct de Bruijn indexes *)
 let mkFullInd (ind,u) n =
@@ -181,7 +189,7 @@ let build_beq_scheme mode kn =
 	match EConstr.kind sigma c with
         | Rel x -> mkRel (x-nlist+ndx), Safe_typing.empty_private_constants
         | Var x ->
-          let eid = id_of_string ("eq_"^(string_of_id x)) in
+          let eid = Id.of_string ("eq_"^(Id.to_string x)) in
           let () =
             try ignore (Environ.lookup_named eid env)
             with Not_found -> raise (ParameterWithoutEquality (VarRef x))
@@ -533,7 +541,7 @@ open Namegen
 let compute_bl_goal ind lnamesparrec nparrec =
   let eqI, eff = eqI ind lnamesparrec in
   let list_id = list_id lnamesparrec in
-  let avoid = List.fold_right (Nameops.Name.fold_right (fun id l -> id::l)) (List.map RelDecl.get_name lnamesparrec) [] in
+  let avoid = List.fold_right (Nameops.Name.fold_right (fun id l -> Id.Set.add id l)) (List.map RelDecl.get_name lnamesparrec) Id.Set.empty in
   let create_input c =
     let x = next_ident_away (Id.of_string "x") avoid and
         y = next_ident_away (Id.of_string "y") avoid in
@@ -578,7 +586,7 @@ let compute_bl_tact mode bl_scheme_key ind lnamesparrec nparrec =
         ( List.map (fun (_,_,sbl,_ ) -> sbl) list_id )
       in
       let fresh_id s gl =
-          let fresh = fresh_id_in_env (!avoid) s (Proofview.Goal.env gl) in
+          let fresh = fresh_id_in_env (Id.Set.of_list !avoid) s (Proofview.Goal.env gl) in
           avoid := fresh::(!avoid); fresh
       in
       Proofview.Goal.enter begin fun gl ->
@@ -595,7 +603,7 @@ let compute_bl_tact mode bl_scheme_key ind lnamesparrec nparrec =
                      intro_using freshz;
                      intros;
                      Tacticals.New.tclTRY (
-                      Tacticals.New.tclORELSE reflexivity (Equality.discr_tac false None)
+                      Tacticals.New.tclORELSE reflexivity my_discr_tac
                      );
                      simpl_in_hyp (freshz,Locus.InHyp);
 (*
@@ -622,7 +630,7 @@ repeat ( apply andb_prop in z;let z1:= fresh "Z" in destruct z as [z1 z]).
                         | App (c,ca) -> (
                           match EConstr.kind sigma c with
                           | Ind (indeq, u) ->
-                              if eq_gr (IndRef indeq) Coqlib.glob_eq
+                              if Globnames.eq_gr (IndRef indeq) Coqlib.glob_eq
                               then
                                 Tacticals.New.tclTHEN
                                   (do_replace_bl mode bl_scheme_key ind
@@ -676,7 +684,7 @@ let _ = bl_scheme_kind_aux := fun () -> bl_scheme_kind
 let compute_lb_goal ind lnamesparrec nparrec =
   let list_id = list_id lnamesparrec in
   let eq = Lazy.force eq and tt = Lazy.force tt and bb = Lazy.force bb in
-  let avoid = List.fold_right (Nameops.Name.fold_right (fun id l -> id::l)) (List.map RelDecl.get_name lnamesparrec) [] in
+  let avoid = List.fold_right (Nameops.Name.fold_right (fun id l -> Id.Set.add id l)) (List.map RelDecl.get_name lnamesparrec) Id.Set.empty in
   let eqI, eff = eqI ind lnamesparrec in
     let create_input c =
       let x = next_ident_away (Id.of_string "x") avoid and
@@ -722,7 +730,7 @@ let compute_lb_tact mode lb_scheme_key ind lnamesparrec nparrec =
         ( List.map (fun (_,_,_,slb) -> slb) list_id )
       in
       let fresh_id s gl =
-          let fresh = fresh_id_in_env (!avoid) s (Proofview.Goal.env gl) in
+          let fresh = fresh_id_in_env (Id.Set.of_list !avoid) s (Proofview.Goal.env gl) in
           avoid := fresh::(!avoid); fresh
       in
       Proofview.Goal.enter begin fun gl ->
@@ -739,9 +747,9 @@ let compute_lb_tact mode lb_scheme_key ind lnamesparrec nparrec =
                      intro_using freshz;
                      intros;
                      Tacticals.New.tclTRY (
-                      Tacticals.New.tclORELSE reflexivity (Equality.discr_tac false None)
+                      Tacticals.New.tclORELSE reflexivity my_discr_tac
                      );
-                     Equality.inj None false None (EConstr.mkVar freshz,NoBindings);
+                     my_inj_tac freshz;
 		     intros; simpl_in_concl;
                      Auto.default_auto;
                      Tacticals.New.tclREPEAT (
@@ -806,7 +814,7 @@ let compute_dec_goal ind lnamesparrec nparrec =
   check_not_is_defined ();
   let eq = Lazy.force eq and tt = Lazy.force tt and bb = Lazy.force bb in
   let list_id = list_id lnamesparrec in
-  let avoid = List.fold_right (Nameops.Name.fold_right (fun id l -> id::l)) (List.map RelDecl.get_name lnamesparrec) [] in
+  let avoid = List.fold_right (Nameops.Name.fold_right (fun id l -> Id.Set.add id l)) (List.map RelDecl.get_name lnamesparrec) Id.Set.empty in
     let create_input c =
       let x = next_ident_away (Id.of_string "x") avoid and
           y = next_ident_away (Id.of_string "y") avoid in
@@ -870,7 +878,7 @@ let compute_dec_tact ind lnamesparrec nparrec =
       ( List.map (fun (_,_,_,slb) -> slb) list_id )
   in
   let fresh_id s gl =
-      let fresh = fresh_id_in_env (!avoid) s (Proofview.Goal.env gl) in
+      let fresh = fresh_id_in_env (Id.Set.of_list !avoid) s (Proofview.Goal.env gl) in
       avoid := fresh::(!avoid); fresh
   in
   Proofview.Goal.enter begin fun gl ->
@@ -936,7 +944,7 @@ let compute_dec_tact ind lnamesparrec nparrec =
                                 NoBindings
                               )
                               true;
-              Equality.discr_tac false None
+              my_discr_tac
 	    ]
             end
 	  ]

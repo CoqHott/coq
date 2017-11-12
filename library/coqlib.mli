@@ -8,7 +8,6 @@
 
 open Names
 open Libnames
-open Globnames
 open Util
 
 (** This module collects the global references, constructions and
@@ -205,7 +204,3 @@ val coq_sig_ref : global_reference lazy_t
 
 val coq_or_ref : global_reference lazy_t
 val coq_iff_ref : global_reference lazy_t
-
-(* Deprecated functions *)
-val gen_reference :  message -> string list -> string -> global_reference
-[@@ocaml.deprecated "Please use Coqlib.find_reference"]

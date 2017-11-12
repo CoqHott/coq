@@ -12,7 +12,7 @@ assumption.
 assumption.
 Qed.
 
-(* Simplification of bug 711 *)
+(* Simplification of BZ#711 *)
 
 Parameter f : true = false.
 Goal let p := f in True.
@@ -37,7 +37,7 @@ Goal True.
 case Refl || ecase Refl.
 Abort.
 
-(* Submitted by B. Baydemir (bug #1882) *)
+(* Submitted by B. Baydemir (BZ#1882) *)
 
 Require Import List.
 
@@ -385,7 +385,7 @@ intros.
 Fail destruct H.
 Abort.
 
-(* Check keep option (bug #3791) *)
+(* Check keep option (BZ#3791) *)
 
 Goal forall b:bool, True.
 intro b.
@@ -429,4 +429,10 @@ Goal exists x, S x = x.
 eexists ?[x].
 destruct (S _).
 change (0 = ?x).
+Abort.
+
+Goal (forall P, P 0 -> True/\True) -> True.
+intro H.
+destruct (H (fun x => True)).
+match goal with |- True => idtac end.
 Abort.

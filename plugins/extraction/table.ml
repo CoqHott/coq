@@ -250,6 +250,11 @@ let modular () = !modular_ref
 let set_library b = library_ref := b
 let library () = !library_ref
 
+let extrcompute = ref false
+
+let set_extrcompute b = extrcompute := b
+let is_extrcompute () = !extrcompute
+
 (*s Printing. *)
 
 (* The following functions work even on objects not in [Global.env ()].
@@ -646,7 +651,7 @@ let add_inline_entries b l =
 
 (* Registration of operations for rollback. *)
 
-let inline_extraction : bool * global_reference list -> obj =
+let inline_extraction : bool * Names.global_reference list -> obj =
   declare_object
     {(default_object "Extraction Inline") with
        cache_function = (fun (_,(b,l)) -> add_inline_entries b l);
@@ -730,7 +735,7 @@ let add_implicits r l =
 
 (* Registration of operations for rollback. *)
 
-let implicit_extraction : global_reference * int_or_id list -> obj =
+let implicit_extraction : Names.global_reference * int_or_id list -> obj =
   declare_object
     {(default_object "Extraction Implicit") with
        cache_function = (fun (_,(r,l)) -> add_implicits r l);
@@ -750,11 +755,11 @@ let extraction_implicit r l =
 
 let blacklist_table = Summary.ref Id.Set.empty ~name:"ExtrBlacklist"
 
-let modfile_ids = ref []
+let modfile_ids = ref Id.Set.empty
 let modfile_mps = ref MPmap.empty
 
 let reset_modfile () =
-  modfile_ids := Id.Set.elements !blacklist_table;
+  modfile_ids := !blacklist_table;
   modfile_mps := MPmap.empty
 
 let string_of_modfile mp =
@@ -763,7 +768,7 @@ let string_of_modfile mp =
     let id = Id.of_string (raw_string_of_modfile mp) in
     let id' = next_ident_away id !modfile_ids in
     let s' = Id.to_string id' in
-    modfile_ids := id' :: !modfile_ids;
+    modfile_ids := Id.Set.add id' !modfile_ids;
     modfile_mps := MPmap.add mp s' !modfile_mps;
     s'
 
@@ -851,7 +856,7 @@ let find_custom_match pv =
 
 (* Registration of operations for rollback. *)
 
-let in_customs : global_reference * string list * string -> obj =
+let in_customs : Names.global_reference * string list * string -> obj =
   declare_object
     {(default_object "ML extractions") with
        cache_function = (fun (_,(r,ids,s)) -> add_custom r ids s);
@@ -861,7 +866,7 @@ let in_customs : global_reference * string list * string -> obj =
         (fun (s,(r,ids,str)) -> (fst (subst_global s r), ids, str))
     }
 
-let in_custom_matchs : global_reference * string -> obj =
+let in_custom_matchs : Names.global_reference * string -> obj =
   declare_object
     {(default_object "ML extractions custom matchs") with
        cache_function = (fun (_,(r,s)) -> add_custom_match r s);

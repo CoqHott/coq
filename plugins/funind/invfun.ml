@@ -131,9 +131,9 @@ let generate_type evd g_to_f f graph i =
 			   | Name id -> Some id
 			   | Anonymous -> None
   in
-  let named_ctxt = List.map_filter filter fun_ctxt in
+  let named_ctxt = Id.Set.of_list (List.map_filter filter fun_ctxt) in
   let res_id = Namegen.next_ident_away_in_goal (Id.of_string "_res") named_ctxt in
-  let fv_id = Namegen.next_ident_away_in_goal (Id.of_string "fv") (res_id :: named_ctxt) in
+  let fv_id = Namegen.next_ident_away_in_goal (Id.of_string "fv") (Id.Set.add res_id named_ctxt) in
   (*i we can then type the argument to be applied to the function [f] i*)
   let args_as_rels = Array.of_list (args_from_decl 1 [] fun_ctxt) in
   (*i
@@ -189,7 +189,7 @@ let rec generate_fresh_id x avoid i =
   if i == 0
   then []
   else
-    let id = Namegen.next_ident_away_in_goal x avoid in
+    let id = Namegen.next_ident_away_in_goal x (Id.Set.of_list avoid) in
     id::(generate_fresh_id x (id::avoid) (pred i))
 
 
@@ -239,7 +239,7 @@ let prove_fun_correct evd functional_induction funs_constr graphs_constr schemes
        environment and due to the bug #1174, we will need to pose the principle
        using a name
     *)
-    let principle_id = Namegen.next_ident_away_in_goal (Id.of_string "princ") ids in
+    let principle_id = Namegen.next_ident_away_in_goal (Id.of_string "princ") (Id.Set.of_list ids) in
     let ids = principle_id :: ids in
     (* We get the branches of the principle *)
     let branches = List.rev princ_infos.branches in
@@ -396,7 +396,7 @@ let prove_fun_correct evd functional_induction funs_constr graphs_constr schemes
       let params_bindings,avoid =
 	List.fold_left2
 	  (fun (bindings,avoid) decl p ->
-	     let id = Namegen.next_ident_away (Nameops.Name.get_id (RelDecl.get_name decl)) avoid in
+	     let id = Namegen.next_ident_away (Nameops.Name.get_id (RelDecl.get_name decl)) (Id.Set.of_list avoid) in
 	     p::bindings,id::avoid
 	  )
 	  ([],pf_ids_of_hyps g)
@@ -406,7 +406,7 @@ let prove_fun_correct evd functional_induction funs_constr graphs_constr schemes
       let lemmas_bindings =
 	List.rev (fst  (List.fold_left2
 	  (fun (bindings,avoid) decl p ->
-	     let id = Namegen.next_ident_away (Nameops.Name.get_id (RelDecl.get_name decl)) avoid in
+	     let id = Namegen.next_ident_away (Nameops.Name.get_id (RelDecl.get_name decl)) (Id.Set.of_list avoid) in
 	     (nf_zeta p)::bindings,id::avoid)
 	  ([],avoid)
 	  princ_infos.predicates
@@ -570,6 +570,11 @@ let rec reflexivity_with_destruct_cases g =
     with e when CErrors.noncritical e -> Proofview.V82.of_tactic reflexivity
   in
   let eq_ind = make_eq () in
+  let my_inj_flags = Some {
+    Equality.keep_proof_equalities = false;
+    injection_in_context = false; (* for compatibility, necessary *)
+    injection_pattern_l2r_order = false; (* probably does not matter; except maybe with dependent hyps *)
+  } in
   let discr_inject =
     Tacticals.onAllHypsAndConcl (
        fun sc g ->
@@ -580,8 +585,8 @@ let rec reflexivity_with_destruct_cases g =
 		 | App(eq,[|_;t1;t2|]) when EConstr.eq_constr (project g) eq eq_ind ->
 		     if Equality.discriminable (pf_env g) (project g) t1 t2
 		     then Proofview.V82.of_tactic (Equality.discrHyp id) g
-		     else if Equality.injectable (pf_env g) (project g) t1 t2
-		     then tclTHENLIST [Proofview.V82.of_tactic (Equality.injHyp None id);thin [id];intros_with_rewrite]  g
+		     else if Equality.injectable (pf_env g) (project g) ~keep_proofs:None t1 t2
+		     then tclTHENLIST [Proofview.V82.of_tactic (Equality.injHyp my_inj_flags None id);thin [id];intros_with_rewrite]  g
 		     else tclIDTAC g
 		 | _ -> tclIDTAC g
     )
@@ -759,7 +764,8 @@ let derive_correctness make_scheme functional_induction (funs: pconstant list) (
   let funs = Array.of_list funs and graphs = Array.of_list graphs in
   let map (c, u) = mkConstU (c, EInstance.make u) in
   let funs_constr = Array.map map funs  in
-  States.with_state_protection_on_exception
+  (* XXX STATE Why do we need this... why is the toplevel protection not enought *)
+  funind_purify
     (fun () ->
      let env = Global.env () in
      let evd = ref (Evd.from_env env) in 

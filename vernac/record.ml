@@ -72,7 +72,7 @@ let interp_fields_evars env evars impls_env nots l =
 	      | None -> LocalAssum (i,t')
 	      | Some b' -> LocalDef (i,b',t')
       in
-      List.iter (Metasyntax.set_notation_for_interpretation impls) no;
+      List.iter (Metasyntax.set_notation_for_interpretation env impls) no;
       (EConstr.push_rel d env, impl :: uimpls, d::params, impls))
     (env, [], [], impls_env) nots l
 
@@ -95,8 +95,8 @@ let binders_of_decls = List.map binder_of_decl
 
 let typecheck_params_and_fields finite def id pl t ps nots fs =
   let env0 = Global.env () in
-  let ctx = Evd.make_evar_universe_context env0 pl in
-  let evars = ref (Evd.from_ctx ctx) in
+  let evd, decl = Univdecls.interp_univ_decl_opt env0 pl in
+  let evars = ref evd in
   let _ = 
     let error bk (loc, name) = 
       match bk, name with
@@ -165,9 +165,10 @@ let typecheck_params_and_fields finite def id pl t ps nots fs =
   let newps = List.map (EConstr.to_rel_decl evars) newps in
   let typ = EConstr.to_constr evars typ in
   let ce t = Pretyping.check_evars env0 Evd.empty evars (EConstr.of_constr t) in
+  let univs = Evd.check_univ_decl evars decl in
     List.iter (iter_constr ce) (List.rev newps);
     List.iter (iter_constr ce) (List.rev newfs);
-    Evd.universe_context ?names:pl evars, typ, maybe_template, imps, newps, impls, newfs
+    univs, typ, maybe_template, imps, newps, impls, newfs
 
 let degenerate_decl decl =
   let id = match RelDecl.get_name decl with
@@ -416,10 +417,7 @@ let declare_structure finite univs id idbuild paramimpls params arity template
     if poly then
       begin
         let env = Global.env () in
-        let env' = Environ.push_context ctx env in
-        (* let env'' = Environ.push_rel_context params env' in *)
-        let evd = Evd.from_env env' in
-        Inductiveops.infer_inductive_subtyping env' evd mie
+        InferCumulativity.infer_inductive env mie
       end
     else
        mie
@@ -456,7 +454,7 @@ let declare_class finite def cum poly ctx id idbuild paramimpls params arity
     let impls = implicits_of_context params in
       List.map (fun x -> impls @ Impargs.lift_implicits (succ len) x) fieldimpls
   in
-  let binder_name = Namegen.next_ident_away (snd id) (Termops.ids_of_context (Global.env())) in
+  let binder_name = Namegen.next_ident_away (snd id) (Termops.vars_of_env (Global.env())) in
   let impl, projs =
     match fields with
     | [LocalAssum (Name proj_name, field) | LocalDef (Name proj_name, _, field)] when def ->
@@ -494,7 +492,7 @@ let declare_class finite def cum poly ctx id idbuild paramimpls params arity
        let univs =
          if poly then
            if cum then
-             Cumulative_ind_entry (Universes.univ_inf_ind_from_universe_context ctx)
+             Cumulative_ind_entry (Univ.CumulativityInfo.from_universe_context ctx)
            else
              Polymorphic_ind_entry ctx
          else
@@ -623,7 +621,7 @@ let definition_structure (kind,cum,poly,finite,(is_coe,((loc,idstruc),pl)),ps,cf
       let univs =
         if poly then
           if cum then
-            Cumulative_ind_entry (Universes.univ_inf_ind_from_universe_context ctx)
+            Cumulative_ind_entry (Univ.CumulativityInfo.from_universe_context ctx)
           else
             Polymorphic_ind_entry ctx
         else

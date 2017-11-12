@@ -17,6 +17,9 @@ type level =
   | Error
 
 
+(** Document unique identifier for serialization *)
+type doc_id = int
+
 (** Coq "semantic" infos obtained during execution *)
 type route_id = int
 
@@ -43,7 +46,8 @@ type feedback_content =
   | Message of level * Loc.t option * Pp.t
 
 type feedback = {
-  id       : Stateid.t;         (* The document part concerned *)
+  doc_id   : doc_id;            (* The document being concerned *)
+  span_id  : Stateid.t;         (* The document part concerned *)
   route    : route_id;          (* Extra routing info *)
   contents : feedback_content;  (* The payload *)
 }
@@ -60,13 +64,13 @@ val add_feeder : (feedback -> unit) -> int
 (** [del_feeder fid] removes the feeder with id [fid] *)
 val del_feeder : int -> unit
 
-(** [feedback ?id ?route fb] produces feedback fb, with [route] and
-    [id] set appropiatedly, if absent, it will use the defaults set by
-    [set_id_for_feedback] *)
-val feedback : ?id:Stateid.t -> ?route:route_id -> feedback_content -> unit
+(** [feedback ?did ?sid ?route fb] produces feedback [fb], with
+    [route] and [did, sid] set appropiatedly, if absent, it will use
+    the defaults set by [set_id_for_feedback] *)
+val feedback : ?did:doc_id -> ?id:Stateid.t -> ?route:route_id -> feedback_content -> unit
 
 (** [set_id_for_feedback route id] Set the defaults for feedback *)
-val set_id_for_feedback : ?route:route_id -> Stateid.t -> unit
+val set_id_for_feedback : ?route:route_id -> doc_id -> Stateid.t -> unit
 
 (** {6 output functions}
 
@@ -95,3 +99,11 @@ val msg_error : ?loc:Loc.t -> Pp.t -> unit
 
 val msg_debug : ?loc:Loc.t -> Pp.t -> unit
 (** For debugging purposes *)
+
+val console_feedback_listener : Format.formatter -> feedback -> unit
+(** Helper for tools willing to print to the feedback system *)
+
+val warn_no_listeners : bool ref
+(** The library will print a warning to the console if no listener is
+    available by default; ML-clients willing to use Coq without a
+    feedback handler should set this to false. *)

@@ -12,7 +12,7 @@ let mk_equation_id id = Nameops.add_suffix id "_equation"
 let msgnl m =
   ()
 
-let fresh_id avoid s = Namegen.next_ident_away_in_goal (Id.of_string s) avoid
+let fresh_id avoid s = Namegen.next_ident_away_in_goal (Id.of_string s) (Id.Set.of_list avoid)
 
 let fresh_name avoid s = Name (fresh_id avoid s)
 
@@ -549,3 +549,12 @@ type tcc_lemma_value =
   | Undefined
   | Value of Term.constr
   | Not_needed
+
+(* We only "purify" on exceptions *)
+let funind_purify f x =
+  let st = Vernacentries.freeze_interp_state `No in
+  try f x
+  with e ->
+    let e = CErrors.push e in
+    Vernacentries.unfreeze_interp_state st;
+    Exninfo.iraise e

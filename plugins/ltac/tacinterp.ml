@@ -38,6 +38,7 @@ open Tacintern
 open Taccoerce
 open Proofview.Notations
 open Context.Named.Declaration
+open Ltac_pretype
 
 let ltac_trace_info = Tactic_debug.ltac_trace_info
 
@@ -74,6 +75,9 @@ let out_gen wit v =
   match prj t v with None -> assert false | Some x -> x
 
 let val_tag wit = val_tag (topwit wit)
+
+let base_val_typ wit =
+  match val_tag wit with Val.Base t -> t | _ -> anomaly (str "Not a base val.")
 
 let pr_argument_type arg =
   let Val.Dyn (tag, _) = arg in
@@ -123,6 +127,8 @@ type tacvalue =
 let (wit_tacvalue : (Empty.t, tacvalue, tacvalue) Genarg.genarg_type) =
   let wit = Genarg.create_arg "tacvalue" in
   let () = register_val0 wit None in
+  let () = Genprint.register_val_print0 (base_val_typ wit)
+             (fun _ -> Genprint.PrinterBasic (fun () -> str "<tactic closure>")) in
   wit
 
 let of_tacvalue v = in_gen (topwit wit_tacvalue) v
@@ -139,7 +145,7 @@ let name_vfun appl vle =
 
 module TacStore = Geninterp.TacStore
 
-let f_avoid_ids : Id.t list TacStore.field = TacStore.field ()
+let f_avoid_ids : Id.Set.t TacStore.field = TacStore.field ()
 (* ids inherited from the call context (needed to get fresh ids) *)
 let f_debug : debug_info TacStore.field = TacStore.field ()
 let f_trace : ltac_trace TacStore.field = TacStore.field ()
@@ -230,24 +236,16 @@ let curr_debug ist = match TacStore.get ist.extra f_debug with
 (* Displays a value *)
 let pr_value env v =
   let v = Value.normalize v in
-  if has_type v (topwit wit_tacvalue) then str "a tactic"
-  else if has_type v (topwit wit_constr_context) then
-    let c = out_gen (topwit wit_constr_context) v in
+  let pr_with_env pr =
     match env with
-    | Some (env,sigma) -> pr_leconstr_env env sigma c
-    | _ -> str "a term"
-  else if has_type v (topwit wit_constr) then
-    let c = out_gen (topwit wit_constr) v in
-    match env with
-    | Some (env,sigma) -> pr_leconstr_env env sigma c
-    | _ -> str "a term"
-  else if has_type v (topwit wit_constr_under_binders) then
-    let c = out_gen (topwit wit_constr_under_binders) v in
-    match env with
-    | Some (env,sigma) -> pr_lconstr_under_binders_env env sigma c
-    | _ -> str "a term"
-  else
-    str "a value of type" ++ spc () ++ pr_argument_type v
+    | Some (env,sigma) -> pr env sigma
+    | None -> str "a value of type" ++ spc () ++ pr_argument_type v in
+  let open Genprint in
+  match generic_val_print v with
+  | PrinterBasic pr -> pr ()
+  | PrinterNeedsContext pr -> pr_with_env pr
+  | PrinterNeedsContextAndLevel { default_already_surrounded; printer } ->
+     pr_with_env (fun env sigma -> printer env sigma default_already_surrounded)
 
 let pr_closure env ist body =
   let pp_body = Pptactic.pr_glob_tactic env body in
@@ -501,29 +499,29 @@ let extract_ltac_constr_values ist env =
     could barely be defined as a feature... *)
 
 (* Extract the identifier list from lfun: join all branches (what to do else?)*)
-let rec intropattern_ids (loc,pat) = match pat with
-  | IntroNaming (IntroIdentifier id) -> [id]
+let rec intropattern_ids accu (loc,pat) = match pat with
+  | IntroNaming (IntroIdentifier id) -> Id.Set.add id accu
   | IntroAction (IntroOrAndPattern (IntroAndPattern l)) ->
-      List.flatten (List.map intropattern_ids l)
+      List.fold_left intropattern_ids accu l
   | IntroAction (IntroOrAndPattern (IntroOrPattern ll)) ->
-      List.flatten (List.map intropattern_ids (List.flatten ll))
+      List.fold_left intropattern_ids accu (List.flatten ll)
   | IntroAction (IntroInjection l) ->
-      List.flatten (List.map intropattern_ids l)
-  | IntroAction (IntroApplyOn ((_,c),pat)) -> intropattern_ids pat
+      List.fold_left intropattern_ids accu l
+  | IntroAction (IntroApplyOn ((_,c),pat)) -> intropattern_ids accu pat
   | IntroNaming (IntroAnonymous | IntroFresh _)
   | IntroAction (IntroWildcard | IntroRewrite _)
-  | IntroForthcoming _ -> []
+  | IntroForthcoming _ -> accu
 
-let extract_ids ids lfun =
+let extract_ids ids lfun accu =
   let fold id v accu =
     let v = Value.normalize v in
     if has_type v (topwit wit_intro_pattern) then
       let (_, ipat) = out_gen (topwit wit_intro_pattern) v in
       if Id.List.mem id ids then accu
-      else accu @ intropattern_ids (Loc.tag ipat)
+      else intropattern_ids accu (Loc.tag ipat)
     else accu
   in
-  Id.Map.fold fold lfun []
+  Id.Map.fold fold lfun accu
 
 let default_fresh_id = Id.of_string "H"
 
@@ -534,10 +532,10 @@ let interp_fresh_id ist env sigma l =
     with Not_found -> id in
   let ids = List.map_filter (function ArgVar (_, id) -> Some id | _ -> None) l in
   let avoid = match TacStore.get ist.extra f_avoid_ids with
-  | None -> []
+  | None -> Id.Set.empty
   | Some l -> l
   in
-  let avoid = (extract_ids ids ist.lfun) @ avoid in
+  let avoid = extract_ids ids ist.lfun avoid in
   let id =
     if List.is_empty l then default_fresh_id
     else
@@ -551,7 +549,6 @@ let interp_fresh_id ist env sigma l =
 
 (* Extract the uconstr list from lfun *)
 let extract_ltac_constr_context ist env sigma =
-  let open Glob_term in
   let add_uconstr id v map =
     try Id.Map.add id (coerce_to_uconstr env v) map
     with CannotCoerceTo _ -> map
@@ -602,10 +599,10 @@ let interp_gen kind ist pattern_mode flags env sigma c =
   let { closure = constrvars ; term } =
     interp_glob_closure ist env sigma ~kind:kind_for_intern ~pattern_mode c in
   let vars = {
-    Glob_term.ltac_constrs = constrvars.typed;
-    Glob_term.ltac_uconstrs = constrvars.untyped;
-    Glob_term.ltac_idents = constrvars.idents;
-    Glob_term.ltac_genargs = ist.lfun;
+    ltac_constrs = constrvars.typed;
+    ltac_uconstrs = constrvars.untyped;
+    ltac_idents = constrvars.idents;
+    ltac_genargs = ist.lfun;
   } in
   (* Jason Gross: To avoid unnecessary modifications to tacinterp, as
       suggested by Arnaud Spiwack, we run push_trace immediately.  We do
@@ -818,51 +815,16 @@ let interp_constr_may_eval ist env sigma c =
   end
 
 (** TODO: should use dedicated printers *)
-let rec message_of_value v =
+let message_of_value v =
   let v = Value.normalize v in
-  let open Ftactic in
-  if has_type v (topwit wit_tacvalue) then
-    Ftactic.return (str "<tactic>")
-  else if has_type v (topwit wit_constr) then
-    let v = out_gen (topwit wit_constr) v in
-    Ftactic.enter begin fun gl -> Ftactic.return (pr_econstr_env (pf_env gl) (project gl) v) end
-  else if has_type v (topwit wit_constr_under_binders) then
-    let c = out_gen (topwit wit_constr_under_binders) v in
-    Ftactic.enter begin fun gl ->
-      Ftactic.return (pr_constr_under_binders_env (pf_env gl) (project gl) c)
-    end
-  else if has_type v (topwit wit_unit) then
-    Ftactic.return (str "()")
-  else if has_type v (topwit wit_int) then
-    Ftactic.return (int (out_gen (topwit wit_int) v))
-  else if has_type v (topwit wit_intro_pattern) then
-    let p = out_gen (topwit wit_intro_pattern) v in
-    let print env sigma c =
-      let (sigma, c) = c env sigma in
-      pr_econstr_env env sigma c
-    in
-    Ftactic.enter begin fun gl ->
-      Ftactic.return (Miscprint.pr_intro_pattern (fun c -> print (pf_env gl) (project gl) c) p)
-    end
-  else if has_type v (topwit wit_constr_context) then
-    let c = out_gen (topwit wit_constr_context) v in
-    Ftactic.enter begin fun gl -> Ftactic.return (pr_econstr_env (pf_env gl) (project gl) c) end
-  else if has_type v (topwit wit_uconstr) then
-    let c = out_gen (topwit wit_uconstr) v in
-    Ftactic.enter begin fun gl ->
-      Ftactic.return (pr_closed_glob_env (pf_env gl)
-                        (project gl) c)
-    end
-  else if has_type v (topwit wit_var) then
-    let id = out_gen (topwit wit_var) v in
-    Ftactic.enter begin fun gl -> Ftactic.return (Id.print id) end
-  else match Value.to_list v with
-  | Some l ->
-    Ftactic.List.map message_of_value l >>= fun l ->
-    Ftactic.return (prlist_with_sep spc (fun x -> x) l)
-  | None ->
-    let tag = pr_argument_type v in
-    Ftactic.return (str "<" ++ tag ++ str ">") (** TODO *)
+  let pr_with_env pr =
+    Ftactic.enter begin fun gl -> Ftactic.return (pr (pf_env gl) (project gl)) end in
+  let open Genprint in
+  match generic_val_print v with
+  | PrinterBasic pr -> Ftactic.return (pr ())
+  | PrinterNeedsContext pr -> pr_with_env pr
+  | PrinterNeedsContextAndLevel { default_ensure_surrounded; printer } ->
+     pr_with_env (fun env sigma -> printer env sigma default_ensure_surrounded)
 
 let interp_message_token ist = function
   | MsgString s -> Ftactic.return (str s)
@@ -946,13 +908,13 @@ let interp_in_hyp_as ist env sigma (id,ipat) =
   let sigma, ipat = interp_intro_pattern_option ist env sigma ipat in
   sigma,(interp_hyp ist env sigma id,ipat)
 
-let interp_binding_name ist sigma = function
+let interp_binding_name ist env sigma = function
   | AnonHyp n -> AnonHyp n
   | NamedHyp id ->
       (* If a name is bound, it has to be a quantified hypothesis *)
       (* user has to use other names for variables if these ones clash with *)
       (* a name intented to be used as a (non-variable) identifier *)
-      try try_interp_ltac_var (coerce_to_quantified_hypothesis sigma) ist None(Loc.tag id)
+      try try_interp_ltac_var (coerce_to_quantified_hypothesis sigma) ist (Some (env,sigma)) (Loc.tag id)
       with Not_found -> NamedHyp id
 
 let interp_declared_or_quantified_hypothesis ist env sigma = function
@@ -964,7 +926,7 @@ let interp_declared_or_quantified_hypothesis ist env sigma = function
 
 let interp_binding ist env sigma (loc,(b,c)) =
   let sigma, c = interp_open_constr ist env sigma c in
-  sigma, (loc,(interp_binding_name ist sigma b,c))
+  sigma, (loc,(interp_binding_name ist env sigma b,c))
 
 let interp_bindings ist env sigma = function
 | NoBindings ->
@@ -1303,7 +1265,7 @@ and interp_ltac_reference ?loc' mustbetac ist r : Val.t Ftactic.t =
       if mustbetac then Ftactic.return (coerce_to_tactic loc id v) else Ftactic.return v
       end
   | ArgArg (loc,r) ->
-      let ids = extract_ids [] ist.lfun in
+      let ids = extract_ids [] ist.lfun Id.Set.empty in
       let loc_info = (Option.default loc loc',LtacNameCall r) in
       let extra = TacStore.set ist.extra f_avoid_ids ids in
       push_trace loc_info ist >>= fun trace ->
@@ -1386,15 +1348,25 @@ and interp_app loc ist fv largs : Val.t Ftactic.t =
         end >>= fun v ->
         (* No errors happened, we propagate the trace *)
         let v = append_trace trace v in
-        Proofview.tclLIFT begin
-          debugging_step ist
-	    (fun () ->
-	      str"evaluation returns"++fnl()++pr_value None v)
+        let call_debug env =
+          Proofview.tclLIFT (debugging_step ist (fun () -> str"evaluation returns"++fnl()++pr_value env v)) in
+        begin
+          let open Genprint in
+          match generic_val_print v with
+          | PrinterBasic _ -> call_debug None
+          | PrinterNeedsContext _ | PrinterNeedsContextAndLevel _ ->
+             Proofview.Goal.enter (fun gl -> call_debug (Some (pf_env gl,project gl)))
         end <*>
         if List.is_empty lval then Ftactic.return v else interp_app loc ist v lval
       else
         Ftactic.return (of_tacvalue (VFun(push_appl appl largs,trace,newlfun,lvar,body)))
-    | _ -> fail
+    | (VFun(appl,trace,olfun,[],body)) ->
+      let extra_args = List.length largs in
+      Tacticals.New.tclZEROMSG (str "Illegal tactic application: got " ++
+                                str (string_of_int extra_args) ++
+                                str " extra " ++ str (String.plural extra_args "argument") ++
+                                str ".")
+    | VRec(_,_) -> fail
   else fail
 
 (* Gives the tactic corresponding to the tactic value *)
@@ -1956,7 +1928,7 @@ let interp_tac_gen lfun avoid_ids debug t =
     (intern_pure_tactic { (Genintern.empty_glob_sign env) with ltacvars } t)
   end
 
-let interp t = interp_tac_gen Id.Map.empty [] (get_debug()) t
+let interp t = interp_tac_gen Id.Map.empty Id.Set.empty (get_debug()) t
 
 (* Used to hide interpretation for pretty-print, now just launch tactics *)
 (* [global] means that [t] should be internalized outside of goals. *)

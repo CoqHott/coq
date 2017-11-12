@@ -9,7 +9,6 @@
 (*s Target language for extraction: a core ML called MiniML. *)
 
 open Names
-open Globnames
 
 (* The [signature] type is used to know how many arguments a CIC
    object expects, and what these arguments will become in the ML
@@ -186,8 +185,6 @@ and ml_module =
 type ml_structure = (ModPath.t * ml_module_structure) list
 
 type ml_signature = (ModPath.t * ml_module_sig) list
-
-type ml_flat_structure = ml_structure_elem list
 
 type unsafe_needs = {
   mldummy : bool;

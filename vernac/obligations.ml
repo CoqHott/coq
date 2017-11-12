@@ -1,5 +1,4 @@
 open Printf
-open Globnames
 open Libobject
 open Entries
 open Decl_kinds
@@ -304,7 +303,7 @@ type program_info_aux = {
   prg_body: constr;
   prg_type: constr;
   prg_ctx:  Evd.evar_universe_context;
-  prg_pl: Id.t Loc.located list option;
+  prg_univdecl: Univdecls.universe_decl;
   prg_obligations: obligations;
   prg_deps : Id.t list;
   prg_fixkind : fixpoint_kind option ;
@@ -474,8 +473,7 @@ let declare_definition prg =
     (Evd.evar_universe_context_subst prg.prg_ctx) in
   let opaque = prg.prg_opaque in
   let fix_exn = Hook.get get_fix_exn () in
-  let pl, ctx =
-    Evd.universe_context ?names:prg.prg_pl (Evd.from_ctx prg.prg_ctx) in
+  let pl, ctx = Evd.check_univ_decl (Evd.from_ctx prg.prg_ctx) prg.prg_univdecl in
   let ce =
     definition_entry ~fix_exn
      ~opaque ~types:(nf typ) ~poly:(pi2 prg.prg_kind)
@@ -557,7 +555,7 @@ let declare_mutual_definition l =
   let kns = List.map4 (DeclareDef.declare_fix ~opaque (local, poly, kind) [] ctx)
     fixnames fixdecls fixtypes fiximps in
     (* Declare notations *)
-    List.iter Metasyntax.add_notation_interpretation first.prg_notations;
+    List.iter (Metasyntax.add_notation_interpretation (Global.env())) first.prg_notations;
     Declare.recursive_message (fixkind != IsCoFixpoint) indexes fixnames;
     let gr = List.hd kns in
     let kn = match gr with ConstRef kn -> kn | _ -> assert false in
@@ -658,7 +656,7 @@ let declare_obligation prg obl body ty uctx =
 	    else
 	      Some (TermObl (it_mkLambda_or_LetIn_or_clean (mkApp (mkConst constant, args)) ctx)) }
 
-let init_prog_info ?(opaque = false) sign n pl b t ctx deps fixkind
+let init_prog_info ?(opaque = false) sign n udecl b t ctx deps fixkind
 		   notations obls impls kind reduce hook =
   let obls', b =
     match b with
@@ -679,7 +677,7 @@ let init_prog_info ?(opaque = false) sign n pl b t ctx deps fixkind
 	  obls, b
   in
     { prg_name = n ; prg_body = b; prg_type = reduce t; 
-      prg_ctx = ctx; prg_pl = pl;
+      prg_ctx = ctx; prg_univdecl = udecl;
       prg_obligations = (obls', Array.length obls');
       prg_deps = deps; prg_fixkind = fixkind ; prg_notations = notations ;
       prg_implicits = impls; prg_kind = kind; prg_reduce = reduce; 
@@ -847,9 +845,9 @@ let obligation_terminator name num guard hook auto pf =
       let obl = obls.(num) in
       let status =
         match obl.obl_status, opq with
-        | (_, Evar_kinds.Expand), Vernacexpr.Opaque _ -> err_not_transp ()
-        | (true, _), Vernacexpr.Opaque _ -> err_not_transp ()
-        | (false, _), Vernacexpr.Opaque _ -> Evar_kinds.Define true
+        | (_, Evar_kinds.Expand), Vernacexpr.Opaque -> err_not_transp ()
+        | (true, _), Vernacexpr.Opaque -> err_not_transp ()
+        | (false, _), Vernacexpr.Opaque -> Evar_kinds.Define true
         | (_, Evar_kinds.Define true), Vernacexpr.Transparent -> Evar_kinds.Define false
         | (_, status), Vernacexpr.Transparent -> status
       in
@@ -889,7 +887,7 @@ in
       let ctx' = Evd.merge_universe_subst evd (Evd.universe_subst (Evd.from_ctx ctx')) in
       Univ.Instance.empty, Evd.evar_universe_context ctx'
     else
-      let (_, uctx) = UState.universe_context ctx' in
+      let (_, uctx) = UState.universe_context ~names:[] ~extensible:true ctx' in
       Univ.UContext.instance uctx, ctx'
   in
   let obl = { obl with obl_body = Some (DefinedObl (cst, inst)) } in
@@ -1068,11 +1066,12 @@ let show_term n =
 	     Printer.pr_constr_env (Global.env ()) Evd.empty prg.prg_type ++ spc () ++ str ":=" ++ fnl ()
 	    ++ Printer.pr_constr_env (Global.env ()) Evd.empty prg.prg_body)
 
-let add_definition n ?term t ctx ?pl ?(implicits=[]) ?(kind=Global,false,Definition) ?tactic
+let add_definition n ?term t ctx ?(univdecl=Univdecls.default_univ_decl)
+                   ?(implicits=[]) ?(kind=Global,false,Definition) ?tactic
     ?(reduce=reduce) ?(hook=Lemmas.mk_hook (fun _ _ _ -> ())) ?(opaque = false) obls =
   let sign = Decls.initialize_named_context_for_proof () in
   let info = Id.print n ++ str " has type-checked" in
-  let prg = init_prog_info sign ~opaque n pl term t ctx [] None [] obls implicits kind reduce hook in
+  let prg = init_prog_info sign ~opaque n univdecl term t ctx [] None [] obls implicits kind reduce hook in
   let obls,_ = prg.prg_obligations in
   if Int.equal (Array.length obls) 0 then (
     Flags.if_verbose Feedback.msg_info (info ++ str ".");
@@ -1087,13 +1086,14 @@ let add_definition n ?term t ctx ?pl ?(implicits=[]) ?(kind=Global,false,Definit
 	| Remain rem -> Flags.if_verbose (fun () -> show_obligations ~msg:false (Some n)) (); res
 	| _ -> res)
 
-let add_mutual_definitions l ctx ?pl ?tactic ?(kind=Global,false,Definition) ?(reduce=reduce)
+let add_mutual_definitions l ctx ?(univdecl=Univdecls.default_univ_decl) ?tactic
+                           ?(kind=Global,false,Definition) ?(reduce=reduce)
     ?(hook=Lemmas.mk_hook (fun _ _ _ -> ())) ?(opaque = false) notations fixkind =
   let sign = Decls.initialize_named_context_for_proof () in
   let deps = List.map (fun (n, b, t, imps, obls) -> n) l in
     List.iter
     (fun  (n, b, t, imps, obls) ->
-     let prg = init_prog_info sign ~opaque n pl (Some b) t ctx deps (Some fixkind)
+     let prg = init_prog_info sign ~opaque n univdecl (Some b) t ctx deps (Some fixkind)
        notations obls imps kind reduce hook 
      in progmap_add n (CEphemeron.create prg)) l;
     let _defined =

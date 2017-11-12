@@ -91,12 +91,12 @@ let elimOnConstrWithHoles tac with_evars c =
     (fun c -> tac with_evars (Some (None,ElimOnConstr c)))
 
 TACTIC EXTEND simplify_eq
-  [ "simplify_eq" ] -> [ dEq false None ]
-| [ "simplify_eq" destruction_arg(c) ] -> [ mytclWithHoles dEq false c ]
+  [ "simplify_eq" ] -> [ dEq ~keep_proofs:None false None ]
+| [ "simplify_eq" destruction_arg(c) ] -> [ mytclWithHoles (dEq ~keep_proofs:None) false c ]
 END
 TACTIC EXTEND esimplify_eq
-| [ "esimplify_eq" ] -> [ dEq true None ]
-| [ "esimplify_eq" destruction_arg(c) ] -> [ mytclWithHoles dEq true c ]
+| [ "esimplify_eq" ] -> [ dEq ~keep_proofs:None true None ]
+| [ "esimplify_eq" destruction_arg(c) ] -> [ mytclWithHoles (dEq ~keep_proofs:None) true c ]
 END
 
 let discr_main c = elimOnConstrWithHoles discr_tac false c
@@ -117,31 +117,31 @@ let discrHyp id =
   discr_main (fun env sigma -> (sigma, (EConstr.mkVar id, NoBindings)))
 
 let injection_main with_evars c =
- elimOnConstrWithHoles (injClause None) with_evars c
+ elimOnConstrWithHoles (injClause None None) with_evars c
 
 TACTIC EXTEND injection
-| [ "injection" ] -> [ injClause None false None ]
-| [ "injection" destruction_arg(c) ] -> [ mytclWithHoles (injClause None) false c ]
+| [ "injection" ] -> [ injClause None None false None ]
+| [ "injection" destruction_arg(c) ] -> [ mytclWithHoles (injClause None None) false c ]
 END
 TACTIC EXTEND einjection
-| [ "einjection" ] -> [ injClause None true None ]
-| [ "einjection" destruction_arg(c) ] -> [ mytclWithHoles (injClause None) true c ]
+| [ "einjection" ] -> [ injClause None None true None ]
+| [ "einjection" destruction_arg(c) ] -> [ mytclWithHoles (injClause None None) true c ]
 END
 TACTIC EXTEND injection_as
 | [ "injection" "as" intropattern_list(ipat)] ->
-    [ injClause (Some ipat) false None ]
+    [ injClause None (Some ipat) false None ]
 | [ "injection" destruction_arg(c) "as" intropattern_list(ipat)] ->
-    [ mytclWithHoles (injClause (Some ipat)) false c ]
+    [ mytclWithHoles (injClause None (Some ipat)) false c ]
 END
 TACTIC EXTEND einjection_as
 | [ "einjection" "as" intropattern_list(ipat)] ->
-    [ injClause (Some ipat) true None ]
+    [ injClause None (Some ipat) true None ]
 | [ "einjection" destruction_arg(c) "as" intropattern_list(ipat)] ->
-    [ mytclWithHoles (injClause (Some ipat)) true c ]
+    [ mytclWithHoles (injClause None (Some ipat)) true c ]
 END
 TACTIC EXTEND simple_injection
-| [ "simple" "injection" ] -> [ simpleInjClause false None ]
-| [ "simple" "injection" destruction_arg(c) ] -> [ mytclWithHoles simpleInjClause false c ]
+| [ "simple" "injection" ] -> [ simpleInjClause None false None ]
+| [ "simple" "injection" destruction_arg(c) ] -> [ mytclWithHoles (simpleInjClause None) false c ]
 END
 
 let injHyp id =
@@ -665,7 +665,7 @@ let hResolve id c occ t =
   let sigma = Proofview.Goal.sigma gl in
   let env = Termops.clear_named_body id (Proofview.Goal.env gl) in
   let concl = Proofview.Goal.concl gl in
-  let env_ids = Termops.ids_of_context env in
+  let env_ids = Termops.vars_of_env env in
   let c_raw = Detyping.detype Detyping.Now true env_ids env sigma c in
   let t_raw = Detyping.detype Detyping.Now true env_ids env sigma t in
   let rec resolve_hole t_hole =
@@ -764,7 +764,7 @@ let case_eq_intros_rewrite x =
       mkCaseEq x;
     Proofview.Goal.enter begin fun gl ->
       let concl = Proofview.Goal.concl gl in
-      let hyps = Tacmach.New.pf_ids_of_hyps gl in
+      let hyps = Tacmach.New.pf_ids_set_of_hyps gl in
       let n' = nb_prod (Tacmach.New.project gl) concl in
       let h = fresh_id_in_env hyps (Id.of_string "heq") (Proofview.Goal.env gl)  in
       Tacticals.New.tclTHENLIST [
@@ -827,8 +827,9 @@ END
 
 let eq_constr x y = 
   Proofview.Goal.enter begin fun gl ->
+    let env = Tacmach.New.pf_env gl in
     let evd = Tacmach.New.project gl in
-      match EConstr.eq_constr_universes evd x y with
+      match EConstr.eq_constr_universes env evd x y with
       | Some _ -> Proofview.tclUNIT () 
       | None -> Tacticals.New.tclFAIL 0 (str "Not equal")
   end

@@ -1,4 +1,4 @@
-(* Check bug #1025 submitted by Pierre-Luc Carmel Biron *)
+(* Check BZ#1025 submitted by Pierre-Luc Carmel Biron *)
 
 Module Type FOO.
   Parameter A : Type.
@@ -18,7 +18,7 @@ Module Bar : BAR.
 
 End Bar.
 
-(* Check bug #2809: correct printing of modules with notations *)
+(* Check BZ#2809: correct printing of modules with notations *)
 
 Module C.
   Inductive test : Type :=
@@ -29,3 +29,20 @@ Module C.
 End C.
 
 Print C. (* Should print test_rect without failing *)
+
+Unset Elimination Schemes.
+
+Module Type S.
+
+  Inductive t : Type :=.
+  Parameter unt : t.
+
+End S.
+
+Module Type Term_ordering.
+
+End Term_ordering.
+
+Module Make (T1: S) <: Term_ordering.
+
+End Make. (* <- uncaught Not_found with a633e9ac4 without 76727dc25 *)

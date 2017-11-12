@@ -122,7 +122,8 @@ let generate_makefile oc conf_file local_file args project =
     Envars.coqlib () ^ template in
   let s = read_whole_file makefile_template in
   let s = List.fold_left
-    (fun s (k,v) -> Str.global_replace (Str.regexp_string k) v s) s
+    (* We use global_substitute to avoid running into backslash issues due to \1 etc. *)
+    (fun s (k,v) -> Str.global_substitute (Str.regexp_string k) (fun _ -> v) s) s
     [ "@CONF_FILE@", conf_file;
       "@LOCAL_FILE@", local_file;
       "@COQ_VERSION@", Coq_config.version;
@@ -274,7 +275,7 @@ let generate_conf oc project args  =
 ;;
 
 let ensure_root_dir
-  ({ ml_includes; r_includes;
+  ({ ml_includes; r_includes; q_includes;
      v_files; ml_files; mli_files; ml4_files;
      mllib_files; mlpack_files } as project)
 =
@@ -283,6 +284,7 @@ let ensure_root_dir
   let not_tops = List.for_all (fun s -> s <> Filename.basename s) in
   if exists (fun { canonical_path = x } -> x = here) ml_includes
   || exists (fun ({ canonical_path = x },_) -> is_prefix x here) r_includes
+  || exists (fun ({ canonical_path = x },_) -> is_prefix x here) q_includes
   || (not_tops v_files &&
       not_tops mli_files && not_tops ml4_files && not_tops ml_files &&
       not_tops mllib_files && not_tops mlpack_files)

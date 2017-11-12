@@ -10,7 +10,6 @@
 
 open Names
 open Libnames
-open Globnames
 
 val simple_extraction : reference -> unit
 val full_extraction : string option -> reference list -> unit
@@ -34,5 +33,4 @@ val print_one_decl :
 (* Used by Extraction Compute *)
 
 val structure_for_compute :
-  Term.constr ->
-    Miniml.ml_flat_structure * Miniml.ml_ast * Miniml.ml_type
+  Term.constr -> (Miniml.ml_decl list) * Miniml.ml_ast * Miniml.ml_type

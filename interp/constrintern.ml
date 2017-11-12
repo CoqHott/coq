@@ -469,8 +469,7 @@ let intern_local_binder_aux ?(global_level=false) intern lvar (env,bl) = functio
         | _ -> assert false
       in
       let env = {env with ids = List.fold_right Id.Set.add il env.ids} in
-      let ienv = Id.Set.elements env.ids in
-      let id = Namegen.next_ident_away (Id.of_string "pat") ienv in
+      let id = Namegen.next_ident_away (Id.of_string "pat") env.ids in
       let na = (loc, Name id) in
       let bk = Default Explicit in
       let _, bl' = intern_assumption intern lvar env [na] bk tyc in
@@ -912,7 +911,7 @@ let interp_reference vars r =
 (** Private internalization patterns *)
 type 'a raw_cases_pattern_expr_r =
   | RCPatAlias of 'a raw_cases_pattern_expr * Id.t
-  | RCPatCstr  of Globnames.global_reference
+  | RCPatCstr  of Names.global_reference
     * 'a raw_cases_pattern_expr list * 'a raw_cases_pattern_expr list
   (** [RCPatCstr (loc, c, l1, l2)] represents ((@c l1) l2) *)
   | RCPatAtom  of Id.t option
@@ -1939,13 +1938,13 @@ let internalize globalenv env pattern_mode (_, ntnvars as lvar) c =
                 | _ ->
                   let fresh =
                     Namegen.next_name_away_with_default_using_types "iV" cano_name forbidden_names (EConstr.of_constr ty) in
-                  canonize_args t tt (fresh::forbidden_names)
+                  canonize_args t tt (Id.Set.add fresh forbidden_names)
                     ((fresh,c)::match_acc) ((cases_pattern_loc c,Name fresh)::var_acc)
                 end
 	      | _ -> assert false in
 	  let _,args_rel =
 	    List.chop nparams (List.rev mip.Declarations.mind_arity_ctxt) in
-	  canonize_args args_rel l (Id.Set.elements forbidden_names_for_gen) [] [] in
+	  canonize_args args_rel l forbidden_names_for_gen [] [] in
 	match_to_do, Some (cases_pattern_expr_loc t,(ind,List.rev_map snd nal))
     | None ->
       [], None in
@@ -2133,8 +2132,7 @@ let intern_constr_pattern env ?(as_type=false) ?(ltacvars=empty_ltac_sign) c =
             ~pattern_mode:true ~ltacvars env c in
   pattern_of_glob_constr c
 
-let interp_notation_constr ?(impls=empty_internalization_env) nenv a =
-  let env = Global.env () in
+let interp_notation_constr env ?(impls=empty_internalization_env) nenv a =
   (* [vl] is intended to remember the scope of the free variables of [a] *)
   let vl = Id.Map.map (fun typ -> (ref true, ref None, typ)) nenv.ninterp_var_type in
   let c = internalize (Global.env()) {ids = extract_ids env; unb = false;
@@ -2213,4 +2211,3 @@ let interp_context_evars ?(global_level=false) ?(impl_env=empty_internalization_
   let int_env,bl = intern_context global_level env impl_env params in
   let x = interp_glob_context_evars env evdref shift bl in
   int_env, x
-

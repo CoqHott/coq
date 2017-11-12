@@ -7,13 +7,13 @@
 (************************************************************************)
 
 open Names
-open Globnames
 open Term
 open Environ
 open Pattern
 open Evd
 open Proof_type
 open Glob_term
+open Ltac_pretype
 
 (** These are the entry points for printing terms, context, tac, ... *)
 
@@ -32,6 +32,8 @@ val pr_constr_env          : env -> evar_map -> constr -> Pp.t
 val pr_constr              : constr -> Pp.t
 val pr_constr_goal_style_env : env -> evar_map -> constr -> Pp.t
 
+val pr_constr_n_env        : env -> evar_map -> Notation_term.tolerability -> constr -> Pp.t
+
 (** Same, but resilient to [Nametab] errors. Prints fully-qualified
     names when [shortest_qualid_of_global] has failed. Prints "??"
     in case of remaining issues (such as reference not in env). *)
@@ -46,6 +48,8 @@ val pr_econstr_env     : env -> evar_map -> EConstr.t -> Pp.t
 val pr_econstr         : EConstr.t -> Pp.t
 val pr_leconstr_env     : env -> evar_map -> EConstr.t -> Pp.t
 val pr_leconstr         : EConstr.t -> Pp.t
+
+val pr_econstr_n_env    : env -> evar_map -> Notation_term.tolerability -> EConstr.t -> Pp.t
 
 val pr_etype_env           : env -> evar_map -> EConstr.types -> Pp.t
 val pr_letype_env           : env -> evar_map -> EConstr.types -> Pp.t
@@ -69,6 +73,7 @@ val pr_ltype               : types -> Pp.t
 val pr_type_env            : env -> evar_map -> types -> Pp.t
 val pr_type                : types -> Pp.t
 
+val pr_closed_glob_n_env   : env -> evar_map -> Notation_term.tolerability -> closed_glob_constr -> Pp.t
 val pr_closed_glob_env     : env -> evar_map -> closed_glob_constr -> Pp.t
 val pr_closed_glob         : closed_glob_constr -> Pp.t
 
@@ -96,7 +101,8 @@ val pr_sort                : evar_map -> sorts -> Pp.t
 val pr_polymorphic         : bool -> Pp.t
 val pr_cumulative          : bool -> bool -> Pp.t
 val pr_universe_instance   : evar_map -> Univ.universe_context -> Pp.t
-val pr_universe_ctx        : evar_map -> Univ.universe_context -> Pp.t
+val pr_universe_ctx        : evar_map -> ?variance:Univ.Variance.t array ->
+  Univ.universe_context -> Pp.t
 val pr_cumulativity_info   : evar_map -> Univ.cumulativity_info -> Pp.t
 
 (** Printing global references using names as short as possible *)
@@ -195,7 +201,6 @@ val pr_assumptionset :
   env -> Term.types ContextObjectMap.t -> Pp.t
 
 val pr_goal_by_id : Id.t -> Pp.t
-val pr_goal_by_uid : string -> Pp.t
 
 type printer_pr = {
  pr_subgoals            : ?pr_first:bool -> Pp.t option -> evar_map -> evar list -> Goal.goal list -> int list -> goal list -> goal list -> Pp.t;

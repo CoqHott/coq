@@ -499,6 +499,13 @@ val constructor_user_hash : constructor -> int
 val constructor_syntactic_ord : constructor -> constructor -> int
 val constructor_syntactic_hash : constructor -> int
 
+(** {6 Global reference is a kernel side type for all references together } *)
+type global_reference =
+  | VarRef of variable           (** A reference to the section-context. *)
+  | ConstRef of Constant.t       (** A reference to the environment. *)
+  | IndRef of inductive          (** A reference to an inductive type. *)
+  | ConstructRef of constructor  (** A reference to a constructor of an inductive type. *)
+
 (** Better to have it here that in Closure, since required in grammar.cma *)
 type evaluable_global_reference =
   | EvalVarRef of Id.t
@@ -546,28 +553,28 @@ val eq_ind_chk : inductive -> inductive -> bool
 (** {5 Identifiers} *)
 
 type identifier = Id.t
-(** @deprecated Alias for [Id.t] *)
+[@@ocaml.deprecated "Alias for [Id.t]"]
 
-val string_of_id : identifier -> string
-(** @deprecated Same as [Id.to_string]. *)
+val string_of_id : Id.t -> string
+[@@ocaml.deprecated "Same as [Id.to_string]."]
 
-val id_of_string : string -> identifier
-(** @deprecated Same as [Id.of_string]. *)
+val id_of_string : string -> Id.t
+[@@ocaml.deprecated "Same as [Id.of_string]."]
 
-val id_ord : identifier -> identifier -> int
-(** @deprecated Same as [Id.compare]. *)
+val id_ord : Id.t -> Id.t -> int
+[@@ocaml.deprecated "Same as [Id.compare]."]
 
-val id_eq : identifier -> identifier -> bool
-(** @deprecated Same as [Id.equal]. *)
+val id_eq : Id.t -> Id.t -> bool
+[@@ocaml.deprecated "Same as [Id.equal]."]
 
-module Idset  : Set.S with type elt = identifier and type t = Id.Set.t
-(** @deprecated Same as [Id.Set]. *)
+module Idset  : Set.S with type elt = Id.t and type t = Id.Set.t
+[@@ocaml.deprecated "Same as [Id.Set]."]
 
-module Idpred : Predicate.S with type elt = identifier and type t = Id.Pred.t
-(** @deprecated Same as [Id.Pred]. *)
+module Idpred : Predicate.S with type elt = Id.t and type t = Id.Pred.t
+[@@ocaml.deprecated "Same as [Id.Pred]."]
 
 module Idmap : module type of Id.Map
-(** @deprecated Same as [Id.Map]. *)
+[@@ocaml.deprecated "Same as [Id.Map]."]
 
 (** {5 Directory paths} *)
 
