@@ -536,24 +536,54 @@ let input_universe : universe_decl -> Libobject.obj =
       subst_function = (fun (subst, a) -> (** Actually the name is generated once and for all. *) a);
       classify_function = (fun a -> Substitute a) }
 
+type univ_binder_kind =
+  | PolyBinders
+  | MonoBinders of Id.t * Univ.LSet.t
+
+let univ_binder_kind = function
+  | ConstRef c ->
+    (match (Global.lookup_constant c).const_universes with
+     | Polymorphic_const _ -> PolyBinders
+     | Monomorphic_const (univs,_) ->
+       MonoBinders (Label.to_id @@ Constant.label c, univs))
+  | IndRef (c, _) ->
+    (match (Global.lookup_mind c).mind_universes with
+      | Polymorphic_ind _ | Cumulative_ind _ -> PolyBinders
+      | Monomorphic_ind (univs,_) ->
+        MonoBinders (Label.to_id @@ MutInd.label c, univs))
+  | VarRef id -> MonoBinders (id, Univ.LSet.empty)
+  | ConstructRef _ ->
+    anomaly ~label:"declare_univ_binders"
+      Pp.(str "declare_univ_binders on an constructor reference")
+
 let declare_univ_binders gr pl =
-  if Global.is_polymorphic gr then
+  match univ_binder_kind gr with
+  | PolyBinders ->
     Universes.register_universe_binders gr pl
-  else
-    let l = match gr with
-      | ConstRef c -> Label.to_id @@ Constant.label c
-      | IndRef (c, _) -> Label.to_id @@ MutInd.label c
-      | VarRef id -> id
-      | ConstructRef _ ->
-        anomaly ~label:"declare_univ_binders"
-          Pp.(str "declare_univ_binders on an constructor reference")
-    in
+  | MonoBinders (l, univs) ->
+    let open Univ in
     Id.Map.iter (fun id lvl ->
         match Univ.Level.name lvl with
         | None -> ()
         | Some na ->
           ignore (Lib.add_leaf id (input_universe (QualifiedUniv l, na))))
-      pl
+      pl;
+    (* For those universes without a user name, make up something like constant#i. *)
+    let i = ref 0 in
+    LSet.iter (fun u ->
+        match Level.name u with
+        | Some na ->
+          begin
+            try ignore(Nametab.shortest_qualid_of_universe na)
+            with Not_found ->
+              begin
+                let id = Id.of_string_soft (Id.to_string l ^"#"^ string_of_int !i) in
+                incr i;
+                ignore (Lib.add_leaf id (input_universe (UnqualifiedUniv, na)))
+              end
+          end
+        | None -> ())
+      univs
 
 let do_universe poly l =
   let in_section = Lib.sections_are_opened () in

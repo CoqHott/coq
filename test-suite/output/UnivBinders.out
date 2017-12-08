@@ -161,12 +161,12 @@ axbar@{i Top.44 Top.45} : Type@{Top.45} -> Type@{i}
 axbar is universe polymorphic
 Argument scope is [type_scope]
 Expands to: Constant Top.axbar
-axfoo' : Type@{Top.47} -> Type@{axbar'.i}
+axfoo' : Type@{axfoo'#0} -> Type@{axbar'.i}
 
 axfoo' is not universe polymorphic
 Argument scope is [type_scope]
 Expands to: Constant Top.axfoo'
-axbar' : Type@{Top.47} -> Type@{axbar'.i}
+axbar' : Type@{axfoo'#0} -> Type@{axbar'.i}
 
 axbar' is not universe polymorphic
 Argument scope is [type_scope]
