@@ -198,7 +198,7 @@ let push_context ?(strict=false) ctx env =
 
 let add_universes_set strict ctx g =
   let g = Univ.LSet.fold
-	    (fun v g -> try UGraph.add_universe v strict g with UGraph.AlreadyDeclared -> g)
+            (fun v g -> UGraph.add_universe v strict g)
 	    (Univ.ContextSet.levels ctx) g
   in UGraph.merge_constraints (Univ.ContextSet.constraints ctx) g
 

@@ -446,7 +446,7 @@ let input_universe_context : universe_context_decl -> Libobject.obj =
   declare_object
     { (default_object "Global universe context state") with
       cache_function = (fun (na, pi) -> cache_universe_context pi);
-      load_function = (fun _ (_, pi) -> cache_universe_context pi);
+      load_function = (fun _ (_, pi) -> ());
       discharge_function = (fun (_, (p, _ as x)) -> if p then None else Some x);
       classify_function = (fun a -> Keep a) }
 

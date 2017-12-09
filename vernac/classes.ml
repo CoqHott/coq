@@ -383,13 +383,13 @@ let context poly l =
   in
   let uctx = ref (Evd.universe_context_set !evars) in
   let fn status (id, b, t) =
+    (* Declare the universe context once *)
+    let univs = if poly
+      then Polymorphic_const_entry (Univ.ContextSet.to_context !uctx)
+      else Monomorphic_const_entry !uctx
+    in
+    let () = uctx := Univ.ContextSet.empty in
     if Lib.is_modtype () && not (Lib.sections_are_opened ()) then
-      (* Declare the universe context once *)
-      let univs = if poly
-        then Polymorphic_const_entry (Univ.ContextSet.to_context !uctx)
-        else Monomorphic_const_entry !uctx
-      in
-      let () = uctx := Univ.ContextSet.empty in
       let decl = match b with
       | None ->
         (ParameterEntry (None,(t,univs),None), IsAssumption Logical)
@@ -412,10 +412,6 @@ let context poly l =
       in
       let impl = List.exists test impls in
       let decl = (Discharge, poly, Definitional) in
-      let univs = if poly
-        then Polymorphic_const_entry (Univ.ContextSet.to_context !uctx)
-        else Monomorphic_const_entry !uctx
-      in
       let nstatus = match b with
       | None ->
         pi3 (Command.declare_assumption false decl (t, univs) Universes.empty_binders [] impl
@@ -430,5 +426,8 @@ let context poly l =
 	status && nstatus
   in 
   if Lib.sections_are_opened () then
-    Declare.declare_universe_context poly !uctx;
+    begin
+      Declare.declare_universe_context poly !uctx;
+      uctx := Univ.ContextSet.empty
+    end;
   List.fold_left fn true (List.rev ctx)
