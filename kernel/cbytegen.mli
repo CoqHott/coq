@@ -16,11 +16,11 @@ open Pre_env
 
 (** Should only be used for monomorphic terms *)
 val compile : fail_on_error:bool ->
-	      ?universes:int -> env -> constr -> (bytecodes * bytecodes * fv) option
+              ?universes:int -> 'e Evkey.t env -> 'e constr_g -> (bytecodes * bytecodes * fv) option
 (** init, fun, fv *)
 
 val compile_constant_body : fail_on_error:bool ->
-			    env -> constant_universes -> constant_def -> body_code option
+                            ground env -> constant_universes -> constant_def -> body_code option
 
 (** Shortcut of the previous function used during module strengthening *)
 

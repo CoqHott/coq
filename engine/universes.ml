@@ -658,7 +658,7 @@ let nf_evars_and_universes_opt_subst f subst =
   let subst = normalize_univ_variable_opt_subst (ref subst) in
   let lsubst = level_subst_of subst in
   let rec aux c =
-    match kind c with
+    match kind_g c with
     | Evar (evk, args) ->
       let args = Array.map aux args in
       (match try f (evk, args) with Not_found -> None with
@@ -676,7 +676,7 @@ let nf_evars_and_universes_opt_subst f subst =
     | Sort (Type u) ->
       let u' = Univ.subst_univs_universe subst u in
         if u' == u then c else mkSort (sort_of_univ u')
-    | _ -> Constr.map aux c
+    | _ -> Constr.map_g aux c
   in aux
 
 let make_opt_subst s = 

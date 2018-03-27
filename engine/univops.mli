@@ -12,7 +12,7 @@ open Constr
 open Univ
 
 (** The universes of monomorphic constants appear. *)
-val universes_of_constr : Environ.env -> constr -> LSet.t
+val universes_of_constr : ground Environ.env -> constr -> LSet.t
 
 (** Shrink a universe context to a restricted set of variables *)
 val restrict_universe_context : ContextSet.t -> LSet.t -> ContextSet.t

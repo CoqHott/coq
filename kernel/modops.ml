@@ -36,7 +36,7 @@ type signature_mismatch_error =
   | NotConvertibleInductiveField of Id.t
   | NotConvertibleConstructorField of Id.t
   | NotConvertibleBodyField
-  | NotConvertibleTypeField of env * types * types
+  | NotConvertibleTypeField of ground env * types * types
   | CumulativeStatusExpected of bool
   | PolymorphicStatusExpected of bool
   | NotSameConstructorNamesField
@@ -50,7 +50,7 @@ type signature_mismatch_error =
   | NoTypeConstraintExpected
   | IncompatibleInstances
   | IncompatibleUniverses of Univ.univ_inconsistency
-  | IncompatiblePolymorphism of env * types * types
+  | IncompatiblePolymorphism of ground env * types * types
   | IncompatibleConstraints of Univ.AUContext.t
 
 type module_typing_error =

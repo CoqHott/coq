@@ -69,7 +69,7 @@ type case_info =
 
 (* [constr array] is an instance matching definitional [named_context] in
    the same order (i.e. last argument first) *)
-type 'constr pexistential = existential_key * 'constr array
+type ('e, 'constr) pexistential = 'e * 'constr array
 type ('constr, 'types) prec_declaration =
     Name.t array * 'types array * 'constr array
 type ('constr, 'types) pfixpoint =
@@ -83,11 +83,11 @@ type pconstructor = constructor puniverses
 
 (* [Var] is used for named variables and [Rel] for variables as
    de Bruijn indices. *)
-type ('constr, 'types, 'sort, 'univs) kind_of_term =
+type ('e, 'constr, 'types, 'sort, 'univs) kind_of_term =
   | Rel       of int
   | Var       of Id.t
   | Meta      of metavariable
-  | Evar      of 'constr pexistential
+  | Evar      of ('e, 'constr) pexistential
   | Sort      of 'sort
   | Cast      of 'constr * cast_kind * 'types
   | Prod      of Name.t * 'types * 'types
@@ -101,14 +101,54 @@ type ('constr, 'types, 'sort, 'univs) kind_of_term =
   | Fix       of ('constr, 'types) pfixpoint
   | CoFix     of ('constr, 'types) pcofixpoint
   | Proj      of Projection.t * 'constr
-(* constr is the fixpoint of the previous type. Requires option
-   -rectypes of the Caml compiler to be set *)
-type t
+
+type ground = [ `NO of Util.Empty.t ]
+type evars = [ ground | `Evar of Evar.t ]
+
+module Evkey = struct
+  type 'e t = [< evars > `NO ] as 'e
+
+  let evar (x : 'e t) =
+    match x with
+    | `NO e -> Util.Empty.abort e
+    | `Evar e -> e
+
+  let equal (x : 'e t) (y: 'e t) : bool =
+    match x, y with
+    | `NO e , _ | _, `NO e -> Util.Empty.abort e
+    | `Evar e, `Evar e' -> Evar.equal e e'
+
+  let compare (x : 'e t) (y: 'e t) : int =
+    match x, y with
+    | `NO e , _ | _, `NO e -> Util.Empty.abort e
+    | `Evar e, `Evar e' -> Evar.compare e e'
+
+  let hash (x : 'e t) : int =
+    match x with
+    | `NO e -> Util.Empty.abort e
+    | `Evar e -> Evar.hash e
+
+  let make (x:Evar.t) : evars = `Evar x
+end
+(* constr is the fixpoint of the previous type. We define it as an
+   abstract type to make the type variable covariant. Mutability of
+   arrays prevents it otherwise. This means if we mutate the arrays we
+   have to do so at the most specific type the constr is known to have
+   (in practice this means at ground, which is when hconsing is done).
+*)
+type +'e constr_g (* = ('e, 'e constr_g, 'e constr_g, Sorts.t, Instance.t) kind_of_term *)
+type +'e types_g = 'e constr_g
+type 'e kind_g = ('e, 'e constr_g, 'e types_g, Sorts.t, Instance.t) kind_of_term
+
+type t = ground constr_g
 type constr = t
 
-type existential = existential_key * constr array
-type rec_declaration = Name.t array * constr array * constr array
-type fixpoint = (int array * int) * rec_declaration
+type 'e existential_g = ('e, 'e constr_g) pexistential
+
+type 'e rec_declaration_g = Name.t array * 'e types_g array * 'e constr_g array
+type 'e fixpoint_g = (int array * int) * 'e rec_declaration_g
+type rec_declaration = ground rec_declaration_g
+type fixpoint = ground fixpoint_g
   (* The array of [int]'s tells for each component of the array of
      mutual fixpoints the number of lambdas to skip before finding the
      recursive argument (e.g., value is 2 in "fix f (x:A) (y:=t) (z:B)
@@ -116,7 +156,8 @@ type fixpoint = (int array * int) * rec_declaration
      the recursive argument);
      The second component [int] tells which component of the block is
      returned *)
-type cofixpoint = int * rec_declaration
+type 'e cofixpoint_g = int * 'e rec_declaration_g
+type cofixpoint = ground cofixpoint_g
   (* The component [int] tells which component of the block of
      cofixpoint is returned *)
 
@@ -126,16 +167,21 @@ type types = constr
 (* Term constructors *)
 (*********************)
 
-let kind (c:t) : (t,t,Sorts.t,Instance.t) kind_of_term = Obj.magic c
+let kind_g (c:'e constr_g) : 'e kind_g = Obj.magic c
 
-let mk (k:(t,t,Sorts.t,Instance.t) kind_of_term) : t = Obj.magic k
+let kind (c:constr) = kind_g c
+
+let mk (k:'e kind_g) : 'e constr_g = Obj.magic k
 
 (* Constructs a de Bruijn index with number n *)
-let rels = Array.map mk
+let rels : t array = Array.map mk
   [|Rel  1;Rel  2;Rel  3;Rel  4;Rel  5;Rel  6;Rel  7; Rel  8;
     Rel  9;Rel 10;Rel 11;Rel 12;Rel 13;Rel 14;Rel 15; Rel 16|]
 
-let mkRel n = if 0<n && n<=16 then rels.(n-1) else mk @@ Rel n
+let mkRel n =
+  if 0<n && n<=16
+  then Obj.magic rels.(n-1)
+  else mk @@ Rel n
 
 (* Construct a type *)
 let mkProp   = mk @@ Sort Sorts.prop
@@ -149,7 +195,7 @@ let mkSort   = function
 (* Constructs the term t1::t2, i.e. the term t1 casted with the type t2 *)
 (* (that means t2 is declared as the type of t1) *)
 let mkCast (t1,k2,t2) =
-  match kind t1 with
+  match kind_g t1 with
   | Cast (c,k1, _) when (k1 == VMcast || k1 == NATIVEcast) && k1 == k2 -> mk @@ Cast (c,k1,t2)
   | _ -> mk @@ Cast (t1,k2,t2)
 
@@ -167,7 +213,7 @@ let mkLetIn (x,c1,t,c2) = mk @@ LetIn (x,c1,t,c2)
    function is not itself an applicative term *)
 let mkApp (f, a) =
   if Int.equal (Array.length a) 0 then f else
-    match kind f with
+    match kind_g f with
       | App (g, cl) -> mk @@ App (g, Array.append cl a)
       | _ -> mk @@ App (f, a)
 
@@ -293,8 +339,8 @@ let is_small = Sorts.is_small
 let iskind c = isprop c || is_Type c
 
 (* Tests if an evar *)
-let isEvar c = match kind c with Evar _ -> true | _ -> false
-let isEvar_or_Meta c = match kind c with
+let isEvar c = match kind_g c with Evar _ -> true | _ -> false
+let isEvar_or_Meta c = match kind_g c with
   | Evar _ | Meta _ -> true
   | _ -> false
 
@@ -305,7 +351,8 @@ let isRelN n c =
   match kind c with Rel n' -> Int.equal n n' | _ -> false
 (* Tests if a variable *)
 let isVar c = match kind c with Var _ -> true | _ -> false
-let isVarId id c = match kind c with Var id' -> Id.equal id id' | _ -> false
+let isVarId_g id c = match kind_g c with Var id' -> Id.equal id id' | _ -> false
+let isVarId = isVarId_g
 (* Tests if an inductive *)
 let isInd c = match kind c with Ind _ -> true | _ -> false
 let isProd c = match kind c with | Prod _ -> true | _ -> false
@@ -369,7 +416,7 @@ let destConst c = match kind c with
   | _ -> raise DestKO
 
 (* Destructs an existential variable *)
-let destEvar c = match kind c with
+let destEvar c = match kind_g c with
   | Evar (kn, a as r) -> r
   | _ -> raise DestKO
 
@@ -405,10 +452,12 @@ let destCoFix c = match kind c with
 (* Flattening and unflattening of embedded applications and casts *)
 (******************************************************************)
 
-let decompose_app c =
-  match kind c with
+let decompose_app_g c =
+  match kind_g c with
     | App (f,cl) -> (f, Array.to_list cl)
     | _ -> (c,[])
+
+let decompose_app = decompose_app_g
 
 let decompose_appvect c =
   match kind c with
@@ -423,7 +472,7 @@ let decompose_appvect c =
    starting from [acc] and proceeding from left to right according to
    the usual representation of the constructions; it is not recursive *)
 
-let fold f acc c = match kind c with
+let fold_g f acc c = match kind_g c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> acc
   | Cast (c,_,t) -> f (f acc c) t
@@ -439,11 +488,13 @@ let fold f acc c = match kind c with
   | CoFix (_,(lna,tl,bl)) ->
     Array.fold_left2 (fun acc t b -> f (f acc t) b) acc tl bl
 
+let fold = fold_g
+
 (* [iter f c] iters [f] on the immediate subterms of [c]; it is
    not recursive and the order with which subterms are processed is
    not specified *)
 
-let iter f c = match kind c with
+let iter f c = match kind_g c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> ()
   | Cast (c,_,t) -> f c; f t
@@ -457,13 +508,30 @@ let iter f c = match kind c with
   | Fix (_,(_,tl,bl)) -> Array.iter f tl; Array.iter f bl
   | CoFix (_,(_,tl,bl)) -> Array.iter f tl; Array.iter f bl
 
+exception NotGround
+let force_ground ?(unsafe=false) (c:'e constr_g) : constr =
+  let rec check c =
+    match kind_g c with
+    | Evar _ -> raise NotGround
+    | _ -> iter check c
+  in
+  if not unsafe then check c;
+  Obj.magic c
+
+(* Subtyping won't work because of the `NO, but introducing a
+   constraint to have the `NO has its own issues. *)
+let to_econstr (c:constr) : 'e constr_g = Obj.magic c
+
+(* If this fails to compile we made a mistake *)
+let _to_econstr (c:constr) = (c:>evars constr_g)
+
 (* [iter_with_binders g f n c] iters [f n] on the immediate
    subterms of [c]; it carries an extra data [n] (typically a lift
    index) which is processed by [g] (which typically add 1 to [n]) at
    each binder traversal; it is not recursive and the order with which
    subterms are processed is not specified *)
 
-let iter_with_binders g f n c = match kind c with
+let iter_with_binders_g g f n c = match kind_g c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> ()
   | Cast (c,_,t) -> f n c; f n t
@@ -481,11 +549,13 @@ let iter_with_binders g f n c = match kind c with
       CArray.Fun1.iter f n tl;
       CArray.Fun1.iter f (iterate g (Array.length tl) n) bl
 
+let iter_with_binders = iter_with_binders_g
+
 (* [map f c] maps [f] on the immediate subterms of [c]; it is
    not recursive and the order with which subterms are processed is
    not specified *)
 
-let map f c = match kind c with
+let map_g f c = match kind_g c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> c
   | Cast (b,k,t) ->
@@ -538,6 +608,8 @@ let map f c = match kind c with
       let bl' = Array.smartmap f bl in
       if tl'==tl && bl'==bl then c
       else mkCoFix (ln,(lna,tl',bl'))
+
+let map = map_g
 
 (* Like {!map} but with an accumulator. *)
 
@@ -601,7 +673,7 @@ let fold_map f accu c = match kind c with
    each binder traversal; it is not recursive and the order with which
    subterms are processed is not specified *)
 
-let map_with_binders g f l c0 = match kind c0 with
+let map_with_binders_g g f l c0 = match kind_g c0 with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> c0
   | Cast (c, k, t) ->
@@ -656,10 +728,13 @@ let map_with_binders g f l c0 = match kind c0 with
     let bl' = CArray.Fun1.smartmap f l' bl in
     mkCoFix (ln,(lna,tl',bl'))
 
+let map_with_binders = map_with_binders_g
+
+
 type instance_compare_fn = global_reference -> int ->
   Univ.Instance.t -> Univ.Instance.t -> bool
 
-type constr_compare_fn = int -> constr -> constr -> bool
+type 'e constr_compare_fn = int -> 'e constr_g -> 'e constr_g -> bool
 
 (* [compare_head_gen_evar k1 k2 u s e eq leq c1 c2] compare [c1] and
    [c2] (using [k1] to expose the structure of [c1] and [k2] to expose
@@ -701,7 +776,7 @@ let compare_head_gen_leq_with kind1 kind2 leq_universes leq_sorts eq leq nargs t
     Int.equal len (Array.length l2) &&
     eq (nargs+len) c1 c2 && Array.equal_norefl (eq 0) l1 l2
   | Proj (p1,c1), Proj (p2,c2) -> Projection.equal p1 p2 && eq 0 c1 c2
-  | Evar (e1,l1), Evar (e2,l2) -> Evar.equal e1 e2 && Array.equal (eq 0) l1 l2
+  | Evar (e1,l1), Evar (e2,l2) -> Evkey.equal e1 e2 && Array.equal (eq 0) l1 l2
   | Const (c1,u1), Const (c2,u2) ->
     (* The args length currently isn't used but may as well pass it. *)
     Constant.equal c1 c2 && leq_universes (ConstRef c1) nargs u1 u2
@@ -726,7 +801,7 @@ let compare_head_gen_leq_with kind1 kind2 leq_universes leq_sorts eq leq nargs t
    not taken into account *)
 
 let compare_head_gen_leq leq_universes leq_sorts eq leq t1 t2 =
-  compare_head_gen_leq_with kind kind leq_universes leq_sorts eq leq t1 t2
+  compare_head_gen_leq_with kind_g kind_g leq_universes leq_sorts eq leq t1 t2
 
 (* [compare_head_gen u s f c1 c2] compare [c1] and [c2] using [f] to
    compare the immediate subterms of [c1] of [c2] if needed, [u] to
@@ -756,7 +831,7 @@ let rec eq_constr nargs m n =
 
 let equal n m = eq_constr 0 m n (* to avoid tracing a recursive fun *)
 
-let eq_constr_univs univs m n =
+let eq_constr_univs_g univs m n =
   if m == n then true
   else 
     let eq_universes _ _ = UGraph.check_eq_instances univs in
@@ -765,7 +840,9 @@ let eq_constr_univs univs m n =
       m == n ||	compare_head_gen eq_universes eq_sorts eq_constr' nargs m n
     in compare_head_gen eq_universes eq_sorts eq_constr' 0 m n
 
-let leq_constr_univs univs m n =
+let eq_constr_univs = eq_constr_univs_g
+
+let leq_constr_univs_g univs m n =
   if m == n then true
   else 
     let eq_universes _ _ = UGraph.check_eq_instances univs in
@@ -781,7 +858,9 @@ let leq_constr_univs univs m n =
     and leq_constr' nargs m n = m == n || compare_leq nargs m n in
     compare_leq 0 m n
 
-let eq_constr_univs_infer univs m n =
+let leq_constr_univs = leq_constr_univs_g
+
+let eq_constr_univs_infer_g univs m n =
   if m == n then true, Constraint.empty
   else 
     let cstrs = ref Constraint.empty in
@@ -801,7 +880,9 @@ let eq_constr_univs_infer univs m n =
     let res = compare_head_gen eq_universes eq_sorts eq_constr' 0 m n in
     res, !cstrs
 
-let leq_constr_univs_infer univs m n =
+let eq_constr_univs_infer = eq_constr_univs_infer_g
+
+let leq_constr_univs_infer_g univs m n =
   if m == n then true, Constraint.empty
   else 
     let cstrs = ref Constraint.empty in
@@ -832,6 +913,8 @@ let leq_constr_univs_infer univs m n =
     let res = compare_leq 0 m n in
     res, !cstrs
 
+let leq_constr_univs_infer = leq_constr_univs_infer_g
+
 let rec eq_constr_nounivs m n =
   (m == n) || compare_head_gen (fun _ _ _ _ -> true) (fun _ _ -> true) (fun _ -> eq_constr_nounivs) 0 m n
 
@@ -858,7 +941,7 @@ let constr_ord_int f t1 t2 =
     | Meta m1, Meta m2 -> Int.compare m1 m2
     | Meta _, _ -> -1 | _, Meta _ -> 1
     | Evar (e1,l1), Evar (e2,l2) ->
-        (Evar.compare =? (Array.compare f)) e1 e2 l1 l2
+        (Evkey.compare =? (Array.compare f)) e1 e2 l1 l2
     | Evar _, _ -> -1 | _, Evar _ -> 1
     | Sort s1, Sort s2 -> Sorts.compare s1 s2
     | Sort _, _ -> -1 | _, Sort _ -> 1
@@ -1033,9 +1116,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
 	let c, hc = sh_rec c in
 	let l, hl = hash_term_array l in
         (mkApp (c,l), combinesmall 7 (combine hl hc))
-      | Evar (e,l) ->
-	let l, hl = hash_term_array l in
-        (mkEvar (e,l), combinesmall 8 (combine (Evar.hash e) hl))
+      | Evar (`NO e,l) -> Util.Empty.abort e
       | Proj (p,c) ->
         let c, hc = sh_rec c in
 	let p' = Projection.hcons p in
@@ -1126,7 +1207,7 @@ let rec hash t =
     | Proj (p,c) ->
       combinesmall 17 (combine (Projection.hash p) (hash c))
     | Evar (e,l) ->
-      combinesmall 8 (combine (Evar.hash e) (hash_term_array l))
+      combinesmall 8 (combine (Evkey.hash e) (hash_term_array l))
     | Const (c,u) ->
       combinesmall 9 (combine (Constant.hash c) (Instance.hash u))
     | Ind (ind,u) ->

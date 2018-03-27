@@ -34,7 +34,7 @@ type types = Constr.t
 (** Same as [constr], for documentation purposes. *)
 
 type existential_key = Evar.t
-type existential = Constr.existential
+(* type existential = Constr.existential *)
 
 type metavariable = Constr.metavariable
 
@@ -62,7 +62,7 @@ type cast_kind = Constr.cast_kind =
 type rec_declaration = Constr.rec_declaration
 type fixpoint = Constr.fixpoint
 type cofixpoint = Constr.cofixpoint
-type 'constr pexistential = 'constr Constr.pexistential
+(* type 'constr pexistential = 'constr Constr.pexistential *)
 type ('constr, 'types) prec_declaration =
   ('constr, 'types) Constr.prec_declaration
 type ('constr, 'types) pfixpoint = ('constr, 'types) Constr.pfixpoint
@@ -74,25 +74,25 @@ type pconstant = Constant.t puniverses
 type pinductive = inductive puniverses
 type pconstructor = constructor puniverses
 
-type ('constr, 'types, 'sort, 'univs) kind_of_term =
-  ('constr, 'types, 'sort, 'univs) Constr.kind_of_term =
-  | Rel       of int
-  | Var       of Id.t
-  | Meta      of metavariable
-  | Evar      of 'constr pexistential
-  | Sort      of 'sort
-  | Cast      of 'constr * cast_kind * 'types
-  | Prod      of Name.t * 'types * 'types
-  | Lambda    of Name.t * 'types * 'constr
-  | LetIn     of Name.t * 'constr * 'types * 'constr
-  | App       of 'constr * 'constr array
-  | Const     of (Constant.t * 'univs)
-  | Ind       of (inductive * 'univs)
-  | Construct of (constructor * 'univs)
-  | Case      of case_info * 'constr * 'constr * 'constr array
-  | Fix       of ('constr, 'types) pfixpoint
-  | CoFix     of ('constr, 'types) pcofixpoint
-  | Proj      of Projection.t * 'constr
+(* type ('constr, 'types, 'sort, 'univs) kind_of_term = *)
+(*   ('constr, 'types, 'sort, 'univs) Constr.kind_of_term = *)
+(*   | Rel       of int *)
+(*   | Var       of Id.t *)
+(*   | Meta      of metavariable *)
+(*   | Evar      of 'constr pexistential *)
+(*   | Sort      of 'sort *)
+(*   | Cast      of 'constr * cast_kind * 'types *)
+(*   | Prod      of Name.t * 'types * 'types *)
+(*   | Lambda    of Name.t * 'types * 'constr *)
+(*   | LetIn     of Name.t * 'constr * 'types * 'constr *)
+(*   | App       of 'constr * 'constr array *)
+(*   | Const     of (Constant.t * 'univs) *)
+(*   | Ind       of (inductive * 'univs) *)
+(*   | Construct of (constructor * 'univs) *)
+(*   | Case      of case_info * 'constr * 'constr * 'constr array *)
+(*   | Fix       of ('constr, 'types) pfixpoint *)
+(*   | CoFix     of ('constr, 'types) pcofixpoint *)
+(*   | Proj      of projection * 'constr *)
 
 type values = Vmvalues.values
 
@@ -114,7 +114,7 @@ let sort_of_univ = Sorts.sort_of_univ
 let mkRel = Constr.mkRel
 let mkVar = Constr.mkVar
 let mkMeta = Constr.mkMeta
-let mkEvar = Constr.mkEvar
+(* let mkEvar = Constr.mkEvar *)
 let mkSort = Constr.mkSort
 let mkProp = Constr.mkProp
 let mkSet  = Constr.mkSet 
@@ -202,7 +202,7 @@ let destApplication = destApp
 let isApp = isApp
 let destConst = destConst
 let isConst = isConst
-let destEvar = destEvar
+(* let destEvar = destEvar *)
 let destInd = destInd
 let destConstruct = destConstruct
 let isConstruct = isConstruct
@@ -335,8 +335,8 @@ let rec to_prod n lam =
       | Cast (c,_,_) -> to_prod n c
       | _   -> user_err ~hdr:"to_prod" (mt ())
 
-let it_mkProd_or_LetIn   = List.fold_left (fun c d -> mkProd_or_LetIn d c)
-let it_mkLambda_or_LetIn = List.fold_left (fun c d -> mkLambda_or_LetIn d c)
+let it_mkProd_or_LetIn c ctx = List.fold_left (fun c d -> mkProd_or_LetIn d c) c ctx
+let it_mkLambda_or_LetIn c ctx = List.fold_left (fun c d -> mkLambda_or_LetIn d c) c ctx
 
 (* Application with expected on-the-fly reduction *)
 
@@ -406,13 +406,15 @@ let decompose_prod =
 
 (* Transforms a lambda term [x1:T1]..[xn:Tn]T into the pair
    ([(xn,Tn);...;(x1,T1)],T), where T is not a lambda *)
-let decompose_lam =
-  let rec lamdec_rec l c = match kind_of_term c with
+let decompose_lam_g =
+  let rec lamdec_rec l c = match kind_g c with
     | Lambda (x,t,c) -> lamdec_rec ((x,t)::l) c
     | Cast (c,_,_)     -> lamdec_rec l c
     | _                -> l,c
   in
-  lamdec_rec []
+  fun x -> lamdec_rec [] x
+
+let decompose_lam = decompose_lam_g
 
 (* Given a positive integer n, transforms a product term (x1:T1)..(xn:Tn)T
    into the pair ([(xn,Tn);...;(x1,T1)],T) *)
@@ -575,7 +577,7 @@ type ('constr, 'types) kind_of_type =
   | LetInType  of Name.t * 'constr * 'types * 'types
   | AtomicType of 'constr * 'constr array
 
-let kind_of_type t = match kind_of_term t with
+let kind_of_type_g t = match kind_g t with
   | Sort s -> SortType s
   | Cast (c,_,t) -> CastType (c, t)
   | Prod (na,t,c) -> ProdType (na, t, c)
@@ -585,3 +587,5 @@ let kind_of_type t = match kind_of_term t with
   | Proj _ | Case _ | Fix _ | CoFix _ | Ind _)
     -> AtomicType (t,[||])
   | (Lambda _ | Construct _) -> failwith "Not a type"
+
+let kind_of_type = kind_of_type_g

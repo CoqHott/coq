@@ -564,8 +564,8 @@ struct
 
   type constructor_info = tag * int * int (* nparam nrealargs *)
 
-  type t = {
-    global_env : env;
+  type 'e t = {
+    global_env : 'e env;
     name_rel : Name.t Vect.t;
     construct_tbl : (constructor, constructor_info) Hashtbl.t;
   }
@@ -606,11 +606,11 @@ end
 open Renv
 
 let rec lambda_of_constr env c =
-  match Constr.kind c with
+  match Constr.kind_g c with
   | Meta _ -> raise (Invalid_argument "Cbytegen.lambda_of_constr: Meta")
   | Evar (evk, args) ->
     let args = lambda_of_args env 0 args in
-    Levar (evk, args)
+    Levar (Evkey.evar evk, args)
 
   | Cast (c, _, _) -> lambda_of_constr env c
 
@@ -629,7 +629,7 @@ let rec lambda_of_constr env c =
     Lprod(ld,  Llam([|id|], lc))
 
   | Lambda _ ->
-    let params, body = decompose_lam c in
+    let params, body = decompose_lam_g c in
     let ids = get_names (List.rev params) in
     Renv.push_rels env ids;
     let lb = lambda_of_constr env body in
@@ -715,7 +715,7 @@ let rec lambda_of_constr env c =
     Lproj (n,kn,lc)
 
 and lambda_of_app env f args =
-  match Constr.kind f with
+  match Constr.kind_g f with
   | Const (kn,u as c) ->
     let kn = get_alias env.global_env kn in
     (* spiwack: checks if there is a specific way to compile the constant
@@ -731,7 +731,7 @@ and lambda_of_app env f args =
     let cb = lookup_constant kn env.global_env in
     begin match cb.const_body with
       | Def csubst when cb.const_inline_code ->
-        lambda_of_app env (Mod_subst.force_constr csubst) args
+        lambda_of_app env (to_econstr @@ Mod_subst.force_constr csubst) args
       | Def _ | OpaqueDef _ | Undef _ -> mkLapp (Lconst c) (lambda_of_args env 0 args)
     end)
   | Construct (c,_) ->
@@ -751,8 +751,8 @@ and lambda_of_app env f args =
         try
           Retroknowledge.get_vm_constant_static_info
             env.global_env.retroknowledge
-            f args
-        with NotClosed ->
+            (force_ground f) (Array.map force_ground args)
+        with NotClosed | NotGround ->
           (* 2/ if the arguments are not all closed (this is
                               expectingly (and it is currently the case) the only
                               reason why this exception is raised) tries to
@@ -772,8 +772,8 @@ and lambda_of_app env f args =
           let args = lambda_of_args env nparams rargs in
           Retroknowledge.get_vm_constant_dynamic_info
             env.global_env.retroknowledge
-            f args
-      with Not_found ->
+            (force_ground f) args
+      with Not_found | NotGround ->
         (* 3/ if no special behavior is available, then the compiler
            falls back to the normal behavior *)
         let args = lambda_of_args env nparams args in
@@ -785,8 +785,8 @@ and lambda_of_app env f args =
       (try
          (Retroknowledge.get_vm_constant_dynamic_info
             env.global_env.retroknowledge
-            f) args
-       with Not_found ->
+            (force_ground f)) args
+       with Not_found | NotGround ->
          if nparams <= nargs then (* got all parameters *)
            makeblock tag 0 arity args
          else (* still expecting some parameters *)

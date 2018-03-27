@@ -13,12 +13,12 @@ open Pre_env
 open Nativeinstr
 
 (** This file defines the lambda code generation phase of the native compiler *)
-type evars =
-    { evars_val : existential -> constr option;
-      evars_typ : existential -> types;
-      evars_metas : metavariable -> types }
+type 'e evars =
+    { evars_val : 'e existential_g -> 'e constr_g option;
+      evars_typ : 'e existential_g -> 'e types_g;
+      evars_metas : metavariable -> 'e types_g }
 
-val empty_evars : evars
+val empty_evars : 'e evars
 
 val decompose_Llam : lambda -> Name.t array * lambda
 val decompose_Llam_Llet : lambda -> (Name.t * lambda option) array * lambda
@@ -26,11 +26,11 @@ val decompose_Llam_Llet : lambda -> (Name.t * lambda option) array * lambda
 val is_lazy : prefix -> constr -> bool
 val mk_lazy : lambda -> lambda
 
-val get_mind_prefix : env -> MutInd.t -> string
+val get_mind_prefix : 'e env -> MutInd.t -> string
 
-val get_alias : env -> pconstant -> pconstant
+val get_alias : 'e env -> pconstant -> pconstant
 
-val lambda_of_constr : env -> evars -> Constr.constr -> lambda
+val lambda_of_constr : ('e Evkey.t as 'e) env -> 'e evars -> 'e Constr.constr_g -> lambda
 
 val compile_static_int31 : bool -> Constr.constr array -> lambda
 

@@ -115,7 +115,7 @@ type module_parameters = (MBId.t * module_type_body) list
 module DPMap = Map.Make(DirPath)
 
 type safe_environment =
-  { env : Environ.env;
+  { env : Constr.ground Environ.env;
     modpath : ModPath.t;
     modvariant : modvariant;
     modresolver : Mod_subst.delta_resolver;

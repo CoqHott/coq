@@ -203,20 +203,21 @@ let type_of_global_in_context env r =
   | ConstRef c -> 
     let cb = Environ.lookup_constant c env in 
     let univs = Declareops.constant_polymorphic_context cb in
-    cb.Declarations.const_type, univs
+    Constr.to_econstr cb.Declarations.const_type, univs
   | IndRef ind ->
     let (mib, oib as specif) = Inductive.lookup_mind_specif env ind in
     let univs = Declareops.inductive_polymorphic_context mib in
     let inst = Univ.make_abstract_instance univs in
     let env = Environ.push_context ~strict:false (Univ.AUContext.repr univs) env in
-    Inductive.type_of_inductive env (specif, inst), univs
+    let env = Obj.magic env in
+    Constr.to_econstr @@ Inductive.type_of_inductive env (specif, inst), univs
   | ConstructRef cstr ->
     let (mib,oib as specif) =
       Inductive.lookup_mind_specif env (inductive_of_constructor cstr) 
     in
     let univs = Declareops.inductive_polymorphic_context mib in
     let inst = Univ.make_abstract_instance univs in
-    Inductive.type_of_constructor (cstr,inst) specif, univs
+    Constr.to_econstr @@ Inductive.type_of_constructor (cstr,inst) specif, univs
 
 let universes_of_global env r = 
     match r with

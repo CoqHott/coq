@@ -89,7 +89,7 @@ type proofview = {
 (** {6 Instantiation of the logic monad} *)
 
 module P : sig
-  type s = proofview * Environ.env
+  type s = proofview * Evd.evar Environ.env
 
   (** Status (safe/unsafe) * given up *)
   type w = bool * goal list
@@ -132,7 +132,7 @@ module Solution : State with type t := Evd.evar_map
 module Comb : State with type t = goal_with_state list
 
 (** Lens to the global environment. *)
-module Env : State with type t := Environ.env
+module Env : State with type t := Evd.evar Environ.env
 
 (** Lens to the tactic status ([true] if safe, [false] if unsafe) *)
 module Status : Writer with type t := bool

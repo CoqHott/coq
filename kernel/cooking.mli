@@ -27,7 +27,7 @@ type result = {
   cook_context : Context.Named.t option;
 }
 
-val cook_constant : hcons:bool -> env -> recipe -> result
+val cook_constant : hcons:bool -> ground env -> recipe -> result
 val cook_constr : Opaqueproof.cooking_info -> constr -> constr
 
 (** {6 Utility functions used in module [Discharge]. } *)

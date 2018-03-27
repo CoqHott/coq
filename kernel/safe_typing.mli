@@ -31,7 +31,7 @@ val empty_environment : safe_environment
 
 val is_initial : safe_environment -> bool
 
-val env_of_safe_env : safe_environment -> Environ.env
+val env_of_safe_env : safe_environment -> Constr.ground Environ.env
 
 (** The safe_environment state monad *)
 
@@ -67,9 +67,9 @@ val private_con_of_scheme : kind:string -> safe_environment -> (inductive * Cons
 
 val mk_pure_proof : Constr.constr -> private_constants Entries.proof_output
 val inline_private_constants_in_constr :
-  Environ.env -> Constr.constr -> private_constants -> Constr.constr
+  Constr.ground Environ.env -> Constr.constr -> private_constants -> Constr.constr
 val inline_private_constants_in_definition_entry :
-  Environ.env -> private_constants Entries.definition_entry -> unit Entries.definition_entry
+  Constr.ground Environ.env -> private_constants Entries.definition_entry -> unit Entries.definition_entry
 
 val universes_of_private : private_constants -> Univ.ContextSet.t list
 

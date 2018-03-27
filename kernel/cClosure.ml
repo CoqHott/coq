@@ -261,16 +261,16 @@ let eq_table_key = IdKeyHash.equal
 
 type 'a infos_tab = 'a KeyTable.t
 
-type 'a infos_cache = {
-  i_repr : 'a infos -> 'a infos_tab -> constr -> 'a;
-  i_env : env;
-  i_sigma : existential -> constr option;
-  i_rels : (Context.Rel.Declaration.t * Pre_env.lazy_val) Range.t;
+type ('e,'a) infos_cache = {
+  i_repr : ('e,'a) infos -> 'a infos_tab -> 'e constr_g -> 'a;
+  i_env : 'e env;
+  i_sigma : 'e existential_g -> 'e constr_g option;
+  i_rels : ('e Context.Rel.Declaration.gen * Pre_env.lazy_val) Range.t;
 }
 
-and 'a infos = {
+and ('e,'a) infos = {
   i_flags : reds;
-  i_cache : 'a infos_cache }
+  i_cache : ('e,'a) infos_cache }
 
 let info_flags info = info.i_flags
 let info_env info = info.i_cache.i_env
@@ -300,7 +300,7 @@ let ref_value_cache ({i_cache = cache} as infos) tab ref =
           | LocalDef (_, t, _) -> lift n t
           end
 	| VarKey id -> assoc_defined id cache.i_env
-	| ConstKey cst -> constant_value_in cache.i_env cst
+        | ConstKey cst -> to_econstr @@ constant_value_in cache.i_env cst
     in
     let v = cache.i_repr infos tab body in
     KeyTable.add tab ref v;
@@ -352,28 +352,28 @@ let neutr = function
   | (Whnf|Norm) -> Whnf
   | (Red|Cstr) -> Red
 
-type fconstr = {
+type 'e fconstr = {
   mutable norm: red_state;
-  mutable term: fterm }
+  mutable term: 'e fterm }
 
-and fterm =
+and 'e fterm =
   | FRel of int
-  | FAtom of constr (* Metas and Sorts *)
-  | FCast of fconstr * cast_kind * fconstr
+  | FAtom of 'e constr_g (* Metas and Sorts *)
+  | FCast of 'e fconstr * cast_kind * 'e fconstr
   | FFlex of table_key
   | FInd of pinductive
   | FConstruct of pconstructor
-  | FApp of fconstr * fconstr array
-  | FProj of Projection.t * fconstr
-  | FFix of fixpoint * fconstr subs
-  | FCoFix of cofixpoint * fconstr subs
-  | FCaseT of case_info * constr * fconstr * constr array * fconstr subs (* predicate and branches are closures *)
-  | FLambda of int * (Name.t * constr) list * constr * fconstr subs
-  | FProd of Name.t * fconstr * fconstr
-  | FLetIn of Name.t * fconstr * fconstr * constr * fconstr subs
-  | FEvar of existential * fconstr subs
-  | FLIFT of int * fconstr
-  | FCLOS of constr * fconstr subs
+  | FApp of 'e fconstr * 'e fconstr array
+  | FProj of Projection.t * 'e fconstr
+  | FFix of 'e fixpoint_g * 'e fconstr subs
+  | FCoFix of 'e cofixpoint_g * 'e fconstr subs
+  | FCaseT of case_info * 'e constr_g * 'e fconstr * 'e constr_g array * 'e fconstr subs (* predicate and branches are closures *)
+  | FLambda of int * (Name.t * 'e constr_g) list * 'e constr_g * 'e fconstr subs
+  | FProd of Name.t * 'e fconstr * 'e fconstr
+  | FLetIn of Name.t * 'e fconstr * 'e fconstr * 'e constr_g * 'e fconstr subs
+  | FEvar of 'e existential_g * 'e fconstr subs
+  | FLIFT of int * 'e fconstr
+  | FCLOS of 'e constr_g * 'e fconstr subs
   | FLOCKED
 
 let fterm_of v = v.term
@@ -395,15 +395,15 @@ let update v1 no t =
 (**********************************************************************)
 (* The type of (machine) stacks (= lambda-bar-calculus' contexts)     *)
 
-type stack_member =
-  | Zapp of fconstr array
-  | ZcaseT of case_info * constr * constr array * fconstr subs
+type 'e stack_member =
+  | Zapp of 'e fconstr array
+  | ZcaseT of case_info * 'e constr_g * 'e constr_g array * 'e fconstr subs
   | Zproj of int * int * Constant.t
-  | Zfix of fconstr * stack
+  | Zfix of 'e fconstr * 'e stack
   | Zshift of int
-  | Zupdate of fconstr
+  | Zupdate of 'e fconstr
 
-and stack = stack_member list
+and 'e stack = 'e stack_member list
 
 let empty_stack = []
 let append_stack v s =
@@ -514,7 +514,7 @@ let zupdate m s =
   else s
 
 let mk_lambda env t =
-  let (rvars,t') = Term.decompose_lam t in
+  let (rvars,t') = Term.decompose_lam_g t in
   FLambda(List.length rvars, List.rev rvars, t', env)
 
 let destFLambda clos_fun t =
@@ -528,7 +528,7 @@ let destFLambda clos_fun t =
 (* Optimization: do not enclose variables in a closure.
    Makes variable access much faster *)
 let mk_clos e t =
-  match kind t with
+  match kind_g t with
     | Rel i -> clos_rel e i
     | Var x -> { norm = Red; term = FFlex (VarKey x) }
     | Const c -> { norm = Red; term = FFlex (ConstKey c) }
@@ -554,7 +554,7 @@ let mk_clos_vect env v = match v with
    subterms.
    Could be used insted of mk_clos. *)
 let mk_clos_deep clos_fun env t =
-  match kind t with
+  match kind_g t with
     | (Rel _|Ind _|Const _|Construct _|Var _|Meta _ | Sort _) ->
         mk_clos env t
     | Cast (a,k,b) ->
@@ -582,10 +582,10 @@ let mk_clos_deep clos_fun env t =
         { norm = Red;
 	  term = FLetIn (n, clos_fun env b, clos_fun env t, c, env) }
     | Evar ev ->
-	{ norm = Red; term = FEvar(ev,env) }
+        { norm = Red; term = FEvar(ev,env) }
 
 (* A better mk_clos? *)
-let mk_clos2 = mk_clos_deep mk_clos
+let mk_clos2 env v = mk_clos_deep mk_clos env v
 
 (* The inverse of mk_clos_deep: move back to constr *)
 let rec to_constr constr_fun lfts v =
@@ -657,7 +657,7 @@ let term_of_fconstr =
       | FFix(fx,e) when is_subs_id e && is_lift_id lfts -> mkFix fx
       | FCoFix(cfx,e) when is_subs_id e && is_lift_id lfts -> mkCoFix cfx
       | _ -> to_constr term_of_fconstr_lift lfts v in
-  term_of_fconstr_lift el_id
+  fun v -> term_of_fconstr_lift el_id v
 
 
 
@@ -891,7 +891,7 @@ let rec knh info m stk =
 
 (* The same for pure terms *)
 and knht info e t stk =
-  match kind t with
+  match kind_g t with
     | App(a,b) ->
         knht info e a (append_stack (mk_clos_vect e b) stk)
     | Case(ci,p,t,br) ->
@@ -1058,7 +1058,7 @@ let whd_stack infos tab m stk =
   k
 
 (* cache of constants: the body is computed only when needed. *)
-type clos_infos = fconstr infos
+type 'e clos_infos = ('e,'e fconstr) infos
 
 let create_clos_infos ?(evars=fun _ -> None) flgs env =
   create (fun _ _ c -> inject c) flgs env evars

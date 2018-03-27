@@ -23,9 +23,9 @@ exception LocalOccur
    occurs in M, returns () otherwise *)
 
 let closedn n c =
-  let rec closed_rec n c = match Constr.kind c with
+  let rec closed_rec n c = match Constr.kind_g c with
     | Constr.Rel m -> if m>n then raise LocalOccur
-    | _ -> Constr.iter_with_binders succ closed_rec n c
+    | _ -> Constr.iter_with_binders_g succ closed_rec n c
   in
   try closed_rec n c; true with LocalOccur -> false
 
@@ -81,9 +81,9 @@ let noccur_with_meta n m term =
 (*********************)
 
 (* The generic lifting function *)
-let rec exliftn el c = match Constr.kind c with
+let rec exliftn el c = match Constr.kind_g c with
   | Constr.Rel i -> Constr.mkRel(reloc_rel i el)
-  | _ -> Constr.map_with_binders el_lift exliftn el c
+  | _ -> Constr.map_with_binders_g el_lift exliftn el c
 
 (* Lifting the binding depth across k bindings *)
 
@@ -126,12 +126,12 @@ let substn_many lamv n c =
   let lv = Array.length lamv in
   if Int.equal lv 0 then c
   else
-    let rec substrec depth c = match Constr.kind c with
+    let rec substrec depth c = match Constr.kind_g c with
       | Constr.Rel k     ->
           if k<=depth then c
           else if k-depth <= lv then lift_substituend depth (Array.unsafe_get lamv (k-depth-1))
           else Constr.mkRel (k-lv)
-      | _ -> Constr.map_with_binders succ substrec depth c in
+      | _ -> Constr.map_with_binders_g succ substrec depth c in
     substrec n c
 
 (*
@@ -197,7 +197,7 @@ let adjust_rel_to_rel_context sign n =
 let rec thin_val = function
   | [] -> []
   | (id, c) :: tl ->
-    match Constr.kind c with
+    match Constr.kind_g c with
     | Constr.Var v ->
       if Id.equal id v then thin_val tl
       else (id, make_substituend c) :: (thin_val tl)
@@ -210,18 +210,20 @@ let rec find_var id = function
   else find_var id subst
 
 (* (replace_vars sigma M) applies substitution sigma to term M *)
-let replace_vars var_alist x =
+let replace_vars_g var_alist x =
   let var_alist = thin_val var_alist in
   match var_alist with
   | [] -> x
   | _ ->
-    let rec substrec n c = match Constr.kind c with
+    let rec substrec n c = match Constr.kind_g c with
     | Constr.Var x ->
       (try lift_substituend n (find_var x var_alist)
       with Not_found -> c)
-    | _ -> Constr.map_with_binders succ substrec n c
+    | _ -> Constr.map_with_binders_g succ substrec n c
     in
     substrec 0 x
+
+let replace_vars = replace_vars_g
 
 (* (subst_var str t) substitute (Var str) by (Rel 1) in t *)
 let subst_var str t = replace_vars [(str, Constr.mkRel 1)] t
@@ -237,13 +239,13 @@ let subst_vars subst c = substn_vars 1 subst c
 (** Universe substitutions *)
 open Constr
 
-let subst_univs_level_constr subst c =
+let subst_univs_level_constr_g subst c =
   if Univ.is_empty_level_subst subst then c
   else 
     let f = Univ.Instance.subst_fn (Univ.subst_univs_level_level subst) in
     let changed = ref false in
     let rec aux t = 
-      match kind t with
+      match kind_g t with
       | Const (c, u) -> 
 	if Univ.Instance.is_empty u then t
 	else 
@@ -266,20 +268,22 @@ let subst_univs_level_constr subst c =
          let u' = Univ.subst_univs_level_universe subst u in
 	   if u' == u then t else 
 	     (changed := true; mkSort (Sorts.sort_of_univ u'))
-      | _ -> Constr.map aux t
+      | _ -> Constr.map_g aux t
     in
     let c' = aux c in
       if !changed then c' else c
 
+let subst_univs_level_constr = subst_univs_level_constr_g
+
 let subst_univs_level_context s = 
   Context.Rel.map (subst_univs_level_constr s)
       
-let subst_instance_constr subst c =
+let subst_instance_constr_g subst c =
   if Univ.Instance.is_empty subst then c
   else
     let f u = Univ.subst_instance_instance subst u in
     let rec aux t =
-      match kind t with
+      match kind_g t with
       | Const (c, u) ->
        if Univ.Instance.is_empty u then t
        else
@@ -302,9 +306,11 @@ let subst_instance_constr subst c =
          let u' = Univ.subst_instance_universe subst u in
           if u' == u then t else
             (mkSort (Sorts.sort_of_univ u'))
-      | _ -> Constr.map aux t
+      | _ -> Constr.map_g aux t
     in
     aux c
+
+let subst_instance_constr = subst_instance_constr_g
 
 (* let substkey = CProfile.declare_profile "subst_instance_constr";; *)
 (* let subst_instance_constr inst c = CProfile.profile2 substkey subst_instance_constr inst c;; *)

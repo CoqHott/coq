@@ -18,7 +18,7 @@ include Evd.MiniEConstr
 
 type types = t
 type constr = t
-type existential = t pexistential
+type existential = Evd.existential
 type fixpoint = (t, t) pfixpoint
 type cofixpoint = (t, t) pcofixpoint
 type unsafe_judgment = (constr, types) Environ.punsafe_judgment
@@ -617,8 +617,9 @@ let universes_of_constr env sigma c =
          let u = Sorts.univ_of_sort sort in
          LSet.fold LSet.add (Universe.levels u) s
     | Evar (k, args) ->
-       let concl = Evd.evar_concl (Evd.find sigma k) in
-       fold sigma aux (aux s concl) c
+      let k = Evd.evar_repr k in
+      let concl = Evd.evar_concl (Evd.find sigma k) in
+      fold sigma aux (aux s concl) c
     | _ -> fold sigma aux s c
   in aux LSet.empty c
 

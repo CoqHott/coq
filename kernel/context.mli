@@ -35,7 +35,8 @@ sig
     | LocalAssum of Name.t * 'types            (** name, type *)
     | LocalDef of Name.t * 'constr * 'types   (** name, value, type *)
 
-    type t = (Constr.constr, Constr.types) pt
+    type +'e gen = ('e Constr.constr_g, 'e Constr.types_g) pt
+    type t = Constr.ground gen
 
     (** Return the name bound by a given declaration. *)
     val get_name : ('c, 't) pt -> Name.t
@@ -93,6 +94,7 @@ sig
       Inner-most declarations are at the beginning of the list.
       Outer-most declarations are at the end of the list. *)
   type ('constr, 'types) pt = ('constr, 'types) Declaration.pt list
+  type +'e gen = 'e Declaration.gen list
   type t = Declaration.t list
 
   (** empty rel-context *)
@@ -153,7 +155,8 @@ sig
       | LocalAssum of Id.t * 'types             (** identifier, type *)
       | LocalDef of Id.t * 'constr * 'types    (** identifier, value, type *)
 
-    type t = (Constr.constr, Constr.types) pt
+    type +'e gen = ('e Constr.constr_g, 'e Constr.types_g) pt
+    type t = Constr.ground gen
 
     (** Return the identifier bound by a given declaration. *)
     val get_id : ('c, 't) pt -> Id.t
@@ -220,6 +223,7 @@ sig
       Inner-most declarations are at the beginning of the list.
       Outer-most declarations are at the end of the list. *)
   type ('constr, 'types) pt = ('constr, 'types) Declaration.pt list
+  type +'e gen = 'e Declaration.gen list
   type t = Declaration.t list
 
   (** empty named-context *)

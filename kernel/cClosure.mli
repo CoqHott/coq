@@ -99,49 +99,48 @@ val unfold_red : evaluable_global_reference -> reds
 (***********************************************************************)
 type table_key = Constant.t Univ.puniverses tableKey
 
-type 'a infos_cache
+type ('e,'a) infos_cache
 type 'a infos_tab
-type 'a infos = {
+type ('e,'a) infos = {
   i_flags : reds;
-  i_cache : 'a infos_cache }
+  i_cache : ('e,'a) infos_cache }
 
-val ref_value_cache: 'a infos -> 'a infos_tab -> table_key -> 'a option
-val create: ('a infos -> 'a infos_tab -> constr -> 'a) -> reds -> env ->
-  (existential -> constr option) -> 'a infos
+val ref_value_cache: ('e Evkey.t,'a) infos -> 'a infos_tab -> table_key -> 'a option
+val create: (('e,'a) infos -> 'a infos_tab -> 'e constr_g -> 'a) -> reds -> 'e env ->
+  ('e existential_g -> 'e constr_g option) -> ('e,'a) infos
 val create_tab : unit -> 'a infos_tab
-val evar_value : 'a infos_cache -> existential -> constr option
+val evar_value : ('e,'a) infos_cache -> 'e existential_g -> 'e constr_g option
 
-val info_env : 'a infos -> env
-val info_flags: 'a infos -> reds
+val info_env : ('e,'a) infos -> 'e env
+val info_flags: ('e,'a) infos -> reds
 
 (***********************************************************************
   s Lazy reduction. *)
 
 (** [fconstr] is the type of frozen constr *)
 
-type fconstr
+type 'e fconstr
 
 (** [fconstr] can be accessed by using the function [fterm_of] and by
    matching on type [fterm] *)
-
-type fterm =
+type 'e fterm =
   | FRel of int
-  | FAtom of constr (** Metas and Sorts *)
-  | FCast of fconstr * cast_kind * fconstr
+  | FAtom of 'e constr_g (* Metas and Sorts *)
+  | FCast of 'e fconstr * cast_kind * 'e fconstr
   | FFlex of table_key
-  | FInd of inductive Univ.puniverses
-  | FConstruct of constructor Univ.puniverses
-  | FApp of fconstr * fconstr array
-  | FProj of Projection.t * fconstr
-  | FFix of fixpoint * fconstr subs
-  | FCoFix of cofixpoint * fconstr subs
-  | FCaseT of case_info * constr * fconstr * constr array * fconstr subs (* predicate and branches are closures *)
-  | FLambda of int * (Name.t * constr) list * constr * fconstr subs
-  | FProd of Name.t * fconstr * fconstr
-  | FLetIn of Name.t * fconstr * fconstr * constr * fconstr subs
-  | FEvar of existential * fconstr subs
-  | FLIFT of int * fconstr
-  | FCLOS of constr * fconstr subs
+  | FInd of pinductive
+  | FConstruct of pconstructor
+  | FApp of 'e fconstr * 'e fconstr array
+  | FProj of Projection.t * 'e fconstr
+  | FFix of 'e fixpoint_g * 'e fconstr subs
+  | FCoFix of 'e cofixpoint_g * 'e fconstr subs
+  | FCaseT of case_info * 'e constr_g * 'e fconstr * 'e constr_g array * 'e fconstr subs (* predicate and branches are closures *)
+  | FLambda of int * (Name.t * 'e constr_g) list * 'e constr_g * 'e fconstr subs
+  | FProd of Name.t * 'e fconstr * 'e fconstr
+  | FLetIn of Name.t * 'e fconstr * 'e fconstr * 'e constr_g * 'e fconstr subs
+  | FEvar of 'e existential_g * 'e fconstr subs
+  | FLIFT of int * 'e fconstr
+  | FCLOS of 'e constr_g * 'e fconstr subs
   | FLOCKED
 
 (***********************************************************************
@@ -149,68 +148,68 @@ type fterm =
    [append_stack] one array at a time but popped with [decomp_stack]
    one by one *)
 
-type stack_member =
-  | Zapp of fconstr array
-  | ZcaseT of case_info * constr * constr array * fconstr subs
+type 'e stack_member =
+  | Zapp of 'e fconstr array
+  | ZcaseT of case_info * 'e constr_g * 'e constr_g array * 'e fconstr subs
   | Zproj of int * int * Constant.t
-  | Zfix of fconstr * stack
+  | Zfix of 'e fconstr * 'e stack
   | Zshift of int
-  | Zupdate of fconstr
+  | Zupdate of 'e fconstr
 
-and stack = stack_member list
+and 'e stack = 'e stack_member list
 
-val empty_stack : stack
-val append_stack : fconstr array -> stack -> stack
+val empty_stack : 'e stack
+val append_stack : 'e fconstr array -> 'e stack -> 'e stack
 
-val decomp_stack : stack -> (fconstr * stack) option
-val array_of_stack : stack -> fconstr array
-val stack_assign : stack -> int -> fconstr -> stack
-val stack_args_size : stack -> int
-val stack_tail : int -> stack -> stack
-val stack_nth : stack -> int -> fconstr
-val zip_term : (fconstr -> constr) -> constr -> stack -> constr
-val eta_expand_stack : stack -> stack
-val unfold_projection : 'a infos -> Projection.t -> stack_member option
+val decomp_stack : 'e stack -> ('e fconstr * 'e stack) option
+val array_of_stack : 'e stack -> 'e fconstr array
+val stack_assign : 'e stack -> int -> 'e fconstr -> 'e stack
+val stack_args_size : 'e stack -> int
+val stack_tail : int -> 'e stack -> 'e stack
+val stack_nth : 'e stack -> int -> 'e fconstr
+val zip_term : ('e Evkey.t fconstr -> 'e constr_g) -> 'e constr_g -> 'e stack -> 'e constr_g
+val eta_expand_stack : 'e stack -> 'e stack
+val unfold_projection : ('e,'a) infos -> Projection.t -> 'e stack_member option
 
 (** To lazy reduce a constr, create a [clos_infos] with
    [create_clos_infos], inject the term to reduce with [inject]; then use
    a reduction function *)
 
-val inject : constr -> fconstr
+val inject : 'e Evkey.t constr_g -> 'e fconstr
 
 (** mk_atom: prevents a term from being evaluated *)
-val mk_atom : constr -> fconstr
+val mk_atom : 'e constr_g -> 'e fconstr
 
 (** mk_red: makes a reducible term (used in newring) *)
-val mk_red : fterm -> fconstr
+val mk_red : 'e fterm -> 'e fconstr
 
-val fterm_of : fconstr -> fterm
-val term_of_fconstr : fconstr -> constr
+val fterm_of : 'e fconstr -> 'e fterm
+val term_of_fconstr : 'e Evkey.t fconstr -> 'e constr_g
 val destFLambda :
-  (fconstr subs -> constr -> fconstr) -> fconstr -> Name.t * fconstr * fconstr
+  ('e fconstr subs -> 'e constr_g -> 'e fconstr) -> 'e fconstr -> Name.t * 'e fconstr * 'e fconstr
 
 (** Global and local constant cache *)
-type clos_infos = fconstr infos
+type 'e clos_infos = ('e,'e fconstr) infos
 val create_clos_infos :
-  ?evars:(existential->constr option) -> reds -> env -> clos_infos
-val oracle_of_infos : clos_infos -> Conv_oracle.oracle
+  ?evars:('e Evkey.t existential_g -> 'e constr_g option) -> reds -> 'e env -> 'e clos_infos
+val oracle_of_infos : 'e clos_infos -> Conv_oracle.oracle
 
-val env_of_infos : 'a infos -> env
+val env_of_infos : ('e,'a) infos -> 'e env
 
-val infos_with_reds : clos_infos -> reds -> clos_infos
+val infos_with_reds : 'e clos_infos -> reds -> 'e clos_infos
 
 (** Reduction function *)
 
 (** [norm_val] is for strong normalization *)
-val norm_val : clos_infos -> fconstr infos_tab -> fconstr -> constr
+val norm_val : 'e Evkey.t clos_infos -> 'e fconstr infos_tab -> 'e fconstr -> 'e constr_g
 
 (** [whd_val] is for weak head normalization *)
-val whd_val : clos_infos -> fconstr infos_tab -> fconstr -> constr
+val whd_val : 'e Evkey.t clos_infos -> 'e fconstr infos_tab ->  'e fconstr -> 'e constr_g
 
 (** [whd_stack] performs weak head normalization in a given stack. It
    stops whenever a reduction is blocked. *)
 val whd_stack :
-  clos_infos -> fconstr infos_tab -> fconstr -> stack -> fconstr * stack
+  'e Evkey.t clos_infos -> 'e fconstr infos_tab -> 'e fconstr -> 'e stack -> 'e fconstr * 'e stack
 
 (** [eta_expand_ind_stack env ind c s t] computes stacks correspoding
     to the conversion of the eta expansion of t, considered as an inhabitant
@@ -221,32 +220,32 @@ val whd_stack :
     @raise Not_found if the inductive is not a primitive record, or if the
     constructor is partially applied.
  *)
-val eta_expand_ind_stack : env -> inductive -> fconstr -> stack ->
-   (fconstr * stack) -> stack * stack
+val eta_expand_ind_stack : 'e env -> inductive -> 'e fconstr -> 'e stack ->
+   ('e fconstr * 'e stack) -> 'e stack * 'e stack
 
 (** Conversion auxiliary functions to do step by step normalisation *)
 
 (** [unfold_reference] unfolds references in a [fconstr] *)
-val unfold_reference : clos_infos -> fconstr infos_tab -> table_key -> fconstr option
+val unfold_reference : 'e Evkey.t clos_infos -> 'e fconstr infos_tab -> table_key -> 'e fconstr option
 
 val eq_table_key : table_key -> table_key -> bool
 
 (***********************************************************************
   i This is for lazy debug *)
 
-val lift_fconstr      : int -> fconstr -> fconstr
-val lift_fconstr_vect : int -> fconstr array -> fconstr array
+val lift_fconstr      : int -> 'e fconstr -> 'e fconstr
+val lift_fconstr_vect : int -> 'e fconstr array -> 'e fconstr array
 
-val mk_clos      : fconstr subs -> constr -> fconstr
-val mk_clos_vect : fconstr subs -> constr array -> fconstr array
+val mk_clos      : 'e Evkey.t fconstr subs -> 'e constr_g -> 'e fconstr
+val mk_clos_vect : 'e Evkey.t fconstr subs -> 'e constr_g array -> 'e fconstr array
 val mk_clos_deep :
-  (fconstr subs -> constr -> fconstr) ->
-   fconstr subs -> constr -> fconstr
+  ('e Evkey.t fconstr subs -> 'e constr_g -> 'e fconstr) ->
+   'e fconstr subs -> 'e constr_g -> 'e fconstr
 
-val kni: clos_infos -> fconstr infos_tab -> fconstr -> stack -> fconstr * stack
-val knr: clos_infos -> fconstr infos_tab -> fconstr -> stack -> fconstr * stack
-val kl : clos_infos -> fconstr infos_tab -> fconstr -> constr
+val kni: 'e Evkey.t clos_infos -> 'e fconstr infos_tab -> 'e fconstr -> 'e stack -> 'e fconstr * 'e stack
+val knr: 'e Evkey.t clos_infos -> 'e fconstr infos_tab -> 'e fconstr -> 'e stack -> 'e fconstr * 'e stack
+val kl : 'e Evkey.t clos_infos -> 'e fconstr infos_tab -> 'e fconstr -> 'e constr_g
 
-val to_constr : (lift -> fconstr -> constr) -> lift -> fconstr -> constr
+val to_constr : (lift -> 'e Evkey.t fconstr -> 'e constr_g) -> lift -> 'e fconstr -> 'e constr_g
 
 (** End of cbn debug section i*)

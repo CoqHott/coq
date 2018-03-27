@@ -135,8 +135,8 @@ val destConst : constr -> Constant.t Univ.puniverses
 [@@ocaml.deprecated "Alias for [Constr.destConst]"]
 
 (** Destructs an existential variable *)
-val destEvar : constr -> existential
-[@@ocaml.deprecated "Alias for [Constr.destEvar]"]
+(* val destEvar : constr -> existential *)
+(* [@@ocaml.deprecated "Alias for [Constr.destEvar]"] *)
 
 (** Destructs a (co)inductive type *)
 val destInd : constr -> inductive Univ.puniverses
@@ -222,7 +222,7 @@ val lamn : int -> (Name.t * constr) list -> constr -> constr
    @return [fun (x_1:T_1)...(x_n:T_n) => b]
    where [l] is [(x_n,T_n)...(x_1,T_1)].
    Inverse of [it_destLam] *)
-val compose_lam : (Name.t * constr) list -> constr -> constr
+val compose_lam : (Name.t * 'e constr_g) list -> 'e constr_g -> 'e constr_g
 
 (** [to_lambda n l]
    @return [fun (x_1:T_1)...(x_n:T_n) => T]
@@ -234,8 +234,8 @@ val to_lambda : int -> constr -> constr
    where [l] is [fun (x_1:T_1)...(x_n:T_n) => T] *)
 val to_prod : int -> constr -> constr
 
-val it_mkLambda_or_LetIn : constr -> Context.Rel.t -> constr
-val it_mkProd_or_LetIn : types -> Context.Rel.t -> types
+val it_mkLambda_or_LetIn : 'e constr_g -> 'e Context.Rel.gen -> 'e constr_g
+val it_mkProd_or_LetIn : 'e types_g -> 'e Context.Rel.gen -> 'e types_g
 
 (** In [lambda_applist c args], [c] is supposed to have the form
     [λΓ.c] with [Γ] without let-in; it returns [c] with the variables
@@ -272,6 +272,9 @@ val decompose_prod : constr -> (Name.t*constr) list * constr
 (** Transforms a lambda term {% $ %}[x_1:T_1]..[x_n:T_n]T{% $ %} into the pair
    {% $ %}([(x_n,T_n);...;(x_1,T_1)],T){% $ %}, where {% $ %}T{% $ %} is not a lambda. *)
 val decompose_lam : constr -> (Name.t*constr) list * constr
+
+(* Sensitive to evars! *)
+val decompose_lam_g : 'e Evkey.t constr_g -> (Name.t*'e constr_g) list * 'e constr_g
 
 (** Given a positive integer n, decompose a product term
    {% $ %}(x_1:T_1)..(x_n:T_n)T{% $ %}
@@ -348,6 +351,7 @@ type ('constr, 'types) kind_of_type =
   | AtomicType of 'constr * 'constr array
 
 val kind_of_type : types -> (constr, types) kind_of_type
+val kind_of_type_g : 'e Evkey.t types_g -> ('e constr_g, 'e types_g) kind_of_type
 
 (** {5 Redeclaration of stuff from module [Sorts]} *)
 
@@ -381,8 +385,8 @@ val mkVar : Id.t -> constr
 [@@ocaml.deprecated "Alias for Constr.mkVar"]
 val mkMeta : metavariable -> constr
 [@@ocaml.deprecated "Alias for Constr.mkMeta"]
-val mkEvar : existential -> constr
-[@@ocaml.deprecated "Alias for Constr.mkEvar"]
+(* val mkEvar : existential -> constr *)
+(* [@@ocaml.deprecated "Alias for Constr.mkEvar"] *)
 val mkSort : Sorts.t -> types
 [@@ocaml.deprecated "Alias for Constr.mkSort"]
 val mkProp : types
@@ -444,7 +448,7 @@ val leq_constr_univs : constr UGraph.check_function
 val eq_constr_nounivs : constr -> constr -> bool
 [@@ocaml.deprecated "Alias for Constr.qe_constr_nounivs"]
 
-val kind_of_term : constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term
+val kind_of_term : constr -> (ground, constr, types, Sorts.t, Univ.Instance.t) kind_of_term
 [@@ocaml.deprecated "Alias for Constr.kind"]
 
 val compare : constr -> constr -> int
@@ -511,8 +515,8 @@ type pconstructor = Constr.pconstructor
 [@@ocaml.deprecated "Alias for Constr.pconstructor"]
 type existential_key = Evar.t
 [@@ocaml.deprecated "Alias for Evar.t"]
-type existential = Constr.existential
-[@@ocaml.deprecated "Alias for Constr.existential"]
+(* type existential = Constr.existential *)
+(* [@@ocaml.deprecated "Alias for Constr.existential"] *)
 type metavariable = Constr.metavariable
 [@@ocaml.deprecated "Alias for Constr.metavariable"]
 
@@ -543,8 +547,8 @@ type fixpoint = Constr.fixpoint
 [@@ocaml.deprecated "Alias for Constr.fixpoint"]
 type cofixpoint = Constr.cofixpoint
 [@@ocaml.deprecated "Alias for Constr.cofixpoint"]
-type 'constr pexistential = 'constr Constr.pexistential
-[@@ocaml.deprecated "Alias for Constr.pexistential"]
+(* type 'constr pexistential = 'constr Constr.pexistential *)
+(* [@@ocaml.deprecated "Alias for Constr.pexistential"] *)
 type ('constr, 'types) prec_declaration =
   ('constr, 'types) Constr.prec_declaration
 [@@ocaml.deprecated "Alias for Constr.prec_declaration"]
@@ -553,26 +557,26 @@ type ('constr, 'types) pfixpoint = ('constr, 'types) Constr.pfixpoint
 type ('constr, 'types) pcofixpoint = ('constr, 'types) Constr.pcofixpoint
 [@@ocaml.deprecated "Alias for Constr.pcofixpoint"]
 
-type ('constr, 'types, 'sort, 'univs) kind_of_term =
-  ('constr, 'types, 'sort, 'univs) Constr.kind_of_term =
-  | Rel       of int
-  | Var       of Id.t
-  | Meta      of Constr.metavariable
-  | Evar      of 'constr Constr.pexistential
-  | Sort      of 'sort
-  | Cast      of 'constr * Constr.cast_kind * 'types
-  | Prod      of Name.t * 'types * 'types
-  | Lambda    of Name.t * 'types * 'constr
-  | LetIn     of Name.t * 'constr * 'types * 'constr
-  | App       of 'constr * 'constr array
-  | Const     of (Constant.t * 'univs)
-  | Ind       of (inductive * 'univs)
-  | Construct of (constructor * 'univs)
-  | Case      of Constr.case_info * 'constr * 'constr * 'constr array
-  | Fix       of ('constr, 'types) Constr.pfixpoint
-  | CoFix     of ('constr, 'types) Constr.pcofixpoint
-  | Proj      of Projection.t * 'constr
-[@@ocaml.deprecated "Alias for Constr.kind_of_term"]
+(* type ('constr, 'types, 'sort, 'univs) kind_of_term = *)
+(*   ('constr, 'types, 'sort, 'univs) Constr.kind_of_term = *)
+(*   | Rel       of int *)
+(*   | Var       of Id.t *)
+(*   | Meta      of Constr.metavariable *)
+(*   | Evar      of 'constr Constr.pexistential *)
+(*   | Sort      of 'sort *)
+(*   | Cast      of 'constr * Constr.cast_kind * 'types *)
+(*   | Prod      of Name.t * 'types * 'types *)
+(*   | Lambda    of Name.t * 'types * 'constr *)
+(*   | LetIn     of Name.t * 'constr * 'types * 'constr *)
+(*   | App       of 'constr * 'constr array *)
+(*   | Const     of (Constant.t * 'univs) *)
+(*   | Ind       of (inductive * 'univs) *)
+(*   | Construct of (constructor * 'univs) *)
+(*   | Case      of Constr.case_info * 'constr * 'constr * 'constr array *)
+(*   | Fix       of ('constr, 'types) Constr.pfixpoint *)
+(*   | CoFix     of ('constr, 'types) Constr.pcofixpoint *)
+(*   | Proj      of projection * 'constr *)
+(* [@@ocaml.deprecated "Alias for Constr.kind_of_term"] *)
 
 type values = Vmvalues.values
 [@@ocaml.deprecated "Alias for Vmvalues.values"]

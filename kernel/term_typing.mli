@@ -20,19 +20,19 @@ type _ trust =
 | Pure : unit trust
 | SideEffects : structure_body -> side_effects trust
 
-val translate_local_def : env -> Id.t -> section_def_entry ->
+val translate_local_def : ground env -> Id.t -> section_def_entry ->
   constr * types
 
-val translate_local_assum : env -> types -> types
+val translate_local_assum : ground env -> types -> types
 
 val mk_pure_proof : constr -> side_effects proof_output
 
-val inline_side_effects : env -> constr -> side_effects -> constr
+val inline_side_effects : ground env -> constr -> side_effects -> constr
 (** Returns the term where side effects have been turned into let-ins or beta
     redexes. *)
 
 val inline_entry_side_effects :
-  env -> side_effects definition_entry -> unit definition_entry
+  ground env -> side_effects definition_entry -> unit definition_entry
 (** Same as {!inline_side_effects} but applied to entries. Only modifies the
     {!Entries.const_entry_body} field. It is meant to get a term out of a not
     yet type checked proof. *)
@@ -49,7 +49,7 @@ val uniq_seff : side_effects -> side_effect list
 val equal_eff : side_effect -> side_effect -> bool
 
 val translate_constant :
-  'a trust -> env -> Constant.t -> 'a constant_entry ->
+  'a trust -> ground env -> Constant.t -> 'a constant_entry ->
     constant_body
 
 type side_effect_role =
@@ -64,18 +64,18 @@ type exported_side_effect =
  * be pushed in the safe_env by safe typing.  The main constant entry
  * needs to be translated as usual after this step. *)
 val export_side_effects :
-  structure_body -> env -> side_effects definition_entry ->
+  structure_body -> ground env -> side_effects definition_entry ->
     exported_side_effect list * unit definition_entry
 
 val translate_mind :
-  env -> MutInd.t -> mutual_inductive_entry -> mutual_inductive_body
+  ground env -> MutInd.t -> mutual_inductive_entry -> mutual_inductive_body
 
-val translate_recipe : env -> Constant.t -> Cooking.recipe -> constant_body
+val translate_recipe : ground env -> Constant.t -> Cooking.recipe -> constant_body
 
 (** Internal functions, mentioned here for debug purpose only *)
 
-val infer_declaration : trust:'a trust -> env ->
+val infer_declaration : trust:'a trust -> ground env ->
   'a constant_entry -> Cooking.result
 
 val build_constant_declaration :
-  Constant.t -> env -> Cooking.result -> constant_body
+  Constant.t -> ground env -> Cooking.result -> constant_body

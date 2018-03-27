@@ -21,14 +21,14 @@ open Entries
 
 (** Errors related to inductive constructions *)
 type inductive_error =
-  | NonPos of env * constr * constr
-  | NotEnoughArgs of env * constr * constr
-  | NotConstructor of env * Id.t * constr * constr * int * int
-  | NonPar of env * constr * int * constr * constr
+  | NonPos of ground env * constr * constr
+  | NotEnoughArgs of ground env * constr * constr
+  | NotConstructor of ground env * Id.t * constr * constr * int * int
+  | NonPar of ground env * constr * int * constr * constr
   | SameNamesTypes of Id.t
   | SameNamesConstructors of Id.t
   | SameNamesOverlap of Id.t list
-  | NotAnArity of env * constr
+  | NotAnArity of ground env * constr
   | BadEntry
   | LargeNonPropInductiveNotInType
 
@@ -36,7 +36,7 @@ exception InductiveError of inductive_error
 
 (** The following function does checks on inductive declarations. *)
 
-val check_inductive : env -> MutInd.t -> mutual_inductive_entry -> mutual_inductive_body
+val check_inductive : ground env -> MutInd.t -> mutual_inductive_entry -> mutual_inductive_body
 
 (** The following enforces a system compatible with the univalent model *)
 

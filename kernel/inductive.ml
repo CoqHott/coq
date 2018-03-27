@@ -206,7 +206,7 @@ let instantiate_universes env ctx ar argsorts =
 
 let type_of_inductive_gen ?(polyprop=true) env ((mib,mip),u) paramtyps =
   match mip.mind_arity with
-  | RegularArity a -> subst_instance_constr u a.mind_user_arity
+  | RegularArity a -> subst_instance_constr_g u a.mind_user_arity
   | TemplateArity ar ->
     let ctx = List.rev mip.mind_arity_ctxt in
     let ctx,s = instantiate_universes env ctx ar paramtyps in
@@ -475,7 +475,7 @@ let subterm_spec_glb =
   Array.fold_left inter_spec Dead_code
 
 type guard_env =
-  { env     : env;
+  { env     : ground env;
     (* dB of last fixpoint *)
     rel_min : int;
     (* dB of variables denoting subterms *)
@@ -837,7 +837,7 @@ let check_is_subterm x tree =
 
 (************************************************************************)
 
-exception FixGuardError of env * guard_error
+exception FixGuardError of ground env * guard_error
 
 let error_illegal_rec_call renv fx (arg_renv,arg) =
   let (_,le_vars,lt_vars) =
@@ -1110,7 +1110,7 @@ let check_fix env fix = CProfile.profile3 cfkey check_fix env fix;;
 (************************************************************************)
 (* Co-fixpoints. *)
 
-exception CoFixGuardError of env * guard_error
+exception CoFixGuardError of ground env * guard_error
 
 let anomaly_ill_typed () =
   anomaly ~label:"check_one_cofix" (Pp.str "too many arguments applied to constructor.")

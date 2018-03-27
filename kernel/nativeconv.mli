@@ -13,8 +13,8 @@ open Nativelambda
 
 (** This module implements the conversion test by compiling to OCaml code *)
 
-val native_conv : conv_pb -> evars -> types kernel_conversion_function
+val native_conv : conv_pb -> 'e evars -> ('e Evkey.t as 'e,'e types_g) kernel_conversion_function
 
 (** A conversion function parametrized by a universe comparator. Used outside of
     the kernel. *)
-val native_conv_gen : conv_pb -> evars -> (types, 'a) generic_conversion_function
+val native_conv_gen : conv_pb -> 'e evars -> ('e Evkey.t as 'e,'e types_g, 'a) generic_conversion_function

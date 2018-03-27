@@ -28,7 +28,7 @@ type inline =
   | InlineAt of int
 
 type 'modast module_interpretor =
-  Environ.env -> Misctypes.module_kind -> 'modast ->
+  Constr.ground Environ.env -> Misctypes.module_kind -> 'modast ->
     Entries.module_struct_entry * Misctypes.module_kind * Univ.ContextSet.t
 
 type 'modast module_params =

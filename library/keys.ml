@@ -11,7 +11,7 @@
 (** Keys for unification and indexing *)
 
 open Globnames
-open Term
+open Constr
 open Libobject
 
 type key =

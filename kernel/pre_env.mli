@@ -42,20 +42,20 @@ val force_lazy_val : lazy_val -> (Vmvalues.values * Id.Set.t) option
 val dummy_lazy_val : unit -> lazy_val
 val build_lazy_val : lazy_val -> (Vmvalues.values * Id.Set.t) -> unit
 
-type named_context_val = private {
-  env_named_ctx : Context.Named.t;
-  env_named_map : (Context.Named.Declaration.t * lazy_val) Id.Map.t;
+type +'e named_context_val = private {
+  env_named_ctx : 'e Context.Named.gen;
+  env_named_map : ('e Context.Named.Declaration.gen * lazy_val) Id.Map.t;
 }
 
-type rel_context_val = private {
-  env_rel_ctx : Context.Rel.t;
-  env_rel_map : (Context.Rel.Declaration.t * lazy_val) Range.t;
+type +'e rel_context_val = private {
+  env_rel_ctx : 'e Context.Rel.gen;
+  env_rel_map : ('e Context.Rel.Declaration.gen * lazy_val) Range.t;
 }
 
-type env = {
+type +'e env = {
     env_globals       : globals;
-    env_named_context : named_context_val;
-    env_rel_context   : rel_context_val;
+    env_named_context : 'e named_context_val;
+    env_rel_context   : 'e rel_context_val;
     env_nb_rel        : int;
     env_stratification : stratification;
     env_typing_flags  : typing_flags;
@@ -63,46 +63,46 @@ type env = {
     indirect_pterms : Opaqueproof.opaquetab;
 }
 
-val empty_named_context_val : named_context_val
+val empty_named_context_val : 'e named_context_val
 
-val empty_env : env
+val empty_env : 'e env
 
 (** Rel context *)
 
-val empty_rel_context_val : rel_context_val
+val empty_rel_context_val : 'e rel_context_val
 val push_rel_context_val :
-  Context.Rel.Declaration.t -> rel_context_val -> rel_context_val
+  'e Context.Rel.Declaration.gen -> 'e rel_context_val -> 'e rel_context_val
 val match_rel_context_val  :
-  rel_context_val -> (Context.Rel.Declaration.t * lazy_val * rel_context_val) option
+  'e rel_context_val -> ('e Context.Rel.Declaration.gen * lazy_val * 'e rel_context_val) option
 
-val nb_rel         : env -> int
-val push_rel       : Context.Rel.Declaration.t -> env -> env
-val lookup_rel     : int -> env -> Context.Rel.Declaration.t
-val lookup_rel_val : int -> env -> lazy_val
-val env_of_rel     : int -> env -> env
+val nb_rel         : 'e env -> int
+val push_rel       : 'e Context.Rel.Declaration.gen -> 'e env -> 'e env
+val lookup_rel     : int -> 'e env -> 'e Context.Rel.Declaration.gen
+val lookup_rel_val : int -> 'e env -> lazy_val
+val env_of_rel     : int -> 'e env -> 'e env
 
 (** Named context *)
 
 val push_named_context_val  :
-    Context.Named.Declaration.t -> named_context_val -> named_context_val
+    'e Context.Named.Declaration.gen -> 'e named_context_val -> 'e named_context_val
 val push_named_context_val_val  :
-    Context.Named.Declaration.t -> lazy_val -> named_context_val -> named_context_val
+    'e Context.Named.Declaration.gen -> lazy_val -> 'e named_context_val -> 'e named_context_val
 val match_named_context_val  :
-  named_context_val -> (Context.Named.Declaration.t * lazy_val * named_context_val) option
+  'e named_context_val -> ('e Context.Named.Declaration.gen * lazy_val * 'e named_context_val) option
 val map_named_val :
-   (constr -> constr) -> named_context_val -> named_context_val
+   ('e constr_g -> 'e constr_g) -> 'e named_context_val -> 'e named_context_val
 
-val push_named       : Context.Named.Declaration.t -> env -> env
-val lookup_named     : Id.t -> env -> Context.Named.Declaration.t
-val lookup_named_val : Id.t -> env -> lazy_val
-val env_of_named     : Id.t -> env -> env
+val push_named       : 'e Context.Named.Declaration.gen -> 'e env -> 'e env
+val lookup_named     : Id.t -> 'e env -> 'e Context.Named.Declaration.gen
+val lookup_named_val : Id.t -> 'e env -> lazy_val
+val env_of_named     : Id.t -> 'e env -> 'e env
 
 (** Global constants *)
 
 
-val lookup_constant_key : Constant.t -> env -> constant_key
-val lookup_constant : Constant.t -> env -> constant_body
+val lookup_constant_key : Constant.t -> 'e env -> constant_key
+val lookup_constant : Constant.t -> 'e env -> constant_body
 
 (** Mutual Inductives *)
-val lookup_mind_key : MutInd.t -> env -> mind_key
-val lookup_mind : MutInd.t -> env -> mutual_inductive_body
+val lookup_mind_key : MutInd.t -> 'e env -> mind_key
+val lookup_mind : MutInd.t -> 'e env -> mutual_inductive_body

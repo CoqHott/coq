@@ -160,7 +160,7 @@ val check_mono_univ_decl : t -> universe_decl -> Univ.ContextSet.t
 
 (** {5 TODO: Document me} *)
 
-val update_sigma_env : t -> Environ.env -> t
+val update_sigma_env : t -> 'e Environ.env -> t
 
 (** {5 Pretty-printing} *)
 

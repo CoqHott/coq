@@ -35,13 +35,13 @@ val noccur_with_meta : int -> int -> constr -> bool
 (** {6 Relocation and substitution } *)
 
 (** [exliftn el c] lifts [c] with lifting [el] *)
-val exliftn : Esubst.lift -> constr -> constr
+val exliftn : Esubst.lift -> 'e Evkey.t constr_g -> 'e constr_g
 
 (** [liftn n k c] lifts by [n] indexes above or equal to [k] in [c] *)
-val liftn : int -> int -> constr -> constr
+val liftn : int -> int -> 'e Evkey.t constr_g -> 'e constr_g
 
 (** [lift n c] lifts by [n] the positive indexes in [c] *)
-val lift : int -> constr -> constr
+val lift : int -> 'e Evkey.t constr_g -> 'e constr_g
 
 (** The type [substl] is the type of substitutions [u₁..un] of type
     some context Δ and defined in some environment Γ. Typing of
@@ -108,6 +108,7 @@ val subst1_decl : constr -> Context.Rel.Declaration.t -> Context.Rel.Declaration
 (** [replace_vars k [(id₁,c₁);...;(idn,cn)] t] substitutes [Var idj] by
     [cj] in [t]. *)
 val replace_vars : (Id.t * constr) list -> constr -> constr
+val replace_vars_g : (Id.t * 'e Evkey.t constr_g) list -> 'e constr_g -> 'e constr_g
 
 (** [substn_vars k [id₁;...;idn] t] substitutes [Var idj] by [Rel j+k-1] in [t].
    If two names are identical, the one of least index is kept. In terms of
@@ -134,8 +135,10 @@ open Univ
 (** Level substitutions for polymorphism. *)
 
 val subst_univs_level_constr : universe_level_subst -> constr -> constr
+val subst_univs_level_constr_g : universe_level_subst -> 'e Evkey.t constr_g -> 'e constr_g
 val subst_univs_level_context : Univ.universe_level_subst -> Context.Rel.t -> Context.Rel.t
 
 (** Instance substitution for polymorphism. *)
 val subst_instance_constr : Instance.t -> constr -> constr
+val subst_instance_constr_g : Instance.t -> 'e Evkey.t constr_g -> 'e constr_g
 val subst_instance_context : Instance.t -> Context.Rel.t -> Context.Rel.t

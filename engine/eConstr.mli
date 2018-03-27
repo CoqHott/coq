@@ -19,7 +19,7 @@ type t = Evd.econstr
 
 type types = t
 type constr = t
-type existential = t pexistential
+type existential = Evd.existential
 type fixpoint = (t, t) pfixpoint
 type cofixpoint = (t, t) pcofixpoint
 type unsafe_judgment = (constr, types) Environ.punsafe_judgment
@@ -62,11 +62,11 @@ type 'a puniverses = 'a * EInstance.t
 
 (** {5 Destructors} *)
 
-val kind : Evd.evar_map -> t -> (t, t, ESorts.t, EInstance.t) Constr.kind_of_term
+val kind : Evd.evar_map -> t -> (Evd.evar, t, t, ESorts.t, EInstance.t) Constr.kind_of_term
 (** Same as {!Constr.kind} except that it expands evars and normalizes
     universes on the fly. *)
 
-val kind_upto : Evd.evar_map -> Constr.t -> (Constr.t, Constr.t, Sorts.t, Univ.Instance.t) Constr.kind_of_term
+val kind_upto : Evd.evar_map -> evars constr_g -> (Constr.evars, Constr.t, Constr.t, Sorts.t, Univ.Instance.t) Constr.kind_of_term
 
 val to_constr : ?abort_on_undefined_evars:bool -> Evd.evar_map -> t -> Constr.t
 (** Returns the evar-normal form of the argument. Note that this
@@ -81,7 +81,7 @@ val kind_of_type : Evd.evar_map -> t -> (t, t) Term.kind_of_type
 
 (** {5 Constructors} *)
 
-val of_kind : (t, t, ESorts.t, EInstance.t) Constr.kind_of_term -> t
+val of_kind : (Evd.evar, t, t, ESorts.t, EInstance.t) Constr.kind_of_term -> t
 (** Construct a term from a view. *)
 
 val of_constr : Constr.t -> t
@@ -99,7 +99,7 @@ val of_constr : Constr.t -> t
 val mkRel : int -> t
 val mkVar : Id.t -> t
 val mkMeta : metavariable -> t
-val mkEvar : t pexistential -> t
+val mkEvar : existential -> t
 val mkSort : Sorts.t -> t
 val mkProp : t
 val mkSet  : t
@@ -172,7 +172,7 @@ val destLambda : Evd.evar_map -> t -> Name.t * types * t
 val destLetIn : Evd.evar_map -> t -> Name.t * t * types * t
 val destApp : Evd.evar_map -> t -> t * t array
 val destConst : Evd.evar_map -> t -> Constant.t * EInstance.t
-val destEvar : Evd.evar_map -> t -> t pexistential
+val destEvar : Evd.evar_map -> t -> existential
 val destInd : Evd.evar_map -> t -> inductive * EInstance.t
 val destConstruct : Evd.evar_map -> t -> constructor * EInstance.t
 val destCase : Evd.evar_map -> t -> case_info * t * t * t array
@@ -201,11 +201,11 @@ val whd_evar : Evd.evar_map -> constr -> constr
 
 val eq_constr : Evd.evar_map -> t -> t -> bool
 val eq_constr_nounivs : Evd.evar_map -> t -> t -> bool
-val eq_constr_universes : Environ.env -> Evd.evar_map -> t -> t -> Universes.Constraints.t option
-val leq_constr_universes : Environ.env -> Evd.evar_map -> t -> t -> Universes.Constraints.t option
+val eq_constr_universes : 'e Environ.env -> Evd.evar_map -> t -> t -> Universes.Constraints.t option
+val leq_constr_universes : 'e Environ.env -> Evd.evar_map -> t -> t -> Universes.Constraints.t option
 
 (** [eq_constr_universes_proj] can equate projections and their eta-expanded constant form. *)
-val eq_constr_universes_proj : Environ.env -> Evd.evar_map -> t -> t -> Universes.Constraints.t option
+val eq_constr_universes_proj : 'e Environ.env -> Evd.evar_map -> t -> t -> Universes.Constraints.t option
 
 val compare_constr : Evd.evar_map -> (t -> t -> bool) -> t -> t -> bool
 
@@ -220,7 +220,7 @@ val fold : Evd.evar_map -> ('a -> t -> 'a) -> 'a -> t -> 'a
 
 (** Gather the universes transitively used in the term, including in the
    type of evars appearing in it. *)
-val universes_of_constr : Environ.env -> Evd.evar_map -> t -> Univ.LSet.t
+val universes_of_constr : 'e Environ.env -> Evd.evar_map -> t -> Univ.LSet.t
 
 (** {6 Substitutions} *)
 
@@ -260,37 +260,37 @@ end
 
 (** {5 Environment handling} *)
 
-val push_rel : rel_declaration -> env -> env
-val push_rel_context : rel_context -> env -> env
-val push_rec_types : (t, t) Constr.prec_declaration -> env -> env
+val push_rel : rel_declaration -> 'e env -> 'e env
+val push_rel_context : rel_context -> 'e env -> 'e env
+val push_rec_types : (t, t) Constr.prec_declaration -> 'e env -> 'e env
 
-val push_named : named_declaration -> env -> env
-val push_named_context : named_context -> env -> env
-val push_named_context_val  : named_declaration -> named_context_val -> named_context_val
+val push_named : named_declaration -> 'e env -> 'e env
+val push_named_context : named_context -> 'e env -> 'e env
+val push_named_context_val  : named_declaration -> 'e named_context_val -> 'e named_context_val
 
-val rel_context : env -> rel_context
-val named_context : env -> named_context
+val rel_context : 'e env -> rel_context
+val named_context : 'e env -> named_context
 
-val val_of_named_context : named_context -> named_context_val
-val named_context_of_val : named_context_val -> named_context
+val val_of_named_context : named_context -> 'e named_context_val
+val named_context_of_val : 'e named_context_val -> named_context
 
-val lookup_rel : int -> env -> rel_declaration
-val lookup_named : variable -> env -> named_declaration
-val lookup_named_val : variable -> named_context_val -> named_declaration
+val lookup_rel : int -> 'e env -> rel_declaration
+val lookup_named : variable -> 'e env -> named_declaration
+val lookup_named_val : variable -> 'e named_context_val -> named_declaration
 
 val map_rel_context_in_env :
-  (env -> constr -> constr) -> env -> rel_context -> rel_context
+  ('e env -> constr -> constr) -> 'e env -> rel_context -> rel_context
 
 (* XXX Missing Sigma proxy *)
 val fresh_global :
-  ?loc:Loc.t -> ?rigid:Evd.rigid -> ?names:Univ.Instance.t -> Environ.env ->
+  ?loc:Loc.t -> ?rigid:Evd.rigid -> ?names:Univ.Instance.t -> 'e Environ.env ->
   Evd.evar_map -> Globnames.global_reference -> Evd.evar_map * t
 
 val is_global : Evd.evar_map -> Globnames.global_reference -> t -> bool
 
 (** {5 Extra} *)
 
-val of_existential : Constr.existential -> existential
+val of_existential : (evars, evars constr_g) pexistential -> existential
 val of_named_decl : (Constr.t, Constr.types) Context.Named.Declaration.pt -> (t, types) Context.Named.Declaration.pt
 val of_rel_decl : (Constr.t, Constr.types) Context.Rel.Declaration.pt -> (t, types) Context.Rel.Declaration.pt
 

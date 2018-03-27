@@ -110,11 +110,11 @@ val to_constraints : force_weak:bool -> UGraph.t -> Constraints.t -> Constraint.
     {!eq_constr_univs_infer} taking kind-of-term functions, to expose
     subterms of [m] and [n], arguments. *)
 val eq_constr_univs_infer_with :
-  (constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
-  (constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
+  (constr -> (ground, constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
+  (constr -> (ground, constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
   UGraph.t -> 'a constraint_accumulator -> constr -> constr -> 'a -> 'a option
 
-(** Build a fresh instance for a given context, its associated substitution and 
+(** Build a fresh instance for a given context, its associated substitution and
     the instantiated constraints. *)
 
 val fresh_instance_from_context : AUContext.t -> 
@@ -123,19 +123,19 @@ val fresh_instance_from_context : AUContext.t ->
 val fresh_instance_from : AUContext.t -> Instance.t option ->
   Instance.t in_universe_context_set
 
-val fresh_sort_in_family : env -> Sorts.family -> 
+val fresh_sort_in_family : 'e env -> Sorts.family ->
   Sorts.t in_universe_context_set
-val fresh_constant_instance : env -> Constant.t ->
+val fresh_constant_instance : 'e env -> Constant.t ->
   pconstant in_universe_context_set
-val fresh_inductive_instance : env -> inductive ->
+val fresh_inductive_instance : 'e env -> inductive ->
   pinductive in_universe_context_set
-val fresh_constructor_instance : env -> constructor ->
+val fresh_constructor_instance : 'e env -> constructor ->
   pconstructor in_universe_context_set
 
-val fresh_global_instance : ?names:Univ.Instance.t -> env -> Globnames.global_reference -> 
-  constr in_universe_context_set
+val fresh_global_instance : ?names:Univ.Instance.t -> 'e env -> Globnames.global_reference ->
+  'f constr_g in_universe_context_set
 
-val fresh_global_or_constr_instance : env -> Globnames.global_reference_or_constr -> 
+val fresh_global_or_constr_instance : 'e env -> Globnames.global_reference_or_constr ->
   constr in_universe_context_set
 
 (** Get fresh variables for the universe context.
@@ -217,8 +217,8 @@ val type_of_global : Globnames.global_reference -> types in_universe_context_set
 
 (** Full universes substitutions into terms *)
 
-val nf_evars_and_universes_opt_subst : (existential -> constr option) -> 
-  universe_opt_subst -> constr -> constr
+val nf_evars_and_universes_opt_subst : ('e Evkey.t existential_g -> 'e constr_g option) ->
+  universe_opt_subst -> 'e constr_g -> 'e constr_g
 
 val refresh_constraints : UGraph.t -> ContextSet.t -> ContextSet.t * UGraph.t
 

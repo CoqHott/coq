@@ -63,20 +63,20 @@ let force_lazy_val vk = match !vk with
 let dummy_lazy_val () = ref VKnone
 let build_lazy_val vk key = vk := VKvalue (CEphemeron.create key)
 
-type named_context_val = {
-  env_named_ctx : Context.Named.t;
-  env_named_map : (Context.Named.Declaration.t * lazy_val) Id.Map.t;
+type 'e named_context_val = {
+  env_named_ctx : 'e Context.Named.gen;
+  env_named_map : ('e Context.Named.Declaration.gen * lazy_val) Id.Map.t;
 }
 
-type rel_context_val = {
-  env_rel_ctx : Context.Rel.t;
-  env_rel_map : (Context.Rel.Declaration.t * lazy_val) Range.t;
+type 'e rel_context_val = {
+  env_rel_ctx : 'e Context.Rel.gen;
+  env_rel_map : ('e Context.Rel.Declaration.gen * lazy_val) Range.t;
 }
 
-type env = {
+type 'e env = {
   env_globals       : globals;           (* globals = constants + inductive types + modules + module-types *)
-  env_named_context : named_context_val; (* section variables *)
-  env_rel_context   : rel_context_val;
+  env_named_context : 'e named_context_val; (* section variables *)
+  env_rel_context   : 'e rel_context_val;
   env_nb_rel        : int;
   env_stratification : stratification;
   env_typing_flags  : typing_flags;

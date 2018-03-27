@@ -64,12 +64,12 @@ let compare_stack_shape stk1 stk2 =
   in
   compare_rec 0 stk1 stk2
 
-type lft_constr_stack_elt =
-    Zlapp of (lift * fconstr) array
+type 'e lft_constr_stack_elt =
+    Zlapp of (lift * 'e fconstr) array
   | Zlproj of Constant.t * lift
-  | Zlfix of (lift * fconstr) * lft_constr_stack
-  | Zlcase of case_info * lift * fconstr * fconstr array
-and lft_constr_stack = lft_constr_stack_elt list
+  | Zlfix of (lift * 'e fconstr) * 'e lft_constr_stack
+  | Zlcase of case_info * lift * 'e fconstr * 'e fconstr array
+and 'e lft_constr_stack = 'e lft_constr_stack_elt list
 
 let rec zlapp v = function
     Zlapp v2 :: s -> zlapp (Array.append v v2) s
@@ -78,7 +78,7 @@ let rec zlapp v = function
 (** Hand-unrolling of the map function to bypass the call to the generic array
     allocation. Type annotation is required to tell OCaml that the array does
     not contain floats. *)
-let map_lift (l : lift) (v : fconstr array) = match v with
+let map_lift (l : lift) (v : 'e fconstr array) = match v with
 | [||] -> assert false
 | [|c0|] -> [|(l, c0)|]
 | [|c0; c1|] -> [|(l, c0); (l, c1)|]
@@ -139,11 +139,11 @@ let whd_betaiotazeta env x =
         whd_val (create_clos_infos betaiotazeta env) (create_tab ()) (inject x)
 
 let whd_all env t =
-  match kind t with
+  match kind_g t with
     | (Sort _|Meta _|Evar _|Ind _|Construct _|
        Prod _|Lambda _|Fix _|CoFix _) -> t
     | App (c, _) ->
-      begin match kind c with
+      begin match kind_g c with
       | Ind _ | Construct _ | Evar _ | Meta _ -> t
       | Sort _ | Rel _ | Var _ | Cast _ | Prod _ | Lambda _ | LetIn _ | App _
         | Const _ |Case _ | Fix _ | CoFix _ | Proj _ ->
@@ -153,11 +153,11 @@ let whd_all env t =
         whd_val (create_clos_infos all env) (create_tab ()) (inject t)
 
 let whd_allnolet env t =
-  match kind t with
+  match kind_g t with
     | (Sort _|Meta _|Evar _|Ind _|Construct _|
        Prod _|Lambda _|Fix _|CoFix _|LetIn _) -> t
     | App (c, _) ->
-      begin match kind c with
+      begin match kind_g c with
       | Ind _ | Construct _ | Evar _ | Meta _ | LetIn _ -> t
       | Sort _ | Rel _ | Var _ | Cast _ | Prod _ | Lambda _ | App _
         | Const _ | Case _ | Fix _ | CoFix _ | Proj _ ->
@@ -173,12 +173,12 @@ let whd_allnolet env t =
 (* Conversion utility functions *)
 
 (* functions of this type are called from the kernel *)
-type 'a kernel_conversion_function = env -> 'a -> 'a -> unit
+type ('e,'a) kernel_conversion_function = 'e env -> 'a -> 'a -> unit
 
 (* functions of this type can be called from outside the kernel *)
-type 'a extended_conversion_function =
-  ?l2r:bool -> ?reds:Names.transparent_state -> env ->
-  ?evars:((existential->constr option) * UGraph.t) ->
+type ('e,'a) extended_conversion_function =
+  ?l2r:bool -> ?reds:Names.transparent_state -> 'e env ->
+  ?evars:(('e existential_g->'e constr_g option) * UGraph.t) ->
   'a -> 'a -> unit
 
 exception NotConvertible
@@ -200,18 +200,18 @@ type conv_pb =
 
 let is_cumul = function CUMUL -> true | CONV -> false
 
-type 'a universe_compare = 
+type ('e,'a) universe_compare =
   { (* Might raise NotConvertible *)
-    compare_sorts : env -> conv_pb -> Sorts.t -> Sorts.t -> 'a -> 'a;
+    compare_sorts : 'e env -> conv_pb -> Sorts.t -> Sorts.t -> 'a -> 'a;
     compare_instances: flex:bool -> Univ.Instance.t -> Univ.Instance.t -> 'a -> 'a;
     compare_cumul_instances : conv_pb -> Univ.Variance.t array ->
       Univ.Instance.t -> Univ.Instance.t -> 'a -> 'a }
 
-type 'a universe_state = 'a * 'a universe_compare
+type ('e,'a) universe_state = 'a * ('e,'a) universe_compare
 
-type ('a,'b) generic_conversion_function = env -> 'b universe_state -> 'a -> 'a -> 'b
+type ('e,'a,'b) generic_conversion_function = 'e env -> ('e,'b) universe_state -> 'a -> 'a -> 'b
 
-type 'a infer_conversion_function = env -> UGraph.t -> 'a -> 'a -> Univ.Constraint.t
+type ('e,'a) infer_conversion_function = 'e env -> UGraph.t -> 'a -> 'a -> Univ.Constraint.t
 
 let sort_cmp_universes env pb s0 s1 (u, check) =
   (check.compare_sorts env pb s0 s1 u, check)
@@ -314,10 +314,10 @@ let compare_stacks f fmind lft1 stk1 lft2 stk2 cuniv =
     cmp_rec (pure_stack lft1 stk1) (pure_stack lft2 stk2) cuniv
   else raise NotConvertible
 
-type conv_tab = {
-  cnv_inf : clos_infos;
-  lft_tab : fconstr infos_tab;
-  rgt_tab : fconstr infos_tab;
+type 'e conv_tab = {
+  cnv_inf : 'e clos_infos;
+  lft_tab : 'e fconstr infos_tab;
+  rgt_tab : 'e fconstr infos_tab;
 }
 (** Invariant: for any tl ∈ lft_tab and tr ∈ rgt_tab, there is no mutable memory
     location contained both in tl and in tr. *)
@@ -342,7 +342,7 @@ and eqappr cv_pb l2r infos (lft1,st1) (lft2,st2) cuniv =
   match (fterm_of hd1, fterm_of hd2) with
     (* case of leaves *)
     | (FAtom a1, FAtom a2) ->
-	(match kind a1, kind a2 with
+        (match kind_g a1, kind_g a2 with
 	   | (Sort s1, Sort s2) ->
 	       if not (is_empty_stack v1 && is_empty_stack v2) then
 		 anomaly (Pp.str "conversion was given ill-typed terms (Sort).");
@@ -353,7 +353,7 @@ and eqappr cv_pb l2r infos (lft1,st1) (lft2,st2) cuniv =
                else raise NotConvertible
 	   | _ -> raise NotConvertible)
     | (FEvar ((ev1,args1),env1), FEvar ((ev2,args2),env2)) ->
-        if Evar.equal ev1 ev2 then
+        if Evkey.equal ev1 ev2 then
           let el1 = el_stack lft1 v1 in
           let el2 = el_stack lft2 v2 in
           let cuniv = convert_stacks l2r infos lft1 lft2 v1 v2 cuniv in
@@ -731,15 +731,15 @@ let infer_inductive_instances cv_pb variance u1 u2 (univs,csts') =
   let csts = get_cumulativity_constraints cv_pb variance u1 u2 in
   (univs, Univ.Constraint.union csts csts')
 
-let inferred_universes : (UGraph.t * Univ.Constraint.t) universe_compare =
+let inferred_universes : ('e,UGraph.t * Univ.Constraint.t) universe_compare =
   { compare_sorts = infer_cmp_universes;
     compare_instances = infer_convert_instances;
     compare_cumul_instances = infer_inductive_instances; }
 
 let gen_conv cv_pb l2r reds env evars univs t1 t2 =
   let b = 
-    if cv_pb = CUMUL then leq_constr_univs univs t1 t2 
-    else eq_constr_univs univs t1 t2
+    if cv_pb = CUMUL then leq_constr_univs_g univs t1 t2
+    else eq_constr_univs_g univs t1 t2
   in
     if b then ()
     else 
@@ -754,9 +754,9 @@ let gen_conv cv_pb ?(l2r=false) ?(reds=full_transparent_state) env ?(evars=(fun 
       CProfile.profile8 fconv_universes_key gen_conv cv_pb l2r reds env evars univs
   else gen_conv cv_pb l2r reds env evars univs
 
-let conv = gen_conv CONV
+let conv ?l2r ?reds env = gen_conv CONV ?l2r ?reds env
 
-let conv_leq = gen_conv CUMUL
+let conv_leq ?l2r ?reds env = gen_conv CUMUL ?l2r ?reds env
 
 let generic_conv cv_pb ~l2r evars reds env univs t1 t2 =
   let (s, _) = 
@@ -765,8 +765,8 @@ let generic_conv cv_pb ~l2r evars reds env univs t1 t2 =
 
 let infer_conv_universes cv_pb l2r evars reds env univs t1 t2 =
   let b, cstrs =
-    if cv_pb == CUMUL then Constr.leq_constr_univs_infer univs t1 t2
-    else Constr.eq_constr_univs_infer univs t1 t2
+    if cv_pb == CUMUL then Constr.leq_constr_univs_infer_g univs t1 t2
+    else Constr.eq_constr_univs_infer_g univs t1 t2
   in
     if b then cstrs
     else
@@ -789,9 +789,13 @@ let infer_conv_leq ?(l2r=false) ?(evars=fun _ -> None) ?(ts=full_transparent_sta
     env univs t1 t2 = 
   infer_conv_universes CUMUL l2r evars ts env univs t1 t2
 
+type vm_conv_type = { vm_conv : 'e. conv_pb -> ('e Evkey.t as 'e,'e types_g) kernel_conversion_function }
+
+let fake_vm_conv = { vm_conv = fun cv_pb env ->
+    gen_conv cv_pb env ~evars:((fun _->None), universes env)}
+
 (* This reference avoids always having to link C code with the kernel *)
-let vm_conv = ref (fun cv_pb env ->
-		   gen_conv cv_pb env ~evars:((fun _->None), universes env))
+let vm_conv = ref fake_vm_conv
 
 let warn_bytecode_compiler_failed =
   let open Pp in
@@ -799,10 +803,10 @@ let warn_bytecode_compiler_failed =
          (fun () -> strbrk "Bytecode compiler failed, " ++
                       strbrk "falling back to standard conversion")
 
-let set_vm_conv (f:conv_pb -> types kernel_conversion_function) = vm_conv := f
+let set_vm_conv f = vm_conv := f
 let vm_conv cv_pb env t1 t2 =
   try
-    !vm_conv cv_pb env t1 t2
+    (!vm_conv).vm_conv cv_pb env t1 t2
   with Not_found | Invalid_argument _ ->
     warn_bytecode_compiler_failed ();
     gen_conv cv_pb env t1 t2

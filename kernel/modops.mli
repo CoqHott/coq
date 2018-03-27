@@ -30,7 +30,7 @@ val destr_nofunctor : ('ty,'a) functorize -> 'a
 val module_type_of_module : module_body -> module_type_body
 val module_body_of_type : ModPath.t -> module_type_body -> module_body
 
-val check_modpath_equiv : env -> ModPath.t -> ModPath.t -> unit
+val check_modpath_equiv : 'e env -> ModPath.t -> ModPath.t -> unit
 
 val implem_smartmap :
   (module_signature -> module_signature) ->
@@ -45,24 +45,24 @@ val subst_structure : substitution -> structure_body -> structure_body
 (** {6 Adding to an environment } *)
 
 val add_structure :
-  ModPath.t -> structure_body -> delta_resolver -> env -> env
+  ModPath.t -> structure_body -> delta_resolver -> ground env -> ground env
 
 (** adds a module and its components, but not the constraints *)
-val add_module : module_body -> env -> env
+val add_module : module_body -> ground env -> ground env
 
 (** same as add_module, but for a module whose native code has been linked by
 the native compiler. The linking information is updated. *)
-val add_linked_module : module_body -> Pre_env.link_info -> env -> env
+val add_linked_module : module_body -> Pre_env.link_info -> ground env -> ground env
 
 (** same, for a module type *)
-val add_module_type : ModPath.t -> module_type_body -> env -> env
+val add_module_type : ModPath.t -> module_type_body -> ground env -> ground env
 
 (** {6 Strengthening } *)
 
 val strengthen : module_type_body -> ModPath.t -> module_type_body
 
 val inline_delta_resolver :
-  env -> inline -> ModPath.t -> MBId.t -> module_type_body ->
+  ground env -> inline -> ModPath.t -> MBId.t -> module_type_body ->
   delta_resolver -> delta_resolver
 
 val strengthen_and_subst_mb : module_body -> ModPath.t -> bool -> module_body
@@ -95,7 +95,7 @@ type signature_mismatch_error =
   | NotConvertibleInductiveField of Id.t
   | NotConvertibleConstructorField of Id.t
   | NotConvertibleBodyField
-  | NotConvertibleTypeField of env * types * types
+  | NotConvertibleTypeField of ground env * types * types
   | CumulativeStatusExpected of bool
   | PolymorphicStatusExpected of bool
   | NotSameConstructorNamesField
@@ -109,7 +109,7 @@ type signature_mismatch_error =
   | NoTypeConstraintExpected
   | IncompatibleInstances
   | IncompatibleUniverses of Univ.univ_inconsistency
-  | IncompatiblePolymorphism of env * types * types
+  | IncompatiblePolymorphism of ground env * types * types
   | IncompatibleConstraints of Univ.AUContext.t
 
 type module_typing_error =

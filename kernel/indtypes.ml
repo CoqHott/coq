@@ -65,14 +65,14 @@ let is_constructor_head t =
 
 (* Errors related to inductive constructions *)
 type inductive_error =
-  | NonPos of env * constr * constr
-  | NotEnoughArgs of env * constr * constr
-  | NotConstructor of env * Id.t * constr * constr * int * int
-  | NonPar of env * constr * int * constr * constr
+  | NonPos of ground env * constr * constr
+  | NotEnoughArgs of ground env * constr * constr
+  | NotConstructor of ground env * Id.t * constr * constr * int * int
+  | NonPar of ground env * constr * int * constr * constr
   | SameNamesTypes of Id.t
   | SameNamesConstructors of Id.t
   | SameNamesOverlap of Id.t list
-  | NotAnArity of env * constr
+  | NotAnArity of ground env * constr
   | BadEntry
   | LargeNonPropInductiveNotInType
 

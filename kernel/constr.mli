@@ -56,9 +56,25 @@ type case_info =
     ci_pp_info    : case_printing   (* not interpreted by the kernel *)
   }
 
+type ground = [ `NO of Util.Empty.t ]
+type evars = [ ground | `Evar of Evar.t ]
+
+module Evkey : sig
+  type 'e t = [< evars > `NO ] as 'e
+
+  val evar : 'e t -> Evar.t
+  val equal : 'e t -> 'e t -> bool
+  val compare : 'e t -> 'e t -> int
+  val hash : 'e t -> int
+  val make : Evar.t -> evars
+end
+
 (** {6 The type of constructions } *)
 
-type t
+type +'e constr_g
+type +'e types_g = 'e constr_g
+
+type t = ground constr_g
 type constr = t
 (** [types] is the same as [constr] but is intended to be used for
    documentation to indicate that such or such function specifically works
@@ -75,23 +91,24 @@ type types = constr
 (** {6 Term constructors. } *)
 
 (** Constructs a de Bruijn index (DB indices begin at 1) *)
-val mkRel : int -> constr
+val mkRel : int -> 'e constr_g
 
 (** Constructs a Variable *)
-val mkVar : Id.t -> constr
+val mkVar : Id.t -> 'e constr_g
 
 (** Constructs an patvar named "?n" *)
-val mkMeta : metavariable -> constr
+val mkMeta : metavariable -> 'e constr_g (* TODO restrict type? *)
 
 (** Constructs an existential variable *)
-type existential = Evar.t * constr array
-val mkEvar : existential -> constr
+type ('e,'constr) pexistential = 'e * 'constr array
+type 'e existential_g = ('e, 'e constr_g) pexistential
+val mkEvar : 'e existential_g -> 'e constr_g
 
 (** Construct a sort *)
-val mkSort : Sorts.t -> types
-val mkProp : types
-val mkSet  : types
-val mkType : Univ.Universe.t -> types
+val mkSort : Sorts.t -> 'e types_g
+val mkProp : 'e types_g
+val mkSet  : 'e types_g
+val mkType : Univ.Universe.t -> 'e types_g
 
 
 (** This defines the strategy to use for verifiying a Cast *)
@@ -99,42 +116,42 @@ type cast_kind = VMcast | NATIVEcast | DEFAULTcast | REVERTcast
 
 (** Constructs the term [t1::t2], i.e. the term t{_ 1} casted with the
    type t{_ 2} (that means t2 is declared as the type of t1). *)
-val mkCast : constr * cast_kind * constr -> constr
+val mkCast : 'e constr_g * cast_kind * 'e constr_g -> 'e constr_g
 
 (** Constructs the product [(x:t1)t2] *)
-val mkProd : Name.t * types * types -> types
+val mkProd : Name.t * 'e types_g * 'e types_g -> 'e types_g
 
 (** Constructs the abstraction \[x:t{_ 1}\]t{_ 2} *)
-val mkLambda : Name.t * types * constr -> constr
+val mkLambda : Name.t * 'e types_g * 'e constr_g -> 'e constr_g
 
 (** Constructs the product [let x = t1 : t2 in t3] *)
-val mkLetIn : Name.t * constr * types * constr -> constr
+val mkLetIn : Name.t * 'e constr_g * 'e types_g * 'e constr_g -> 'e constr_g
 
 (** [mkApp (f, [|t1; ...; tN|]] constructs the application
     {%html:(f t<sub>1</sub> ... t<sub>n</sub>)%}
     {%latex:$(f~t_1\dots f_n)$%}. *)
-val mkApp : constr * constr array -> constr
+val mkApp : 'e constr_g * 'e constr_g array -> 'e constr_g
 
 val map_puniverses : ('a -> 'b) -> 'a Univ.puniverses -> 'b Univ.puniverses
 
 (** Constructs a Constant.t *)
-val mkConst : Constant.t -> constr
-val mkConstU : pconstant -> constr
+val mkConst : Constant.t -> 'e constr_g
+val mkConstU : pconstant -> 'e constr_g
 
 (** Constructs a projection application *)
-val mkProj : (Projection.t * constr) -> constr
+val mkProj : (Projection.t * 'e constr_g) -> 'e constr_g
 
 (** Inductive types *)
 
 (** Constructs the ith (co)inductive type of the block named kn *)
-val mkInd : inductive -> constr
-val mkIndU : pinductive -> constr
+val mkInd : inductive -> 'e constr_g
+val mkIndU : pinductive -> 'e constr_g
 
 (** Constructs the jth constructor of the ith (co)inductive type of the
    block named kn. *)
-val mkConstruct : constructor -> constr
-val mkConstructU : pconstructor -> constr
-val mkConstructUi : pinductive * int -> constr
+val mkConstruct : constructor -> 'e constr_g
+val mkConstructU : pconstructor -> 'e constr_g
+val mkConstructUi : pinductive * int -> 'e constr_g
 
 (** Constructs a destructor of inductive type.
     
@@ -145,7 +162,7 @@ val mkConstructUi : pinductive * int -> constr
 
     [ac]{^ ith} element is ith constructor case presented as 
     {e lambda construct_args (without params). case_term } *)
-val mkCase : case_info * constr * constr * constr array -> constr
+val mkCase : case_info * 'e constr_g * 'e constr_g * 'e constr_g array -> 'e constr_g
 
 (** If [recindxs = [|i1,...in|]]
       [funnames = [|f1,.....fn|]]
@@ -161,9 +178,11 @@ val mkCase : case_info * constr * constr * constr array -> constr
 
    where the length of the {% $ %}j{% $ %}th context is {% $ %}ij{% $ %}.
 *)
-type rec_declaration = Name.t array * types array * constr array
-type fixpoint = (int array * int) * rec_declaration
-val mkFix : fixpoint -> constr
+type 'e rec_declaration_g = Name.t array * 'e types_g array * 'e constr_g array
+type 'e fixpoint_g = (int array * int) * 'e rec_declaration_g
+type rec_declaration = ground rec_declaration_g
+type fixpoint = ground fixpoint_g
+val mkFix : 'e fixpoint_g -> 'e constr_g
 
 (** If [funnames = [|f1,.....fn|]]
       [typarray = [|t1,...tn|]]
@@ -176,15 +195,15 @@ val mkFix : fixpoint -> constr
      ...
      with       fn = bn.]
  *)
-type cofixpoint = int * rec_declaration
-val mkCoFix : cofixpoint -> constr
+type 'e cofixpoint_g = int * 'e rec_declaration_g
+type cofixpoint = ground cofixpoint_g
+val mkCoFix : 'e cofixpoint_g -> 'e constr_g
 
 
 (** {6 Concrete type for making pattern-matching. } *)
 
 (** [constr array] is an instance matching definitional [named_context] in
    the same order (i.e. last argument first) *)
-type 'constr pexistential = Evar.t * 'constr array
 type ('constr, 'types) prec_declaration =
     Name.t array * 'types array * 'constr array
 type ('constr, 'types) pfixpoint =
@@ -192,7 +211,7 @@ type ('constr, 'types) pfixpoint =
 type ('constr, 'types) pcofixpoint =
     int * ('constr, 'types) prec_declaration
 
-type ('constr, 'types, 'sort, 'univs) kind_of_term =
+type ('e,'constr, 'types, 'sort, 'univs) kind_of_term =
   | Rel       of int                                  (** Gallina-variable introduced by [forall], [fun], [let-in], [fix], or [cofix]. *)
 
   | Var       of Id.t                                 (** Gallina-variable that was introduced by Vernacular-command that extends
@@ -200,7 +219,7 @@ type ('constr, 'types, 'sort, 'univs) kind_of_term =
                                                           (i.e. [Variable] or [Let]). *)
 
   | Meta      of metavariable
-  | Evar      of 'constr pexistential
+  | Evar      of ('e,'constr) pexistential
   | Sort      of 'sort
   | Cast      of 'constr * cast_kind * 'types
   | Prod      of Name.t * 'types * 'types             (** Concrete syntax ["forall A:B,C"] is represented as [Prod (A,B,C)]. *)
@@ -226,18 +245,24 @@ type ('constr, 'types, 'sort, 'univs) kind_of_term =
    least one argument and the function is not itself an applicative
    term *)
 
-val kind : constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term
-val of_kind : (constr, types, Sorts.t, Univ.Instance.t) kind_of_term -> constr
+type 'e kind_g = ('e, 'e constr_g, 'e types_g, Sorts.t, Univ.Instance.t) kind_of_term
+
+(** Sensitive to instantiated evars! *)
+val kind_g : 'e Evkey.t constr_g -> 'e kind_g
+
+val kind : constr -> ground kind_g
+val of_kind : 'e kind_g -> 'e constr_g
 
 (** {6 Simple case analysis} *)
 val isRel  : constr -> bool
 val isRelN : int -> constr -> bool
 val isVar  : constr -> bool
 val isVarId : Id.t -> constr -> bool
+val isVarId_g : Id.t -> 'e Evkey.t constr_g -> bool
 val isInd  : constr -> bool
-val isEvar : constr -> bool
+val isEvar : 'e Evkey.t constr_g -> bool (* _g?? *)
 val isMeta : constr -> bool
-val isEvar_or_Meta : constr -> bool
+val isEvar_or_Meta : 'e Evkey.t constr_g -> bool
 val isSort : constr -> bool
 val isCast : constr -> bool
 val isApp : constr -> bool
@@ -294,15 +319,13 @@ val destApp : constr -> constr * constr array
 
 (** Decompose any term as an applicative term; the list of args can be empty *)
 val decompose_app : constr -> constr * constr list
+val decompose_app_g : 'e Evkey.t constr_g -> 'e constr_g * 'e constr_g list
 
 (** Same as [decompose_app], but returns an array. *)
 val decompose_appvect : constr -> constr * constr array
 
 (** Destructs a constant *)
 val destConst : constr -> Constant.t Univ.puniverses
-
-(** Destructs an existential variable *)
-val destEvar : constr -> existential
 
 (** Destructs a (co)inductive type *)
 val destInd : constr -> inductive Univ.puniverses
@@ -319,6 +342,8 @@ val destCase : constr -> case_info * constr * constr * constr array
 
 (** Destructs a projection *)
 val destProj : constr -> Projection.t * constr
+
+val destEvar : 'e Evkey.t constr_g -> ('e, 'e constr_g) pexistential
 
 (** Destructs the {% $ %}i{% $ %}th function of the block
    [Fixpoint f{_ 1} ctx{_ 1} = b{_ 1}
@@ -340,18 +365,22 @@ val equal : constr -> constr -> bool
 (** [eq_constr_univs u a b] is [true] if [a] equals [b] modulo alpha, casts,
    application grouping and the universe equalities in [u]. *)
 val eq_constr_univs : constr UGraph.check_function
+val eq_constr_univs_g : 'e Evkey.t constr_g UGraph.check_function
 
 (** [leq_constr_univs u a b] is [true] if [a] is convertible to [b] modulo 
     alpha, casts, application grouping and the universe inequalities in [u]. *)
 val leq_constr_univs : constr UGraph.check_function
+val leq_constr_univs_g : 'e Evkey.t constr_g UGraph.check_function
 
 (** [eq_constr_univs u a b] is [true] if [a] equals [b] modulo alpha, casts,
    application grouping and the universe equalities in [u]. *)
 val eq_constr_univs_infer : UGraph.t -> constr -> constr -> bool Univ.constrained
+val eq_constr_univs_infer_g : UGraph.t -> ('e Evkey.t as 'e) constr_g -> 'e constr_g -> bool Univ.constrained
 
 (** [leq_constr_univs u a b] is [true] if [a] is convertible to [b] modulo 
     alpha, casts, application grouping and the universe inequalities in [u]. *)
 val leq_constr_univs_infer : UGraph.t -> constr -> constr -> bool Univ.constrained
+val leq_constr_univs_infer_g : UGraph.t -> ('e Evkey.t as 'e) constr_g -> 'e constr_g -> bool Univ.constrained
 
 (** [eq_constr_univs a b] [true, c] if [a] equals [b] modulo alpha, casts,
    application grouping and ignoring universe instances. *)
@@ -368,11 +397,15 @@ val compare : constr -> constr -> int
 
 val fold : ('a -> constr -> 'a) -> 'a -> constr -> 'a
 
+(* Evar sensitive! *)
+val fold_g : ('a -> 'e constr_g -> 'a) -> 'a -> 'e constr_g -> 'a
+
 (** [map f c] maps [f] on the immediate subterms of [c]; it is
    not recursive and the order with which subterms are processed is
    not specified *)
 
 val map : (constr -> constr) -> constr -> constr
+val map_g : ('e constr_g -> 'e constr_g) -> 'e constr_g -> 'e constr_g
 
 (** Like {!map}, but also has an additional accumulator. *)
 
@@ -386,6 +419,9 @@ val fold_map : ('a -> constr -> 'a * constr) -> 'a -> constr -> 'a * constr
 
 val map_with_binders :
   ('a -> 'a) -> ('a -> constr -> constr) -> 'a -> constr -> constr
+
+val map_with_binders_g :
+  ('a -> 'a) -> ('a -> 'e constr_g -> 'e constr_g) -> 'a -> 'e constr_g -> 'e constr_g
 
 (** [iter f c] iters [f] on the immediate subterms of [c]; it is
    not recursive and the order with which subterms are processed is
@@ -401,14 +437,16 @@ val iter : (constr -> unit) -> constr -> unit
 
 val iter_with_binders :
   ('a -> 'a) -> ('a -> constr -> unit) -> 'a -> constr -> unit
+val iter_with_binders_g :
+  ('a -> 'a) -> ('a -> 'e Evkey.t constr_g -> unit) -> 'a -> 'e constr_g -> unit
 
-type constr_compare_fn = int -> constr -> constr -> bool
+type 'e constr_compare_fn = int -> 'e constr_g -> 'e constr_g -> bool
 
 (** [compare_head f c1 c2] compare [c1] and [c2] using [f] to compare
    the immediate subterms of [c1] of [c2] if needed; Cast's, binders
    name and Cases annotations are not taken into account *)
 
-val compare_head : constr_compare_fn -> constr_compare_fn
+val compare_head : ground constr_compare_fn -> ground constr_compare_fn
 
 (** Convert a global reference applied to 2 instances. The int says
    how many arguments are given (as we can only use cumulativity for
@@ -423,29 +461,29 @@ type instance_compare_fn = global_reference -> int ->
 
 val compare_head_gen : instance_compare_fn ->
   (Sorts.t -> Sorts.t -> bool) ->
-  constr_compare_fn ->
-  constr_compare_fn
+  ground constr_compare_fn ->
+  ground constr_compare_fn
 
 val compare_head_gen_leq_with :
-  (constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
-  (constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
+  (('e Evkey.t as 'e) constr_g -> ('e, 'e constr_g, 'e types_g, Sorts.t, Univ.Instance.t) kind_of_term) ->
+  ('e constr_g -> ('e, 'e constr_g, 'e types_g, Sorts.t, Univ.Instance.t) kind_of_term) ->
   instance_compare_fn ->
   (Sorts.t -> Sorts.t -> bool) ->
-  constr_compare_fn ->
-  constr_compare_fn ->
-  constr_compare_fn
+  'e constr_compare_fn ->
+  'e constr_compare_fn ->
+  'e constr_compare_fn
 
 (** [compare_head_gen_with k1 k2 u s f c1 c2] compares [c1] and [c2]
     like [compare_head_gen u s f c1 c2], except that [k1] (resp. [k2])
     is used,rather than {!kind}, to expose the immediate subterms of
     [c1] (resp. [c2]). *)
 val compare_head_gen_with :
-  (constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
-  (constr -> (constr, types, Sorts.t, Univ.Instance.t) kind_of_term) ->
+  (('e Evkey.t as 'e) constr_g -> ('e, 'e constr_g, 'e types_g, Sorts.t, Univ.Instance.t) kind_of_term) ->
+  ('e constr_g -> ('e, 'e constr_g, 'e types_g, Sorts.t, Univ.Instance.t) kind_of_term) ->
   instance_compare_fn ->
   (Sorts.t -> Sorts.t -> bool) ->
-  constr_compare_fn ->
-  constr_compare_fn
+  'e constr_compare_fn ->
+  'e constr_compare_fn
 
 (** [compare_head_gen_leq u s f fle c1 c2] compare [c1] and [c2] using
     [f] to compare the immediate subterms of [c1] of [c2] for
@@ -456,9 +494,14 @@ val compare_head_gen_with :
 
 val compare_head_gen_leq : instance_compare_fn ->
   (Sorts.t -> Sorts.t -> bool) ->
-  constr_compare_fn ->
-  constr_compare_fn ->
-  constr_compare_fn
+  ground constr_compare_fn ->
+  ground constr_compare_fn ->
+  ground constr_compare_fn
+
+exception NotGround
+val force_ground : ?unsafe:bool -> 'e constr_g -> constr
+
+val to_econstr : constr -> 'e constr_g
 
 (** {6 Hashconsing} *)
 

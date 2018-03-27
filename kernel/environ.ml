@@ -33,9 +33,9 @@ open Context.Rel.Declaration
 
 (* The type of environments. *)
 
-type named_context_val = Pre_env.named_context_val
+type +'e named_context_val = 'e Pre_env.named_context_val
 
-type env = Pre_env.env
+type +'e env = 'e Pre_env.env
 
 let pre_env env = env
 let env_of_pre_env env = env
@@ -113,7 +113,7 @@ let map_named_val = map_named_val
 let empty_named_context = Context.Named.empty
 
 let push_named = push_named
-let push_named_context = List.fold_right push_named
+let push_named_context ctx env = List.fold_right push_named ctx env
 let push_named_context_val = push_named_context_val
 
 let val_of_named_context ctxt =
@@ -147,7 +147,7 @@ let reset_with_named_context ctxt env =
     env_rel_context = empty_rel_context_val;
     env_nb_rel = 0 }
 
-let reset_context = reset_with_named_context empty_named_context_val
+let reset_context env = reset_with_named_context empty_named_context_val env
 
 let pop_rel_context n env =
   let rec skip n ctx =
@@ -377,7 +377,7 @@ let lookup_constructor_variables (ind,_) env =
 (* Returns the list of global variables in a term *)
 
 let vars_of_global env constr =
-  match kind constr with
+  match kind_g constr with
       Var id -> Id.Set.singleton id
     | Const (kn, _) -> lookup_constant_variables kn env
     | Ind (ind, _) -> lookup_inductive_variables ind env
@@ -388,12 +388,12 @@ let vars_of_global env constr =
 let global_vars_set env constr =
   let rec filtrec acc c =
     let acc =
-      match kind c with
+      match kind_g c with
       | Var _ | Const _ | Ind _ | Construct _ ->
 	  Id.Set.union (vars_of_global env c) acc
       | _ ->
 	  acc in
-    Constr.fold filtrec acc c
+    Constr.fold_g filtrec acc c
   in
     filtrec Id.Set.empty constr
 

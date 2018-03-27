@@ -25,4 +25,4 @@ val declare_head : evaluable_global_reference -> unit
 (** [is_rigid] tells if some term is known to ultimately reduce to a term
     with a rigid head symbol *)
 
-val is_rigid : env -> constr -> bool
+val is_rigid : ground env -> constr -> bool

@@ -21,10 +21,10 @@ module RelDecl = Context.Rel.Declaration
 
 exception NotClosed
 
-type evars =
-    { evars_val : existential -> constr option;
-      evars_typ : existential -> types;
-      evars_metas : metavariable -> types }
+type 'e evars =
+    { evars_val : 'e existential_g -> 'e constr_g option;
+      evars_typ : 'e existential_g -> 'e types_g;
+      evars_metas : metavariable -> 'e types_g}
 
 (*s Constructors *)
 
@@ -463,7 +463,7 @@ let empty_evars =
 let empty_ids = [||]
 
 let rec lambda_of_constr env sigma c =
-  match kind c with
+  match kind_g c with
   | Meta mv ->
      let ty = meta_type sigma mv in
      Lmeta (mv, lambda_of_constr env sigma ty)
@@ -473,7 +473,7 @@ let rec lambda_of_constr env sigma c =
      | None ->
 	let ty = evar_type sigma ev in
         let args = Array.map (lambda_of_constr env sigma) args in
-        Levar(evk, lambda_of_constr env sigma ty, args)
+        Levar(Evkey.evar evk, lambda_of_constr env sigma ty, args)
      | Some t -> lambda_of_constr env sigma t)
 
   | Cast (c, _, _) -> lambda_of_constr env sigma c
@@ -496,7 +496,7 @@ let rec lambda_of_constr env sigma c =
       Lprod(ld,  Llam([|id|], lc))
 
   | Lambda _ ->
-      let params, body = Term.decompose_lam c in
+      let params, body = Term.decompose_lam_g c in
       let ids = get_names (List.rev params) in
       Renv.push_rels env ids;
       let lb = lambda_of_constr env sigma body in
@@ -577,7 +577,7 @@ let rec lambda_of_constr env sigma c =
       Lcofix(init, (names, ltypes, lbodies))
 
 and lambda_of_app env sigma f args =
-  match kind f with
+  match kind_g f with
   | Const (kn,u as c) ->
       let kn,u = get_alias !global_env c in
       let cb = lookup_constant kn !global_env in
@@ -591,8 +591,9 @@ and lambda_of_app env sigma f args =
       with Not_found ->
       begin match cb.const_body with
       | Def csubst -> (* TODO optimize if f is a proj and argument is known *)
-          if cb.const_inline_code then
-            lambda_of_app env sigma (Mod_subst.force_constr csubst) args
+        if cb.const_inline_code then
+          let forced = to_econstr (Mod_subst.force_constr csubst) in
+            lambda_of_app env sigma forced args
           else
           let prefix = get_const_prefix !global_env kn in
           let t =
@@ -615,12 +616,12 @@ and lambda_of_app env sigma f args =
 	try
 	  Retroknowledge.get_native_constant_static_info
                          (!global_env).retroknowledge
-                         f args
+                         (force_ground f) (Array.map force_ground args)
           with NotClosed ->
 	    assert (Int.equal nparams 0); (* should be fine for int31 *)
 	    let args = lambda_of_args env sigma nparams args in
 	    Retroknowledge.get_native_constant_dynamic_info
-                           (!global_env).retroknowledge f prefix c args
+                           (!global_env).retroknowledge (force_ground f) prefix c args
         with Not_found ->
 	  let args = lambda_of_args env sigma nparams args in
 	  makeblock !global_env c u tag args
@@ -628,7 +629,7 @@ and lambda_of_app env sigma f args =
 	let args = lambda_of_args env sigma 0 args in
 	(try
 	    Retroknowledge.get_native_constant_dynamic_info
-              (!global_env).retroknowledge f prefix c args
+              (!global_env).retroknowledge (force_ground f) prefix c args
 	  with Not_found ->
             mkLapp (Lconstruct (prefix, (c,u))) args)
   | _ -> 
@@ -653,7 +654,7 @@ let optimize lam =
   lam
 
 let lambda_of_constr env sigma c =
-  set_global_env env;
+  set_global_env (Obj.magic env); (* wtf is this *)
   let env = Renv.make () in
   let ids = List.rev_map RelDecl.get_name !global_env.env_rel_context.env_rel_ctx in
   Renv.push_rels env (Array.of_list ids);

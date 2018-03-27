@@ -15,13 +15,13 @@ open Reduction
 
 (* Type errors. *)
 
-type 'constr pguard_error =
-  (* Fixpoints *)
+type ('e,'constr) pguard_error =
+  (** Fixpoints *)
   | NotEnoughAbstractionInFixBody
   | RecursionNotOnInductiveType of 'constr
-  | RecursionOnIllegalTerm of int * (env * 'constr) * int list * int list
+  | RecursionOnIllegalTerm of int * ('e env * 'constr) * int list * int list
   | NotEnoughArgumentsForFixCall of int
-  (* CoFixpoints *)
+  (** CoFixpoints *)
   | CodomainNotInductiveType of 'constr
   | NestedRecursiveOccurrences
   | UnguardedRecursiveCall of 'constr
@@ -34,14 +34,14 @@ type 'constr pguard_error =
   | NotGuardedForm of 'constr
   | ReturnPredicateNotCoInductive of 'constr
 
-type guard_error = constr pguard_error
+type guard_error = (ground,constr) pguard_error
 
 type arity_error =
   | NonInformativeToInformative
   | StrongEliminationOnNonSmallType
   | WrongArity
 
-type ('constr, 'types) ptype_error =
+type ('e, 'constr, 'types) ptype_error =
   | UnboundRel of int
   | UnboundVar of variable
   | NotAType of ('constr, 'types) punsafe_judgment
@@ -58,14 +58,14 @@ type ('constr, 'types) ptype_error =
   | CantApplyBadType of
       (int * 'constr * 'constr) * ('constr, 'types) punsafe_judgment * ('constr, 'types) punsafe_judgment array
   | CantApplyNonFunctional of ('constr, 'types) punsafe_judgment * ('constr, 'types) punsafe_judgment array
-  | IllFormedRecBody of 'constr pguard_error * Name.t array * int * env * ('constr, 'types) punsafe_judgment array
+  | IllFormedRecBody of ('e,'constr) pguard_error * Name.t array * int * 'e env * ('constr, 'types) punsafe_judgment array
   | IllTypedRecBody of
       int * Name.t array * ('constr, 'types) punsafe_judgment array * 'types array
   | UnsatisfiedConstraints of Univ.Constraint.t
 
-type type_error = (constr, types) ptype_error
+type type_error = (ground,constr, types) ptype_error
 
-exception TypeError of env * type_error
+exception TypeError of ground env * type_error
 
 let nfj env {uj_val=c;uj_type=ct} =
   {uj_val=c;uj_type=nf_betaiota env ct}

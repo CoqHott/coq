@@ -17,12 +17,12 @@ open Names
    [Safe_typing]. *)
 
 val safe_env : unit -> Safe_typing.safe_environment
-val env : unit -> Environ.env
+val env : unit -> Constr.ground Environ.env
 
 val env_is_initial : unit -> bool
 
 val universes : unit -> UGraph.t
-val named_context_val : unit -> Environ.named_context_val
+val named_context_val : unit -> Constr.ground Environ.named_context_val
 val named_context : unit -> Context.Named.t
 
 (** {6 Enriching the global environment } *)
@@ -118,7 +118,7 @@ val import :
 (** Function to get an environment from the constants part of the global
  * environment and a given context. *)
 
-val env_of_context : Environ.named_context_val -> Environ.env
+val env_of_context : 'e Environ.named_context_val -> 'e Environ.env
 
 val join_safe_environment : ?except:Future.UUIDSet.t -> unit -> unit
 val is_joined_environment : unit -> bool
@@ -127,15 +127,15 @@ val is_polymorphic : Globnames.global_reference -> bool
 val is_template_polymorphic : Globnames.global_reference -> bool
 val is_type_in_type : Globnames.global_reference -> bool
 
-val constr_of_global_in_context : Environ.env ->
-  Globnames.global_reference -> Constr.types * Univ.AUContext.t
+val constr_of_global_in_context : 'e Environ.env ->
+  Globnames.global_reference -> 'e Constr.types_g * Univ.AUContext.t
 (** Returns the type of the constant in its local universe
     context. The type should not be used without pushing it's universe
     context in the environmnent of usage. For non-universe-polymorphic
     constants, it does not matter. *)
 
-val type_of_global_in_context : Environ.env -> 
-  Globnames.global_reference -> Constr.types * Univ.AUContext.t
+val type_of_global_in_context : 'e Environ.env ->
+  Globnames.global_reference -> 'e Constr.types_g * Univ.AUContext.t
 (** Returns the type of the constant in its local universe
     context. The type should not be used without pushing it's universe
     context in the environmnent of usage. For non-universe-polymorphic
@@ -159,6 +159,6 @@ val set_strategy : Constant.t Names.tableKey -> Conv_oracle.level -> unit
 
 val current_dirpath : unit -> DirPath.t
 
-val with_global : (Environ.env -> DirPath.t -> 'a Univ.in_universe_context_set) -> 'a
+val with_global : (Constr.ground Environ.env -> DirPath.t -> 'a Univ.in_universe_context_set) -> 'a
 
 val global_env_summary_tag : Safe_typing.safe_environment Summary.Dyn.tag

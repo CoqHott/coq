@@ -22,16 +22,16 @@ open Environ
    only a coinductive type.
    They raise [Not_found] if not convertible to a recursive type. *)
 
-val find_rectype     : env -> types -> pinductive * constr list
-val find_inductive   : env -> types -> pinductive * constr list
-val find_coinductive : env -> types -> pinductive * constr list
+val find_rectype     : ground env -> types -> pinductive * constr list
+val find_inductive   : ground env -> types -> pinductive * constr list
+val find_coinductive : ground env -> types -> pinductive * constr list
 
 type mind_specif = mutual_inductive_body * one_inductive_body
 
 (** {6 ... } *)
 (** Fetching information in the environment about an inductive type.
     Raises [Not_found] if the inductive type is not found. *)
-val lookup_mind_specif : env -> inductive -> mind_specif
+val lookup_mind_specif : 'e env -> inductive -> mind_specif
 
 (** {6 Functions to build standard types related to inductive } *)
 val ind_subst : MutInd.t -> mutual_inductive_body -> Instance.t -> constr list
@@ -41,14 +41,14 @@ val inductive_paramdecls : mutual_inductive_body puniverses -> Context.Rel.t
 val instantiate_inductive_constraints :
   mutual_inductive_body -> Instance.t -> Constraint.t
 
-val constrained_type_of_inductive : env -> mind_specif puniverses -> types constrained
+val constrained_type_of_inductive : ground env -> mind_specif puniverses -> types constrained
 val constrained_type_of_inductive_knowing_parameters :
-  env -> mind_specif puniverses -> types Lazy.t array -> types constrained
+  ground env -> mind_specif puniverses -> types Lazy.t array -> types constrained
 
-val type_of_inductive : env -> mind_specif puniverses -> types
+val type_of_inductive : ground env -> mind_specif puniverses -> types
 
 val type_of_inductive_knowing_parameters :
-  env -> ?polyprop:bool -> mind_specif puniverses -> types Lazy.t array -> types
+  ground env -> ?polyprop:bool -> mind_specif puniverses -> types Lazy.t array -> types
 
 val elim_sorts : mind_specif -> Sorts.family list
 
@@ -79,7 +79,7 @@ val inductive_params : mind_specif -> int
    the universe constraints generated.
  *)
 val type_case_branches :
-  env -> pinductive * constr list -> unsafe_judgment -> constr
+  ground env -> pinductive * constr list -> unsafe_judgment -> constr
     -> types array * types
 
 val build_branches_type :
@@ -93,14 +93,14 @@ val inductive_sort_family : one_inductive_body -> Sorts.family
 
 (** Check a [case_info] actually correspond to a Case expression on the
    given inductive type. *)
-val check_case_info : env -> pinductive -> case_info -> unit
+val check_case_info : ground env -> pinductive -> case_info -> unit
 
 (** {6 Guard conditions for fix and cofix-points. } *)
 
 (** When [chk] is false, the guard condition is not actually
     checked. *)
-val check_fix : env -> fixpoint -> unit
-val check_cofix : env -> cofixpoint -> unit
+val check_fix : ground env -> fixpoint -> unit
+val check_cofix : ground env -> cofixpoint -> unit
 
 (** {6 Support for sort-polymorphic inductive types } *)
 
@@ -115,7 +115,7 @@ exception SingletonInductiveBecomesProp of Id.t
 
 val max_inductive_sort : Sorts.t array -> Universe.t
 
-val instantiate_universes : env -> Context.Rel.t ->
+val instantiate_universes : ground env -> Context.Rel.t ->
   template_arity -> constr Lazy.t array -> Context.Rel.t * Sorts.t
 
 (** {6 Debug} *)
@@ -126,7 +126,7 @@ type subterm_spec =
   | Dead_code
   | Not_subterm
 type guard_env =
-  { env     : env;
+  { env     : ground env;
     (** dB of last fixpoint *)
     rel_min : int;
     (** dB of variables denoting subterms *)

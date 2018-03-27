@@ -31,116 +31,116 @@ open Declarations
 
 
 
-type env
-val pre_env : env -> Pre_env.env
-val env_of_pre_env : Pre_env.env -> env
-val oracle : env -> Conv_oracle.oracle
-val set_oracle : env -> Conv_oracle.oracle -> env
+type +'e env
+val pre_env : 'e env -> 'e Pre_env.env
+val env_of_pre_env : 'e Pre_env.env -> 'e env
+val oracle : 'e env -> Conv_oracle.oracle
+val set_oracle : 'e env -> Conv_oracle.oracle -> 'e env
 
-type named_context_val
-val eq_named_context_val : named_context_val -> named_context_val -> bool
+type +'e named_context_val
+val eq_named_context_val : ground named_context_val -> ground named_context_val -> bool
 
-val empty_env : env
+val empty_env : 'e env
 
-val universes     : env -> UGraph.t
-val rel_context   : env -> Context.Rel.t
-val named_context : env -> Context.Named.t
-val named_context_val : env -> named_context_val
+val universes     : 'e env -> UGraph.t
+val rel_context   : 'e env -> 'e Context.Rel.gen
+val named_context : 'e env -> 'e Context.Named.gen
+val named_context_val : 'e env -> 'e named_context_val
 
-val opaque_tables : env -> Opaqueproof.opaquetab
-val set_opaque_tables : env -> Opaqueproof.opaquetab -> env
+val opaque_tables : 'e env -> Opaqueproof.opaquetab
+val set_opaque_tables : 'e env -> Opaqueproof.opaquetab -> 'e env
 
 
-val engagement    : env -> engagement
-val typing_flags    : env -> typing_flags
-val is_impredicative_set : env -> bool
-val type_in_type : env -> bool
-val deactivated_guard : env -> bool
+val engagement    : 'e env -> engagement
+val typing_flags    : 'e env -> typing_flags
+val is_impredicative_set : 'e env -> bool
+val type_in_type : 'e env -> bool
+val deactivated_guard : 'e env -> bool
 
 (** is the local context empty *)
-val empty_context : env -> bool
+val empty_context : 'e env -> bool
 
 (** {5 Context of de Bruijn variables ([rel_context]) } *)
 
-val nb_rel           : env -> int
-val push_rel         : Context.Rel.Declaration.t -> env -> env
-val push_rel_context : Context.Rel.t -> env -> env
-val push_rec_types   : rec_declaration -> env -> env
+val nb_rel           : 'e env -> int
+val push_rel         : 'e Context.Rel.Declaration.gen -> 'e env -> 'e env
+val push_rel_context : 'e Context.Rel.gen -> 'e env -> 'e env
+val push_rec_types   : 'e Evkey.t rec_declaration_g -> 'e env -> 'e env
 
 (** Looks up in the context of local vars referred by indice ([rel_context]) 
    raises [Not_found] if the index points out of the context *)
-val lookup_rel    : int -> env -> Context.Rel.Declaration.t
-val evaluable_rel : int -> env -> bool
+val lookup_rel    : int -> 'e env -> 'e Context.Rel.Declaration.gen
+val evaluable_rel : int -> 'e env -> bool
 
 (** {6 Recurrence on [rel_context] } *)
 
 val fold_rel_context :
-  (env -> Context.Rel.Declaration.t -> 'a -> 'a) -> env -> init:'a -> 'a
+  ('e env -> 'e Context.Rel.Declaration.gen -> 'a -> 'a) -> 'e env -> init:'a -> 'a
 
 (** {5 Context of variables (section variables and goal assumptions) } *)
 
-val named_context_of_val : named_context_val -> Context.Named.t
-val val_of_named_context : Context.Named.t -> named_context_val
-val empty_named_context_val : named_context_val
-val ids_of_named_context_val : named_context_val -> Id.Set.t
+val named_context_of_val : 'e named_context_val -> 'e Context.Named.gen
+val val_of_named_context : 'e Context.Named.gen -> 'e named_context_val
+val empty_named_context_val : 'e named_context_val
+val ids_of_named_context_val : 'e named_context_val -> Id.Set.t
 
 
 (** [map_named_val f ctxt] apply [f] to the body and the type of
    each declarations.
    *** /!\ ***   [f t] should be convertible with t *)
 val map_named_val :
-   (constr -> constr) -> named_context_val -> named_context_val
+   ('e constr_g -> 'e constr_g) -> 'e named_context_val -> 'e named_context_val
 
-val push_named : Context.Named.Declaration.t -> env -> env
-val push_named_context : Context.Named.t -> env -> env
+val push_named : 'e Context.Named.Declaration.gen -> 'e env -> 'e env
+val push_named_context : 'e Context.Named.gen -> 'e env -> 'e env
 val push_named_context_val  :
-    Context.Named.Declaration.t -> named_context_val -> named_context_val
+    'e Context.Named.Declaration.gen -> 'e named_context_val -> 'e named_context_val
 
 
 
 (** Looks up in the context of local vars referred by names ([named_context]) 
    raises [Not_found] if the Id.t is not found *)
 
-val lookup_named     : variable -> env -> Context.Named.Declaration.t
-val lookup_named_val : variable -> named_context_val -> Context.Named.Declaration.t
-val evaluable_named  : variable -> env -> bool
-val named_type : variable -> env -> types
-val named_body : variable -> env -> constr option
+val lookup_named     : variable -> 'e env -> 'e Context.Named.Declaration.gen
+val lookup_named_val : variable -> 'e named_context_val -> 'e Context.Named.Declaration.gen
+val evaluable_named  : variable -> 'e env -> bool
+val named_type : variable -> 'e env -> 'e types_g
+val named_body : variable -> 'e env -> 'e constr_g option
 
 (** {6 Recurrence on [named_context]: older declarations processed first } *)
 
 val fold_named_context :
-  (env -> Context.Named.Declaration.t -> 'a -> 'a) -> env -> init:'a -> 'a
+  ('e env -> 'e Context.Named.Declaration.gen -> 'a -> 'a) -> 'e env -> init:'a -> 'a
 
 (** Recurrence on [named_context] starting from younger decl *)
 val fold_named_context_reverse :
-  ('a -> Context.Named.Declaration.t -> 'a) -> init:'a -> env -> 'a
+  ('a -> 'e Context.Named.Declaration.gen -> 'a) -> init:'a -> 'e env -> 'a
 
 (** This forgets named and rel contexts *)
-val reset_context : env -> env
+val reset_context : 'e env -> 'f env
 
 (** This forgets rel context and sets a new named context *)
-val reset_with_named_context : named_context_val -> env -> env
+val reset_with_named_context : 'e named_context_val -> 'f env -> 'e env
 
 (** This removes the [n] last declarations from the rel context *)
-val pop_rel_context : int -> env -> env
+val pop_rel_context : int -> 'e env -> 'e env
 
 (** {5 Global constants }
   {6 Add entries to global environment } *)
 
-val add_constant : Constant.t -> constant_body -> env -> env
+val add_constant : Constant.t -> constant_body -> 'e env -> 'e env
 val add_constant_key : Constant.t -> constant_body -> Pre_env.link_info ->
-  env -> env
+  'e env -> 'e env
 
 (** Looks up in the context of global constant names 
    raises [Not_found] if the required path is not found *)
-val lookup_constant    : Constant.t -> env -> constant_body
-val evaluable_constant : Constant.t -> env -> bool
+val lookup_constant    : Constant.t -> 'e env -> constant_body
+val evaluable_constant : Constant.t -> 'e env -> bool
 
 (** New-style polymorphism *)
-val polymorphic_constant  : Constant.t -> env -> bool
-val polymorphic_pconstant : pconstant -> env -> bool
-val type_in_type_constant : Constant.t -> env -> bool
+val polymorphic_constant  : Constant.t -> 'e env -> bool
+val polymorphic_pconstant : pconstant -> 'e env -> bool
+val type_in_type_constant : Constant.t -> 'e env -> bool
 
 (** {6 ... } *)
 (** [constant_value env c] raises [NotEvaluableConst Opaque] if
@@ -151,84 +151,84 @@ val type_in_type_constant : Constant.t -> env -> bool
 type const_evaluation_result = NoBody | Opaque
 exception NotEvaluableConst of const_evaluation_result
 
-val constant_type : env -> Constant.t puniverses -> types constrained
+val constant_type : 'e env -> Constant.t puniverses -> types constrained
 
-val constant_value_and_type : env -> Constant.t puniverses -> 
+val constant_value_and_type : 'e env -> Constant.t puniverses ->
   constr option * types * Univ.Constraint.t
 (** The universe context associated to the constant, empty if not 
     polymorphic *)
-val constant_context : env -> Constant.t -> Univ.AUContext.t
+val constant_context : 'e env -> Constant.t -> Univ.AUContext.t
 
 (* These functions should be called under the invariant that [env] 
    already contains the constraints corresponding to the constant 
    application. *)
-val constant_value_in : env -> Constant.t puniverses -> constr
-val constant_type_in : env -> Constant.t puniverses -> types
-val constant_opt_value_in : env -> Constant.t puniverses -> constr option
+val constant_value_in : 'e env -> Constant.t puniverses -> constr
+val constant_type_in : 'e env -> Constant.t puniverses -> types
+val constant_opt_value_in : 'e env -> Constant.t puniverses -> constr option
 
 (** {6 Primitive projections} *)
 
-val lookup_projection    : Names.Projection.t -> env -> projection_body
-val is_projection : Constant.t -> env -> bool
+val lookup_projection : Projection.t -> 'e env -> projection_body
+val is_projection : Constant.t -> 'e env -> bool
 
 (** {5 Inductive types } *)
-val add_mind_key : MutInd.t -> Pre_env.mind_key -> env -> env
-val add_mind : MutInd.t -> mutual_inductive_body -> env -> env
+val add_mind_key : MutInd.t -> Pre_env.mind_key -> 'e env -> 'e env
+val add_mind : MutInd.t -> mutual_inductive_body -> 'e env -> 'e env
 
 (** Looks up in the context of global inductive names 
    raises [Not_found] if the required path is not found *)
-val lookup_mind : MutInd.t -> env -> mutual_inductive_body
+val lookup_mind : MutInd.t -> 'e env -> mutual_inductive_body
 
 (** New-style polymorphism *)
-val polymorphic_ind  : inductive -> env -> bool
-val polymorphic_pind : pinductive -> env -> bool
-val type_in_type_ind : inductive -> env -> bool
+val polymorphic_ind  : inductive -> 'e env -> bool
+val polymorphic_pind : pinductive -> 'e env -> bool
+val type_in_type_ind : inductive -> 'e env -> bool
 
 (** Old-style polymorphism *)
-val template_polymorphic_ind : inductive -> env -> bool
-val template_polymorphic_pind : pinductive -> env -> bool
+val template_polymorphic_ind : inductive -> 'e env -> bool
+val template_polymorphic_pind : pinductive -> 'e env -> bool
 
 (** {5 Modules } *)
 
-val add_modtype : module_type_body -> env -> env
+val add_modtype : module_type_body -> 'e env -> 'e env
 
 (** [shallow_add_module] does not add module components *)
-val shallow_add_module : module_body -> env -> env
+val shallow_add_module : module_body -> 'e env -> 'e env
 
-val lookup_module : ModPath.t -> env -> module_body
-val lookup_modtype : ModPath.t -> env -> module_type_body
+val lookup_module : ModPath.t -> 'e env -> module_body
+val lookup_modtype : ModPath.t -> 'e env -> module_type_body
 
 (** {5 Universe constraints } *)
 
 (** Add universe constraints to the environment.
     @raise UniverseInconsistency .
 *)
-val add_constraints : Univ.Constraint.t -> env -> env
+val add_constraints : Univ.Constraint.t -> 'e env -> 'e env
 
 (** Check constraints are satifiable in the environment. *)
-val check_constraints : Univ.Constraint.t -> env -> bool
-val push_context : ?strict:bool -> Univ.UContext.t -> env -> env
-val push_context_set : ?strict:bool -> Univ.ContextSet.t -> env -> env
-val push_constraints_to_env : 'a Univ.constrained -> env -> env
+val check_constraints : Univ.Constraint.t -> 'e env -> bool
+val push_context : ?strict:bool -> Univ.UContext.t -> 'e env -> 'e env
+val push_context_set : ?strict:bool -> Univ.ContextSet.t -> 'e env -> 'e env
+val push_constraints_to_env : 'a Univ.constrained -> 'e env -> 'e env
 
-val set_engagement : engagement -> env -> env
-val set_typing_flags : typing_flags -> env -> env
+val set_engagement : engagement -> 'e env -> 'e env
+val set_typing_flags : typing_flags -> 'e env -> 'e env
 
 (** {6 Sets of referred section variables }
    [global_vars_set env c] returns the list of [id]'s occurring either
    directly as [Var id] in [c] or indirectly as a section variable
    dependent in a global reference occurring in [c] *)
 
-val global_vars_set : env -> constr -> Id.Set.t
+val global_vars_set : 'e Evkey.t env -> 'e constr_g -> Id.Set.t
 
 (** the constr must be a global reference *)
-val vars_of_global : env -> constr -> Id.Set.t
+val vars_of_global : 'e Evkey.t env -> 'e constr_g -> Id.Set.t
 
 (** closure of the input id set w.r.t. dependency *)
-val really_needed : env -> Id.Set.t -> Id.Set.t
+val really_needed : ground env -> Id.Set.t -> Id.Set.t
 
 (** like [really_needed] but computes a well ordered named context *)
-val keep_hyps : env -> Id.Set.t -> Context.Named.t
+val keep_hyps : ground env -> Id.Set.t -> Context.Named.t
 
 (** {5 Unsafe judgments. }
     We introduce here the pre-type of judgments, which is
@@ -253,29 +253,34 @@ type unsafe_type_judgment = types punsafe_type_judgment
 
 (** {6 Compilation of global declaration } *)
 
-val compile_constant_body : env -> constant_universes -> constant_def -> Cemitcodes.body_code option
+val compile_constant_body : ground env -> constant_universes ->
+  constant_def -> Cemitcodes.body_code option
 
 exception Hyp_not_found
 
 (** [apply_to_hyp sign id f] split [sign] into [tail::(id,_,_)::head] and
    return [tail::(f head (id,_,_) (rev tail))::head].
    the value associated to id should not change *)
-val apply_to_hyp : named_context_val -> variable ->
-  (Context.Named.t -> Context.Named.Declaration.t -> Context.Named.t -> Context.Named.Declaration.t) ->
-    named_context_val
+val apply_to_hyp : 'e named_context_val -> variable ->
+  ('e Context.Named.gen -> 'e Context.Named.Declaration.gen ->
+   'e Context.Named.gen -> 'e Context.Named.Declaration.gen) ->
+    'e named_context_val
 
-val remove_hyps : Id.Set.t -> (Context.Named.Declaration.t -> Context.Named.Declaration.t) -> (Pre_env.lazy_val -> Pre_env.lazy_val) -> named_context_val -> named_context_val
+val remove_hyps : Id.Set.t ->
+  ('e Context.Named.Declaration.gen -> 'e Context.Named.Declaration.gen) ->
+  (Pre_env.lazy_val -> Pre_env.lazy_val) ->
+  'e named_context_val -> 'e named_context_val
 
 
 
 open Retroknowledge
 (** functions manipulating the retroknowledge 
     @author spiwack *)
-val retroknowledge : (retroknowledge->'a) -> env -> 'a
+val retroknowledge : (retroknowledge->'a) -> 'e env -> 'a
 
-val registered : env -> field -> bool
+val registered : 'e env -> field -> bool
 
-val register : env -> field -> Retroknowledge.entry -> env
+val register : 'e env -> field -> Retroknowledge.entry -> 'e env
 
 (** Native compiler *)
 val no_link_info : Pre_env.link_info

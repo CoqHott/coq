@@ -62,14 +62,16 @@ val empty_updates : code_location_updates
 
 val register_native_file : string -> unit
 
-val compile_constant_field : env -> string -> Constant.t ->
+val compile_constant_field : ground env -> string -> Constant.t ->
   global list -> constant_body -> global list
 
 val compile_mind_field : string -> ModPath.t -> Label.t ->
   global list -> mutual_inductive_body -> global list
 
-val mk_conv_code : env -> evars -> string -> constr -> constr -> linkable_code
-val mk_norm_code : env -> evars -> string -> constr -> linkable_code
+val mk_conv_code : ('e Evkey.t as 'e) env -> 'e evars ->
+  string -> 'e constr_g -> 'e constr_g -> linkable_code
+val mk_norm_code : ('e Evkey.t as 'e) env -> 'e evars ->
+  string -> 'e constr_g -> linkable_code
 
 val mk_library_header : DirPath.t -> global list
 

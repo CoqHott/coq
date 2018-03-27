@@ -43,7 +43,9 @@ struct
       | LocalAssum of Name.t * 'types            (** name, type *)
       | LocalDef of Name.t * 'constr * 'types   (** name, value, type *)
 
-    type t = (Constr.constr, Constr.types) pt
+    type 'e gen = ('e Constr.constr_g, 'e Constr.types_g) pt
+
+    type t = Constr.ground gen
 
     (** Return the name bound by a given declaration. *)
     let get_name = function
@@ -157,6 +159,7 @@ struct
       Inner-most declarations are at the beginning of the list.
       Outer-most declarations are at the end of the list. *)
   type ('constr, 'types) pt = ('constr, 'types) Declaration.pt list
+  type 'e gen = 'e Declaration.gen list
   type t = Declaration.t list
 
   (** empty rel-context *)
@@ -241,7 +244,8 @@ struct
       | LocalAssum of Id.t * 'types             (** identifier, type *)
       | LocalDef of Id.t * 'constr * 'types    (** identifier, value, type *)
 
-    type t = (Constr.constr, Constr.types) pt
+    type 'e gen = ('e Constr.constr_g, 'e Constr.types_g) pt
+    type t = Constr.ground gen
 
     (** Return the identifier bound by a given declaration. *)
     let get_id = function
@@ -370,6 +374,7 @@ struct
       Inner-most declarations are at the beginning of the list.
       Outer-most declarations are at the end of the list. *)
   type ('constr, 'types) pt = ('constr, 'types) Declaration.pt list
+  type 'e gen = 'e Declaration.gen list
   type t = Declaration.t list
 
   (** empty named-context *)

@@ -1867,7 +1867,7 @@ let compile_constant env sigma prefix ~interactive con cb =
      in
     begin match cb.const_body with
     | Def t ->
-      let t = Mod_subst.force_constr t in
+      let t = to_econstr @@ Mod_subst.force_constr t in
       let code = lambda_of_constr env sigma t in
       if !Flags.debug then Feedback.msg_debug (Pp.str "Generated lambda code");
       let is_lazy = is_lazy prefix t in
@@ -2017,7 +2017,7 @@ let compile_mind_deps env prefix ~interactive
 (* This function compiles all necessary dependencies of t, and generates code in
    reverse order, as well as linking information updates *)
 let rec compile_deps env sigma prefix ~interactive init t =
-  match kind t with
+  match kind_g t with
   | Ind ((mind,_),u) -> compile_mind_deps env prefix ~interactive init mind
   | Const c ->
       let c,u = get_alias env c in
@@ -2030,7 +2030,7 @@ let rec compile_deps env sigma prefix ~interactive init t =
       let comp_stack, (mind_updates, const_updates) =
 	match cb.const_proj, cb.const_body with
         | None, Def t ->
-	   compile_deps env sigma prefix ~interactive init (Mod_subst.force_constr t)
+           compile_deps env sigma prefix ~interactive init (to_econstr @@ Mod_subst.force_constr t)
 	| Some pb, _ ->
 	   let mind = pb.proj_ind in
 	   compile_mind_deps env prefix ~interactive init mind
@@ -2049,8 +2049,8 @@ let rec compile_deps env sigma prefix ~interactive init t =
   | Case (ci, p, c, ac) ->
       let mind = fst ci.ci_ind in
       let init = compile_mind_deps env prefix ~interactive init mind in
-      Constr.fold (compile_deps env sigma prefix ~interactive) init t
-  | _ -> Constr.fold (compile_deps env sigma prefix ~interactive) init t
+      Constr.fold_g (compile_deps env sigma prefix ~interactive) init t
+  | _ -> Constr.fold_g (compile_deps env sigma prefix ~interactive) init t
 
 let compile_constant_field env prefix con acc cb =
     let (gl, _) =

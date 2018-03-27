@@ -14,7 +14,7 @@ open Names
 open Constr
 open Pre_env
 
-val val_of_constr : env -> constr -> Vmvalues.values
+val val_of_constr : 'e Evkey.t env -> 'e constr_g -> Vmvalues.values
 
 val set_opaque_const      : Constant.t -> unit
 val set_transparent_const : Constant.t -> unit

@@ -21,8 +21,14 @@ open Environ
 (* module RelDecl = Context.Rel.Declaration *)
 module NamedDecl = Context.Named.Declaration
 
-type econstr = constr
-type etypes = types
+type evar = evars
+
+let evar_repr = Evkey.evar
+
+type econstr = evars constr_g
+type etypes = evars types_g
+
+type existential = (evars,econstr) pexistential
 
 (** Generic filters *)
 module Filter :
@@ -132,21 +138,19 @@ end
 
 module Store = Store.Make ()
 
-type evar = Evar.t
-
 let string_of_existential evk = "?X" ^ string_of_int (Evar.repr evk)
 
 type evar_body =
   | Evar_empty
-  | Evar_defined of constr
+  | Evar_defined of econstr
 
 type evar_info = {
-  evar_concl : constr;
-  evar_hyps : named_context_val;
+  evar_concl : econstr;
+  evar_hyps : evars named_context_val;
   evar_body : evar_body;
   evar_filter : Filter.t;
   evar_source : Evar_kinds.t Loc.located;
-  evar_candidates : constr list option; (* if not None, list of allowed instances *)
+  evar_candidates : econstr list option; (* if not None, list of allowed instances *)
   evar_extra : Store.t }
 
 let make_evar hyps ccl = {
@@ -248,13 +252,13 @@ let evar_instance_array test_id info args =
     instrec filter (evar_context info) 0
 
 let make_evar_instance_array info args =
-  evar_instance_array (NamedDecl.get_id %> isVarId) info args
+  evar_instance_array (NamedDecl.get_id %> isVarId_g) info args
 
 let instantiate_evar_array info c args =
   let inst = make_evar_instance_array info args in
   match inst with
   | [] -> c
-  | _ -> replace_vars inst c
+  | _ -> replace_vars_g inst c
 
 
 type 'a in_evar_universe_context = 'a * UState.t
@@ -273,9 +277,9 @@ type 'a freelisted = {
 (* Collects all metavars appearing in a constr *)
 let metavars_of c =
   let rec collrec acc c =
-    match kind c with
+    match kind_g c with
       | Meta mv -> Int.Set.add mv acc
-      | _         -> Constr.fold collrec acc c
+      | _         -> Constr.fold_g collrec acc c
   in
   collrec Int.Set.empty c
 
@@ -318,8 +322,8 @@ type instance_status = instance_constraint * instance_typing_status
 (* Clausal environments *)
 
 type clbinding =
-  | Cltyp of Name.t * constr freelisted
-  | Clval of Name.t * (constr freelisted * instance_status) * constr freelisted
+  | Cltyp of Name.t * econstr freelisted
+  | Clval of Name.t * (econstr freelisted * instance_status) * econstr freelisted
 
 let map_clb f = function
   | Cltyp (na,cfl) -> Cltyp (na,map_fl f cfl)
@@ -343,7 +347,7 @@ let metamap_to_list m =
 (* Unification state *)
 
 type conv_pb = Reduction.conv_pb
-type evar_constraint = conv_pb * Environ.env * constr * constr
+type evar_constraint = conv_pb * evars Environ.env * econstr * econstr
 
 module EvMap = Evar.Map
 
@@ -533,7 +537,7 @@ let is_defined d e = EvMap.mem e d.defn_evars
 let is_undefined d e = EvMap.mem e d.undf_evars
 
 let existential_value d (n, args) =
-  let info = find d n in
+  let info = find d (Evkey.evar n) in
   match evar_body info with
   | Evar_defined c ->
     instantiate_evar_array info c args
@@ -549,6 +553,7 @@ let existential_opt_value d ev =
 let existential_opt_value0 = existential_opt_value
 
 let existential_type d (n, args) =
+  let n = Evkey.evar n in
   let info =
     try find d n
     with Not_found ->
@@ -676,7 +681,7 @@ let restrict evk filter ?candidates ?src evd =
   let evar_names = EvNames.reassign_name_defined evk evk' evd.evar_names in
   let ctxt = Filter.filter_list filter (evar_context evar_info) in
   let id_inst = Array.map_of_list (NamedDecl.get_id %> mkVar) ctxt in
-  let body = mkEvar(evk',id_inst) in
+  let body = mkEvar(Evkey.make evk',id_inst) in
   let (defn_evars, undf_evars) = define_aux ~dorestrict:evk' evd.defn_evars evd.undf_evars evk body in
   { evd with undf_evars = EvMap.add evk' evar_info' undf_evars;
     defn_evars; last_mods; evar_names }, evk'
@@ -709,11 +714,11 @@ let extract_all_conv_pbs evd =
   extract_conv_pbs evd (fun _ -> true)
 
 let loc_of_conv_pb evd (pbty,env,t1,t2) =
-  match kind (fst (decompose_app t1)) with
-  | Evar (evk1,_) -> fst (evar_source evk1 evd)
+  match kind_g (fst (decompose_app_g t1)) with
+  | Evar (evk1,_) -> fst (evar_source (Evkey.evar evk1) evd)
   | _ ->
-  match kind (fst (decompose_app t2)) with
-  | Evar (evk2,_) -> fst (evar_source evk2 evd)
+  match kind_g (fst (decompose_app_g t2)) with
+  | Evar (evk2,_) -> fst (evar_source (Evkey.evar evk2) evd)
   | _             -> None
 
 (** The following functions return the set of evars immediately
@@ -723,9 +728,9 @@ let loc_of_conv_pb evd (pbty,env,t1,t2) =
 
 let evars_of_term c =
   let rec evrec acc c =
-    match kind c with
-    | Evar (n, l) -> Evar.Set.add n (Array.fold_left evrec acc l)
-    | _ -> Constr.fold evrec acc c
+    match kind_g c with
+    | Evar (n, l) -> Evar.Set.add (Evkey.evar n) (Array.fold_left evrec acc l)
+    | _ -> Constr.fold_g evrec acc c
   in
   evrec Evar.Set.empty c
 
@@ -901,7 +906,7 @@ let fix_undefined_variables evd =
 
 let refresh_undefined_universes evd =
   let uctx', subst = UState.refresh_undefined_univ_variables evd.universes in
-  let evd' = cmap (subst_univs_level_constr subst) {evd with universes = uctx'} in
+  let evd' = cmap (subst_univs_level_constr_g subst) {evd with universes = uctx'} in
     evd', subst
 
 let nf_univ_variables evd =
@@ -1110,7 +1115,7 @@ let meta_merge ?(with_univs = true) evd1 evd2 =
   in
   {evd2 with universes; metas; }
 
-type metabinding = metavariable * constr * instance_status
+type metabinding = metavariable * econstr * instance_status
 
 let retract_coercible_metas evd =
   let mc = ref [] in
@@ -1142,7 +1147,7 @@ let set_extra_data extras evd = { evd with extras }
 
 (*******************************************************************)
 
-type open_constr = evar_map * constr
+type open_constr = evar_map * econstr
 
 (*******************************************************************)
 (* The type constructor ['a sigma] adds an evar map to an object of
@@ -1259,7 +1264,7 @@ module MiniEConstr = struct
     with NotInstantiatedEvar | Not_found -> None
 
   let rec whd_evar sigma c =
-    match Constr.kind c with
+    match Constr.kind_g c with
     | Evar ev ->
       begin match safe_evar_value sigma ev with
         | Some c -> whd_evar sigma c
@@ -1281,9 +1286,9 @@ module MiniEConstr = struct
       end
     | _ -> c
 
-  let kind sigma c = Constr.kind (whd_evar sigma c)
+  let kind sigma c = Constr.kind_g (whd_evar sigma c)
   let kind_upto = kind
-  let kind_of_type sigma c = Term.kind_of_type (whd_evar sigma c)
+  let kind_of_type sigma c = Term.kind_of_type_g (whd_evar sigma c)
   let of_kind = Constr.of_kind
   let of_constr c = c
   let unsafe_to_constr c = c
