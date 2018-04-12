@@ -319,15 +319,10 @@ let polymorphic_pconstant (cst,u) env =
 let type_in_type_constant cst env =
   not (lookup_constant cst env).const_typing_flags.check_universes
 
-let lookup_projection cst env =
-  match (lookup_constant (Projection.constant cst) env).const_proj with 
-  | Some pb -> pb
-  | None -> anomaly (Pp.str "lookup_projection: constant is not a projection.")
+let lookup_projection = lookup_projection
 
 let is_projection cst env =
-  match (lookup_constant cst env).const_proj with 
-  | Some _ -> true
-  | None -> false
+  (lookup_constant cst env).const_proj
 
 (* Mutual Inductives *)
 let lookup_mind = lookup_mind
@@ -351,11 +346,18 @@ let template_polymorphic_pind (ind,u) env =
   if not (Univ.Instance.is_empty u) then false
   else template_polymorphic_ind ind env
   
-let add_mind_key kn mind_key env =
+let add_mind_key kn (mind, _ as mind_key) env =
   let new_inds = Mindmap_env.add kn mind_key env.env_globals.env_inductives in
+  let new_projections = match mind.mind_record with
+    | None | Some None -> env.env_globals.env_projections
+    | Some (Some (id, kns, pbs)) ->
+      Array.fold_left2 (fun projs kn pb ->
+          Cmap_env.add kn pb projs)
+        env.env_globals.env_projections kns pbs
+  in
   let new_globals =
     { env.env_globals with
-	env_inductives = new_inds } in
+        env_inductives = new_inds; env_projections = new_projections; } in
   { env with env_globals = new_globals }
 
 let add_mind kn mib env =

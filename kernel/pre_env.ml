@@ -41,6 +41,7 @@ type mind_key = mutual_inductive_body * link_info ref
 
 type globals = {
   env_constants : constant_key Cmap_env.t;
+  env_projections : projection_body Cmap_env.t;
   env_inductives : mind_key Mindmap_env.t;
   env_modules : module_body MPmap.t;
   env_modtypes : module_type_body MPmap.t}
@@ -97,6 +98,7 @@ let empty_rel_context_val = {
 let empty_env = {
   env_globals = {
     env_constants = Cmap_env.empty;
+    env_projections = Cmap_env.empty;
     env_inductives = Mindmap_env.empty;
     env_modules = MPmap.empty;
     env_modtypes = MPmap.empty};
@@ -204,6 +206,9 @@ let lookup_constant_key kn env =
 
 let lookup_constant kn env =
   fst (Cmap_env.find kn env.env_globals.env_constants)
+
+let lookup_projection cst env =
+  Cmap_env.find (Projection.constant cst) env.env_globals.env_projections
 
 (* Mutual Inductives *)
 let lookup_mind kn env =
