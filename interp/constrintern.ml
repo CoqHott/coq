@@ -2044,6 +2044,8 @@ let internalize globalenv env pattern_mode (_, ntnvars as lvar) c =
     | CProj (pr, c) ->
       match intern_reference pr with
       | ConstRef p ->
+        (* Once CProj becomes input syntax we need a nice error here *)
+        let p = Option.get (Environ.lookup_projection_constant p globalenv) in
         DAst.make ?loc @@ GProj (Projection.make p false, intern env c)
       | _ ->
         raise (InternalizationError (loc,IllegalMetavariable)) (* FIXME *)

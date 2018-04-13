@@ -190,5 +190,6 @@ val discharge_kn :  Names.MutInd.t -> Names.MutInd.t
 val discharge_con : Names.Constant.t -> Names.Constant.t
 val discharge_global : Globnames.global_reference -> Globnames.global_reference
 val discharge_inductive : Names.inductive -> Names.inductive
+val discharge_proj_repr : Names.Projection.Repr.t -> Names.Projection.Repr.t
 val discharge_abstract_universe_context :
   abstr_info -> Univ.AUContext.t -> Univ.universe_level_subst * Univ.AUContext.t

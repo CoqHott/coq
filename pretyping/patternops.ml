@@ -286,8 +286,7 @@ let rec subst_pattern subst pat =
   | PEvar _
   | PRel _ -> pat
   | PProj (p,c) -> 
-      let p' = Projection.map (fun p -> 
-	destConstRef (fst (subst_global subst (ConstRef p)))) p in
+      let p' = subst_proj subst p in
       let c' = subst_pattern subst c in
 	if p' == p && c' == c then pat else
 	  PProj(p',c')

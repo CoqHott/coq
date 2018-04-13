@@ -103,6 +103,7 @@ val env_of_named     : Id.t -> env -> env
 
 val lookup_constant_key : Constant.t -> env -> constant_key
 val lookup_constant : Constant.t -> env -> constant_body
+val lookup_projection_repr : Projection.Repr.t -> env -> projection_body
 val lookup_projection : Projection.t -> env -> projection_body
 
 (** Mutual Inductives *)

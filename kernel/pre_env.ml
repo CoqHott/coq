@@ -207,12 +207,17 @@ let lookup_constant_key kn env =
 let lookup_constant kn env =
   fst (Cmap_env.find kn env.env_globals.env_constants)
 
-let lookup_projection cst env =
-  Cmap_env.find (Projection.constant cst) env.env_globals.env_projections
-
 (* Mutual Inductives *)
 let lookup_mind kn env =
   fst (Mindmap_env.find kn env.env_globals.env_inductives)
 
 let lookup_mind_key kn env =
   Mindmap_env.find kn env.env_globals.env_inductives
+
+let lookup_projection_repr p env =
+  let mind = lookup_mind (Projection.Repr.mind p) env in
+  match mind.mind_record with
+  | None | Some None -> raise Not_found
+  | Some Some (_,_,pbs) -> pbs.(Projection.Repr.arg p)
+
+let lookup_projection p env = lookup_projection_repr (Projection.repr p) env

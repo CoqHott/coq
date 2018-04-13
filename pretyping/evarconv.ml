@@ -71,7 +71,7 @@ let coq_unit_judge =
 let unfold_projection env evd ts p c =
   let cst = Projection.constant p in
     if is_transparent_constant ts cst then
-      Some (mkProj (Projection.make cst true, c))
+      Some (mkProj (Projection.unfold p, c))
     else None
       
 let eval_flexible_term ts env evd c =
@@ -295,7 +295,7 @@ let ise_stack2 no_app env evd f sk1 sk2 =
 	| Success i'' -> ise_stack2 true i'' q1 q2
         | UnifFailure _ as x -> fail x)
       | UnifFailure _ as x -> fail x)
-    | Stack.Proj (n1,a1,p1,_)::q1, Stack.Proj (n2,a2,p2,_)::q2 ->
+    | Stack.Proj (n1,p1,_)::q1, Stack.Proj (n2,p2,_)::q2 ->
        if Constant.equal (Projection.constant p1) (Projection.constant p2)
        then ise_stack2 true i q1 q2
        else fail (UnifFailure (i, NotSameHead))
@@ -337,7 +337,7 @@ let exact_ise_stack2 env evd f sk1 sk2 =
 	  (fun i -> ise_array2 i (fun ii -> f (push_rec_types recdef1 env) ii CONV) bds1 bds2);
 	  (fun i -> ise_stack2 i a1 a2)]
       else UnifFailure (i,NotSameHead)
-    | Stack.Proj (n1,a1,p1,_)::q1, Stack.Proj (n2,a2,p2,_)::q2 ->
+    | Stack.Proj (n1,p1,_)::q1, Stack.Proj (n2,p2,_)::q2 ->
        if Constant.equal (Projection.constant p1) (Projection.constant p2)
        then ise_stack2 i q1 q2
        else (UnifFailure (i, NotSameHead))
@@ -991,14 +991,14 @@ and conv_record trs env evd (ctx,(h,h2),c,bs,(params,params1),(us,us2),(sk1,sk2)
 
 and eta_constructor ts env evd sk1 ((ind, i), u) sk2 term2 =
   let mib = lookup_mind (fst ind) env in
-    match mib.Declarations.mind_record with
-    | Some (Some (id, projs, pbs)) when mib.Declarations.mind_finite == Declarations.BiFinite ->
+    match Inductiveops.get_projections env (fst ind) with
+    | Some ps when mib.Declarations.mind_finite == Declarations.BiFinite ->
       let pars = mib.Declarations.mind_nparams in
 	(try 
 	   let l1' = Stack.tail pars sk1 in
 	   let l2' = 
 	     let term = Stack.zip evd (term2,sk2) in 
-	       List.map (fun p -> EConstr.mkProj (Projection.make p false, term)) (Array.to_list projs)
+               List.map (fun p -> EConstr.mkProj (Projection.make p false, term)) (Array.to_list ps)
 	   in
 	     exact_ise_stack2 env evd (evar_conv_x (fst ts, false)) l1' 
 	       (Stack.append_app_list l2' Stack.empty)

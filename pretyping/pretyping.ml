@@ -771,11 +771,11 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
     let app_f = 
       match EConstr.kind !evdref fj.uj_val with
       | Const (p, u) when Environ.is_projection p env.ExtraEnv.env ->
-	let p = Projection.make p false in
-	let pb = Environ.lookup_projection p env.ExtraEnv.env in
+        let p = Option.get @@ Environ.lookup_projection_constant p env.ExtraEnv.env in
+        let pb = Environ.lookup_projection_repr p env.ExtraEnv.env in
 	let npars = pb.Declarations.proj_npars in
 	  fun n -> 
-	    if n == npars + 1 then fun _ v -> mkProj (p, v)
+            if n == npars + 1 then fun _ v -> mkProj (Projection.make p false, v)
 	    else fun f v -> applist (f, [v])
       | _ -> fun _ f v -> applist (f, [v])
     in
@@ -909,7 +909,8 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
 	int cs.cs_nargs ++ str " variables.");
     let fsign, record = 
       let set_name na d = set_name na (map_rel_decl EConstr.of_constr d) in
-      match get_projections env.ExtraEnv.env indf with
+      let ind = fst @@ fst @@ fst @@ dest_ind_family indf in
+      match get_projections env.ExtraEnv.env ind with
       | None ->
 	 List.map2 set_name (List.rev nal) cs.cs_args, false
       | Some ps ->

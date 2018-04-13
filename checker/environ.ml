@@ -167,7 +167,7 @@ let evaluable_constant cst env =
   with Not_found | NotEvaluableConst _ -> false
 
 let is_projection cst env = 
-  (lookup_constant cst env).const_proj
+  not (Option.is_empty (lookup_constant cst env).const_proj)
 
 let lookup_projection p env =
   Cmap_env.find (Projection.constant p) env.env_globals.env_projections

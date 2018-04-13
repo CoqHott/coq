@@ -30,7 +30,7 @@ val last_variant_tag : tag
 type structured_constant =
   | Const_sort of Sorts.t
   | Const_ind of inductive
-  | Const_proj of Constant.t
+  | Const_proj of Projection.Repr.t
   | Const_b0 of tag
   | Const_bn of tag * structured_constant array
   | Const_univ_level of Univ.Level.t
@@ -89,8 +89,7 @@ type instruction =
   | Ksetfield of int                    (** accu[n] = sp[0] ; sp = pop sp *)
   | Kstop
   | Ksequence of bytecodes * bytecodes
-  | Kproj of int * Constant.t  (** index of the projected argument,
-                                            name of projection *)
+  | Kproj of Projection.Repr.t
   | Kensurestackcapacity of int
 
 (** spiwack: instructions concerning integers *)

@@ -53,7 +53,7 @@ let compare_stack_shape stk1 stk2 =
     | (_, (Zupdate _|Zshift _)::s2) -> compare_rec bal stk1 s2
     | (Zapp l1::s1, _) -> compare_rec (bal+Array.length l1) s1 stk2
     | (_, Zapp l2::s2) -> compare_rec (bal-Array.length l2) stk1 s2
-    | (Zproj (n1,m1,p1)::s1, Zproj (n2,m2,p2)::s2) ->
+    | (Zproj (n1,p1)::s1, Zproj (n2,p2)::s2) ->
         Int.equal bal 0 && compare_rec 0 s1 s2
     | (ZcaseT(c1,_,_,_)::s1, ZcaseT(c2,_,_,_)::s2) ->
         Int.equal bal 0 (* && c1.ci_ind  = c2.ci_ind *) && compare_rec 0 s1 s2
@@ -66,7 +66,7 @@ let compare_stack_shape stk1 stk2 =
 
 type lft_constr_stack_elt =
     Zlapp of (lift * fconstr) array
-  | Zlproj of Constant.t * lift
+  | Zlproj of Projection.Repr.t * lift
   | Zlfix of (lift * fconstr) * lft_constr_stack
   | Zlcase of case_info * lift * fconstr * fconstr array
 and lft_constr_stack = lft_constr_stack_elt list
@@ -96,7 +96,7 @@ let pure_stack lfts stk =
             | (Zshift n,(l,pstk)) -> (el_shft n l, pstk)
             | (Zapp a, (l,pstk)) ->
                 (l,zlapp (map_lift l a) pstk)
-	    | (Zproj (n,m,c), (l,pstk)) ->
+            | (Zproj (n,c), (l,pstk)) ->
 		(l, Zlproj (c,l)::pstk)
             | (Zfix(fx,a),(l,pstk)) ->
                 let (lfx,pa) = pure_rec l a in
@@ -297,7 +297,7 @@ let compare_stacks f fmind lft1 stk1 lft2 stk2 cuniv =
             | (Zlapp a1,Zlapp a2) -> 
 	       Array.fold_right2 f a1 a2 cu1
 	    | (Zlproj (c1,l1),Zlproj (c2,l2)) -> 
-	      if not (Constant.equal c1 c2) then 
+              if not (Projection.Repr.equal c1 c2) then
 		raise NotConvertible
 	      else cu1
             | (Zlfix(fx1,a1),Zlfix(fx2,a2)) ->

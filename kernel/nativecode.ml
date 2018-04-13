@@ -1859,7 +1859,7 @@ and compile_named env sigma univ auxdefs id =
 
 let compile_constant env sigma prefix ~interactive con cb =
   match cb.const_proj with
-  | false ->
+  | None ->
      let no_univs =
        match cb.const_universes with
        | Monomorphic_const _ -> true
@@ -1903,9 +1903,9 @@ let compile_constant env sigma prefix ~interactive con cb =
 	  if interactive then LinkedInteractive prefix
 	  else Linked prefix
     end
-  | true ->
-      let pb = lookup_projection (Projection.make con false) env in
-      let mind = pb.proj_ind in
+  | Some p ->
+      let pb = lookup_projection (Projection.make p false) env in
+      let mind = Projection.Repr.mind p in
       let ind = (mind,0) in
       let mib = lookup_mind mind env in
       let oib = mib.mind_packets.(0) in
@@ -1923,7 +1923,7 @@ let compile_constant env sigma prefix ~interactive con cb =
       let _, arity = tbl.(0) in
       let ci_uid = fresh_lname Anonymous in
       let cargs = Array.init arity
-        (fun i -> if Int.equal i pb.proj_arg then Some ci_uid else None)
+        (fun i -> if Int.equal i (Projection.Repr.arg p) then Some ci_uid else None)
       in
       let i = push_symbol (SymbConst con) in
       let accu = MLapp (MLprimitive Cast_accu, [|MLlocal cf_uid|]) in
@@ -2030,11 +2030,10 @@ let rec compile_deps env sigma prefix ~interactive init t =
       else
       let comp_stack, (mind_updates, const_updates) =
 	match cb.const_proj, cb.const_body with
-        | false, Def t ->
+        | None, Def t ->
 	   compile_deps env sigma prefix ~interactive init (Mod_subst.force_constr t)
-        | true, _ ->
-          let pb = lookup_projection (Projection.make c false) env in
-          let mind = pb.proj_ind in
+        | Some p, _ ->
+          let mind = Projection.Repr.mind p in
           compile_mind_deps env prefix ~interactive init mind
         | _ -> init
       in

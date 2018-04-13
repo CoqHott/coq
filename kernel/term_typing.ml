@@ -250,7 +250,7 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
       {
         Cooking.cook_body = Undef nl;
         cook_type = t;
-        cook_proj = false;
+        cook_proj = None;
         cook_universes = univs;
         cook_inline = false;
         cook_context = ctx;
@@ -291,7 +291,7 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
       {
         Cooking.cook_body = def;
         cook_type = typ;
-        cook_proj = false;
+        cook_proj = None;
         cook_universes = Monomorphic_const univs;
         cook_inline = c.const_entry_inline_code;
         cook_context = c.const_entry_secctx;
@@ -343,7 +343,7 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
       {
         Cooking.cook_body = def;
         cook_type = typ;
-        cook_proj = false;
+        cook_proj = None;
         cook_universes = univs;
         cook_inline = c.const_entry_inline_code;
         cook_context = c.const_entry_secctx;
@@ -359,6 +359,11 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
 	else assert false
       | _ -> assert false
     in
+    let repr = let open Projection.Repr in
+      { proj_ind = ind;
+        proj_arg = i;
+        proj_name = Constant.label kn }
+    in
     let univs =
       match mib.mind_universes with
       | Monomorphic_ind ctx -> Monomorphic_const ctx
@@ -370,7 +375,7 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
     {
       Cooking.cook_body = Def (Mod_subst.from_val (Constr.hcons term));
       cook_type = typ;
-      cook_proj = true;
+      cook_proj = Some repr;
       cook_universes = univs;
       cook_inline = false;
       cook_context = None;

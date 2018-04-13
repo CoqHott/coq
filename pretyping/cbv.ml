@@ -382,7 +382,7 @@ and cbv_stack_value info env = function
     (* constructor in a Projection -> IOTA *)
     | (CONSTR(((sp,n),u),[||]), APP(args,PROJ(p,pi,stk)))
         when red_set (info_flags info.infos) fMATCH && Projection.unfolded p ->
-      let arg = args.(pi.Declarations.proj_npars + pi.Declarations.proj_arg) in
+      let arg = args.(pi.Declarations.proj_npars + Projection.arg p) in
 	cbv_stack_value info env (strip_appl arg stk)
 
     (* may be reduced later by application *)

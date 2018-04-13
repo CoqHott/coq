@@ -276,15 +276,15 @@ let strip_params env sigma c =
   | App (f, args) -> 
     (match EConstr.kind sigma f with
     | Const (p,_) ->
-      let p = Projection.make p false in
-      (match lookup_projection p env with
-       | pb ->
+      (match lookup_projection_constant p env with
+       | Some p ->
+         let pb = lookup_projection_repr p env in
          let n = pb.Declarations.proj_npars in
          if Array.length args > n then
-           mkApp (mkProj (p, args.(n)),
+           mkApp (mkProj (Projection.make p false, args.(n)),
                   Array.sub args (n+1) (Array.length args - (n + 1)))
          else c
-       | exception Not_found -> c)
+       | None -> c)
     | _ -> c)
   | _ -> c
 

@@ -207,9 +207,7 @@ type inline = int option
     always transparent. *)
 
 type projection_body = {
-  proj_ind : MutInd.t;
   proj_npars : int;
-  proj_arg : int;
   proj_type : constr; (* Type under params *)
   proj_eta : constr * constr; (* Eta-expanded term and type *)
   proj_body : constr; (* For compatibility, the match version *)
@@ -241,7 +239,7 @@ type constant_body = {
     const_type : constr;
     const_body_code : to_patch_substituted;
     const_universes : constant_universes;
-    const_proj : bool;
+    const_proj : Projection.Repr.t option;
     const_inline_code : bool;
     const_typing_flags : typing_flags;
 }

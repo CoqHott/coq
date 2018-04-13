@@ -343,15 +343,23 @@ let get_constructors env (ind,params) =
   Array.init (Array.length mip.mind_consnames)
     (fun j -> get_constructor (ind,mib,mip,params) (j+1))
 
-let get_projections env (ind,params) =
-  let (mib,mip) = Inductive.lookup_mind_specif env (fst ind) in
+let get_projections env ind =
+  let mib = Environ.lookup_mind ind env in
     match mib.mind_record with
-    | Some (Some (id, projs, pbs)) -> Some projs
+    | Some (Some (id, projs, pbs)) ->
+      let projs = Array.map2_i (fun i con pb ->
+          let open Projection.Repr in
+          { proj_ind = ind;
+            proj_arg = i;
+            proj_name = Constant.label con })
+          projs pbs
+      in
+      Some projs
     | _ -> None
 
 let make_case_or_project env sigma indf ci pred c branches =
   let open EConstr in
-  let projs = get_projections env indf in
+  let projs = get_projections env (fst @@ fst @@ fst indf) in
   match projs with
   | None -> (mkCase (ci, pred, c, branches))
   | Some ps ->

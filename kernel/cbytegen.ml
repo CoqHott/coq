@@ -478,8 +478,8 @@ let rec compile_lam env reloc lam sz cont =
 
   | Lval v -> compile_structured_constant reloc v sz cont
 
-  | Lproj (n,kn,arg) ->
-     compile_lam env reloc arg sz (Kproj (n,kn) :: cont)
+  | Lproj (kn,arg) ->
+     compile_lam env reloc arg sz (Kproj kn :: cont)
 
   | Lvar id -> pos_named id reloc :: cont
 

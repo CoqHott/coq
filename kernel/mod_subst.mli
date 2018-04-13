@@ -129,6 +129,10 @@ val subst_ind :
 
 val subst_pind : substitution -> pinductive -> pinductive
 
+val subst_proj_repr : substitution -> Projection.Repr.t -> Projection.Repr.t
+
+val subst_proj : substitution -> Projection.t -> Projection.t
+
 val subst_kn :
   substitution -> KerName.t -> KerName.t
 

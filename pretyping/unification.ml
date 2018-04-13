@@ -476,7 +476,7 @@ let expand_table_key env = function
 let unfold_projection env p stk =
   (match try Some (lookup_projection p env) with Not_found -> None with
   | Some pb -> 
-    let s = Stack.Proj (pb.Declarations.proj_npars, pb.Declarations.proj_arg, 
+    let s = Stack.Proj (pb.Declarations.proj_npars,
 			p, Cst_stack.empty) in
       s :: stk
   | None -> assert false)

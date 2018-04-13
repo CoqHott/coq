@@ -168,8 +168,11 @@ val constant_opt_value_in : env -> Constant.t puniverses -> constr option
 
 (** {6 Primitive projections} *)
 
-val lookup_projection    : Names.Projection.t -> env -> projection_body
+val lookup_projection_repr : Projection.Repr.t -> env -> projection_body
+val lookup_projection : Projection.t -> env -> projection_body
 val is_projection : Constant.t -> env -> bool
+
+val lookup_projection_constant : Constant.t -> env -> Projection.Repr.t option
 
 (** {5 Inductive types } *)
 val add_mind_key : MutInd.t -> Pre_env.mind_key -> env -> env

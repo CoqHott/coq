@@ -129,7 +129,7 @@ let compute_head = function
    let cb = Environ.lookup_constant cst env in
    let is_Def = function Declarations.Def _ -> true | _ -> false in
    let body = 
-     if not cb.Declarations.const_proj && is_Def cb.Declarations.const_body
+     if Option.is_empty cb.Declarations.const_proj && is_Def cb.Declarations.const_body
      then Global.body_of_constant cst else None
    in
      (match body with

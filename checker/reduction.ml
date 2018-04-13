@@ -42,7 +42,7 @@ let compare_stack_shape stk1 stk2 =
     | (_, (Zupdate _|Zshift _)::s2) -> compare_rec bal stk1 s2
     | (Zapp l1::s1, _) -> compare_rec (bal+Array.length l1) s1 stk2
     | (_, Zapp l2::s2) -> compare_rec (bal-Array.length l2) stk1 s2
-    | (Zproj (n1,m1,p1)::s1, Zproj (n2,m2,p2)::s2) ->
+    | (Zproj (n1,p1)::s1, Zproj (n2,p2)::s2) ->
         Int.equal bal 0 && compare_rec 0 s1 s2
     | ((ZcaseT(c1,_,_,_))::s1,
        (ZcaseT(c2,_,_,_))::s2) ->
@@ -54,7 +54,7 @@ let compare_stack_shape stk1 stk2 =
 
 type lft_constr_stack_elt =
     Zlapp of (lift * fconstr) array
-  | Zlproj of Names.Projection.t * lift
+  | Zlproj of Names.Projection.Repr.t * lift
   | Zlfix of (lift * fconstr) * lft_constr_stack
   | Zlcase of case_info * lift * fconstr * fconstr array
 and lft_constr_stack = lft_constr_stack_elt list
@@ -73,7 +73,7 @@ let pure_stack lfts stk =
             | (Zshift n,(l,pstk)) -> (el_shft n l, pstk)
             | (Zapp a, (l,pstk)) ->
                 (l,zlapp (Array.map (fun t -> (l,t)) a) pstk)
-	    | (Zproj (n,m,c), (l,pstk)) ->
+            | (Zproj (n,c), (l,pstk)) ->
 		(l, Zlproj (c,l)::pstk)
             | (Zfix(fx,a),(l,pstk)) ->
                 let (lfx,pa) = pure_rec l a in
@@ -143,8 +143,8 @@ let compare_stacks f fmind lft1 stk1 lft2 stk2 =
                 f fx1 fx2; cmp_rec a1 a2
 	    | (Zlproj (c1,l1),Zlproj (c2,l2)) -> 
                if not (Names.Constant.UserOrd.equal
-		       (Names.Projection.constant c1)
-		       (Names.Projection.constant c2)) then 
+                       (Names.Projection.Repr.constant c1)
+                       (Names.Projection.Repr.constant c2)) then
 		raise NotConvertible
             | (Zlcase(ci1,l1,p1,br1),Zlcase(ci2,l2,p2,br2)) ->
                 if not (fmind ci1.ci_ind ci2.ci_ind) then
@@ -259,7 +259,7 @@ let rec no_case_available = function
   | Zupdate _ :: stk -> no_case_available stk
   | Zshift _ :: stk -> no_case_available stk
   | Zapp _ :: stk -> no_case_available stk
-  | Zproj (_,_,_) :: _ -> false
+  | Zproj (_,_) :: _ -> false
   | ZcaseT _ :: _ -> false
   | Zfix _ :: _ -> true
 

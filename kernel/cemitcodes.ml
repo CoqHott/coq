@@ -277,7 +277,7 @@ let emit_instr env = function
       if n <= 1 then out env (opSETFIELD0+n)
       else (out env opSETFIELD;out_int env n)
   | Ksequence _ -> invalid_arg "Cemitcodes.emit_instr"
-  | Kproj (n,p) -> out env opPROJ; out_int env n; slot_for_const env (Const_proj p)
+  | Kproj p -> out env opPROJ; slot_for_const env (Const_proj p)
   | Kensurestackcapacity size -> out env opENSURESTACKCAPACITY; out_int env size
   (* spiwack *)
   | Kbranch lbl -> out env opBRANCH; out_label env lbl
@@ -353,7 +353,7 @@ type to_patch = emitcodes * patches * fv
 let rec subst_strcst s sc =
   match sc with
   | Const_sort _ | Const_b0 _ | Const_univ_level _ -> sc
-  | Const_proj p -> Const_proj (subst_constant s p)
+  | Const_proj p -> Const_proj (subst_proj_repr s p)
   | Const_bn(tag,args) -> Const_bn(tag,Array.map (subst_strcst s) args)
   | Const_ind ind -> let kn,i = ind in Const_ind (subst_mind s kn, i)
 

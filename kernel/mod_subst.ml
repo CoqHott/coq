@@ -293,6 +293,15 @@ let subst_ind sub (ind,i as indi) =
 let subst_pind sub (ind,u) =
   (subst_ind sub ind, u)
 
+let subst_proj_repr sub p =
+  let open Projection.Repr in
+  { p with proj_ind = subst_mind sub p.proj_ind }
+
+let subst_proj sub p =
+  let repr = Projection.repr p in
+  let repr' = subst_proj_repr sub repr in
+  if repr' == repr then p else Projection.make repr' (Projection.unfolded p)
+
 let subst_con0 sub (cst,u) =
   let mpu,dir,l = Constant.repr3 cst in
   let mpc = KerName.modpath (Constant.canonical cst) in
@@ -347,7 +356,7 @@ let rec map_kn f f' c =
       | Proj (p,t) -> 
           let p' = 
 	    try
-	      Projection.map (fun kn -> fst (f' (kn,Univ.Instance.empty))) p
+              Projection.map f p
 	    with No_subst -> p
 	  in
 	  let t' = func t in

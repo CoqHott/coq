@@ -855,30 +855,91 @@ type constant = Constant.t
 
 
 module Projection = 
-struct 
-  type t = constant * bool
-    
+struct
+  module Repr = struct
+    type t =
+      { proj_ind : MutInd.t;
+        proj_arg : int;
+        proj_name : Label.t; }
+
+    let constant c = KerPair.change_label c.proj_ind c.proj_name
+
+    let mind c = c.proj_ind
+    let arg c = c.proj_arg
+
+    let equal a b =
+      MutInd.equal a.proj_ind b.proj_ind && Int.equal a.proj_arg b.proj_arg
+
+    let hash p =
+      Hashset.Combine.combinesmall p.proj_arg (MutInd.hash p.proj_ind)
+
+    module SyntacticOrd = struct
+      let compare a b =
+        let c = MutInd.SyntacticOrd.compare a.proj_ind b.proj_ind in
+        if c == 0 then Int.compare a.proj_arg b.proj_arg
+        else c
+
+      let equal a b =
+        a.proj_arg == b.proj_arg && MutInd.SyntacticOrd.equal a.proj_ind b.proj_ind
+
+      let hash p =
+        Hashset.Combine.combinesmall p.proj_arg (MutInd.CanOrd.hash p.proj_ind)
+    end
+
+    let compare a b =
+      let c = MutInd.CanOrd.compare a.proj_ind b.proj_ind in
+      if c == 0 then Int.compare a.proj_arg b.proj_arg
+      else c
+
+    module Self_Hashcons = struct
+      type nonrec t = t
+      type u = (MutInd.t -> MutInd.t) * (Id.t -> Id.t)
+      let hashcons (hind,hid) p =
+        { proj_ind = hind p.proj_ind;
+          proj_arg = p.proj_arg;
+          proj_name = hid p.proj_name }
+      let eq p p' =
+        p == p' || (p.proj_ind == p'.proj_ind && p.proj_arg == p'.proj_arg && p.proj_name == p'.proj_name)
+      let hash = hash
+    end
+    module HashRepr = Hashcons.Make(Self_Hashcons)
+    let hcons = Hashcons.simple_hcons HashRepr.generate HashRepr.hcons (hcons_mind,Id.hcons)
+
+    let map f p =
+      let ind' = f p.proj_ind in
+      if p.proj_ind == ind' then p
+      else {p with proj_ind = ind'}
+
+    let print p = Constant.print (constant p)
+  end
+
+  type t = Repr.t * bool
+
   let make c b = (c, b)
 
-  let constant = fst
+  let mind (c,_) = Repr.mind c
+  let arg (c,_) = Repr.arg c
+  let constant (c,_) = Repr.constant c
+  let repr = fst
   let unfolded = snd
   let unfold (c, b as p) = if b then p else (c, true)
-  let equal (c, b) (c', b') = Constant.equal c c' && b == b'
 
-  let hash (c, b) = (if b then 0 else 1) + Constant.hash c
+  let equal (c, b) (c', b') = Repr.equal c c' && b == b'
+
+  let hash (c, b) = (if b then 0 else 1) + Repr.hash c
 
   module SyntacticOrd = struct
     let compare (c, b) (c', b') =
-      if b = b' then Constant.SyntacticOrd.compare c c' else -1
+      if b = b' then Repr.SyntacticOrd.compare c c' else -1
     let equal (c, b as x) (c', b' as x') =
-      x == x' || b = b' && Constant.SyntacticOrd.equal c c'
-    let hash (c, b) = (if b then 0 else 1) + Constant.SyntacticOrd.hash c
+      x == x' || b = b' && Repr.SyntacticOrd.equal c c'
+    let hash (c, b) = (if b then 0 else 1) + Repr.SyntacticOrd.hash c
   end
 
   module Self_Hashcons =
     struct
       type nonrec t = t
-      type u = Constant.t -> Constant.t
+      type u = Repr.t -> Repr.t
       let hashcons hc (c,b) = (hc c,b)
       let eq ((c,b) as x) ((c',b') as y) =
         x == y || (c == c' && b == b')
@@ -887,14 +948,14 @@ struct
 
   module HashProjection = Hashcons.Make(Self_Hashcons)
 
-  let hcons = Hashcons.simple_hcons HashProjection.generate HashProjection.hcons hcons_con
+  let hcons = Hashcons.simple_hcons HashProjection.generate HashProjection.hcons Repr.hcons
 
   let compare (c, b) (c', b') =
-    if b == b' then Constant.CanOrd.compare c c'
+    if b == b' then Repr.compare c c'
     else if b then 1 else -1
 
   let map f (c, b as x) =
-    let c' = f c in
+    let c' = Repr.map f c in
       if c' == c then x else (c', b)
 
   let to_string p = Constant.to_string (constant p)

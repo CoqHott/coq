@@ -597,11 +597,11 @@ let recargs = function
   | EvalVar _ | EvalRel _ | EvalEvar _ -> None
   | EvalConst c -> ReductionBehaviour.get (ConstRef c)
 
-let reduce_projection env sigma pb (recarg'hd,stack') stack =
+let reduce_projection env sigma p pb (recarg'hd,stack') stack =
   (match EConstr.kind sigma recarg'hd with
   | Construct _ -> 
     let proj_narg = 
-      pb.Declarations.proj_npars + pb.Declarations.proj_arg
+      pb.Declarations.proj_npars + Projection.arg p
     in Reduced (List.nth stack' proj_narg, stack)
   | _ -> NotReducible)
 
@@ -615,7 +615,7 @@ let reduce_proj env sigma whfun whfun' c =
 	| Construct _ -> 
 	  let proj_narg = 
 	    let pb = lookup_projection proj env in
-	      pb.Declarations.proj_npars + pb.Declarations.proj_arg
+              pb.Declarations.proj_npars + Projection.arg proj
 	  in List.nth cargs proj_narg
 	| _ -> raise Redelimination)
     | Case (n,p,c,brs) -> 
@@ -774,13 +774,13 @@ and whd_simpl_stack env sigma =
 		     let idx = (i - (pb.Declarations.proj_npars + 1)) in
 		       if idx < 0 then None else Some idx) l in
 		   let stack = reduce_params env sigma stack l' in
-		     (match reduce_projection env sigma pb 
+                     (match reduce_projection env sigma p pb
 		       (whd_construct_stack env sigma c) stack 
 		      with
 		      | Reduced s' -> redrec (applist s')
 		      | NotReducible -> s')
  		 | _ ->
-		   match reduce_projection env sigma pb (whd_construct_stack env sigma c) stack with
+                   match reduce_projection env sigma p pb (whd_construct_stack env sigma c) stack with
 		   | Reduced s' -> redrec (applist s')
 		   | NotReducible -> s')
 	   else s'
@@ -853,7 +853,7 @@ let try_red_product env sigma c =
 	  | _ -> redrec env c
 	in
 	let pb = lookup_projection p env in
-          (match reduce_projection env sigma pb (whd_betaiotazeta_stack sigma c') [] with
+          (match reduce_projection env sigma p pb (whd_betaiotazeta_stack sigma c') [] with
 	  | Reduced s -> simpfun (applist s)
 	  | NotReducible -> raise Redelimination)
       | _ -> 

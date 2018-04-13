@@ -319,10 +319,14 @@ let polymorphic_pconstant (cst,u) env =
 let type_in_type_constant cst env =
   not (lookup_constant cst env).const_typing_flags.check_universes
 
+let lookup_projection_repr = lookup_projection_repr
 let lookup_projection = lookup_projection
 
-let is_projection cst env =
+let lookup_projection_constant cst env =
   (lookup_constant cst env).const_proj
+
+let is_projection cst env =
+  not (Option.is_empty (lookup_constant cst env).const_proj)
 
 (* Mutual Inductives *)
 let lookup_mind = lookup_mind

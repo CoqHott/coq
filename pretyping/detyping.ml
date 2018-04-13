@@ -1028,11 +1028,9 @@ let rec subst_glob_constr subst = DAst.map (function
       if r1' == r1 && k' == k then raw else GCast (r1',k')
 
   | GProj (p,c) as raw ->
-    let kn = Projection.constant p in
-    let b = Projection.unfolded p in
-    let kn' = subst_constant subst kn in
+    let p' = subst_proj subst p in
     let c' = subst_glob_constr subst c in
-    if kn' == kn && c' == c then raw else GProj(Projection.make kn' b, c')
+    if p' == p && c' == c then raw else GProj(p', c')
   )
 
 (* Utilities to transform kernel cases to simple pattern-matching problem *)

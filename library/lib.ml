@@ -672,6 +672,10 @@ let discharge_con cst =
 let discharge_inductive (kn,i) =
   (discharge_kn kn,i)
 
+let discharge_proj_repr repr =
+  let open Projection.Repr in
+  { repr with proj_ind = discharge_kn repr.proj_ind }
+
 let discharge_abstract_universe_context { abstr_subst = subst; abstr_uctx = abs_ctx } auctx =
   let open Univ in
   let ainst = make_abstract_instance auctx in

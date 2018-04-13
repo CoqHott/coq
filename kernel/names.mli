@@ -718,9 +718,32 @@ type constant = Constant.t
 [@@ocaml.deprecated "Alias type"]
 
 module Projection : sig
-  type t
+  module Repr : sig
+    type t =
+      { proj_ind : MutInd.t;
+        proj_arg : int;
+        proj_name : Label.t; }
 
-  val make : Constant.t -> bool -> t
+    module SyntacticOrd : sig
+      val compare : t -> t -> int
+      val equal : t -> t -> bool
+      val hash : t -> int
+    end
+
+    val constant : t -> Constant.t
+    val mind : t -> MutInd.t
+    val arg : t -> int
+
+    val equal : t -> t -> bool
+    val hash : t -> int
+    val compare : t -> t -> int
+
+    val print : t -> Pp.t
+  end
+  type t (* = Repr.t * bool *)
+
+  val make : Repr.t -> bool -> t
+  val repr : t -> Repr.t
 
   module SyntacticOrd : sig
     val compare : t -> t -> int
@@ -729,6 +752,8 @@ module Projection : sig
   end
 
   val constant : t -> Constant.t
+  val mind : t -> MutInd.t
+  val arg : t -> int
   val unfolded : t -> bool
   val unfold : t -> t
 
@@ -739,7 +764,7 @@ module Projection : sig
 
   val compare : t -> t -> int
 
-  val map : (Constant.t -> Constant.t) -> t -> t
+  val map : (MutInd.t -> MutInd.t) -> t -> t
 
   val to_string : t -> string
   val print : t -> Pp.t

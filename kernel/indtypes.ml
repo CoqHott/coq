@@ -859,7 +859,12 @@ let compute_projections ((kn, _ as ind), u as indu) n x nparamargs params
     | LocalAssum (na,t) ->
       match na with
       | Name id ->
-	let kn = Constant.make1 (KerName.make mp dp (Label.of_id id)) in
+        let kn = Constant.make1 (KerName.make mp dp (Label.of_id id)) in
+        let repr = let open Projection.Repr in
+          { proj_ind = fst ind;
+            proj_arg = i;
+            proj_name = Label.of_id id }
+        in
         (* from [params, field1,..,fieldj |- t(params,field1,..,fieldj)]
            to [params, x:I, field1,..,fieldj |- t(params,field1,..,fieldj] *)
         let t = liftn 1 j t in
@@ -869,13 +874,13 @@ let compute_projections ((kn, _ as ind), u as indu) n x nparamargs params
         (* from [params, x:I, field1,..,fieldj |- t(field1,..,fieldj)]
            to [params, x:I |- t(proj1 x,..,projj x)] *)
 	let ty = substl subst t in
-	let term = mkProj (Projection.make kn true, mkRel 1) in
-	let fterm = mkProj (Projection.make kn false, mkRel 1) in
+        let term = mkProj (Projection.make repr true, mkRel 1) in
+        let fterm = mkProj (Projection.make repr false, mkRel 1) in
 	let compat = compat_body ty (j - 1) in
 	let etab = it_mkLambda_or_LetIn (mkLambda (x, indty, term)) params in
 	let etat = it_mkProd_or_LetIn (mkProd (x, indty, ty)) params in
-	let body = { proj_ind = fst ind; proj_npars = nparamargs;
-		     proj_arg = i; proj_type = projty; proj_eta = etab, etat; 
+        let body = { proj_npars = nparamargs;
+                     proj_type = projty; proj_eta = etab, etat;
 		     proj_body = compat } in
 	  (i + 1, j + 1, kn :: kns, body :: pbs,
 	   fterm :: subst, fterm :: letsubst)

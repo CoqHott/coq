@@ -52,17 +52,17 @@ let apply_coercion_args env evd check isproj argl funj =
   let evdref = ref evd in
   let rec apply_rec acc typ = function
     | [] ->
-      if isproj then
-	let cst = fst (destConst !evdref (j_val funj)) in
-	let p = Projection.make cst false in
-	let pb = lookup_projection p env in
-	let args = List.skipn pb.Declarations.proj_npars argl in
-	let hd, tl = match args with hd :: tl -> hd, tl | [] -> assert false in
-	  { uj_val = applist (mkProj (p, hd), tl);
+      begin match isproj with
+        | Some p ->
+          let pb = lookup_projection_repr p env in
+          let args = List.skipn pb.Declarations.proj_npars argl in
+          let hd, tl = match args with hd :: tl -> hd, tl | [] -> assert false in
+          { uj_val = applist (mkProj (Projection.make p false, hd), tl);
 	    uj_type = typ }
-      else
-	{ uj_val = applist (j_val funj,argl);
-	  uj_type = typ }
+        | None ->
+          { uj_val = applist (j_val funj,argl);
+            uj_type = typ }
+      end
     | h::restl -> (* On devrait pouvoir s'arranger pour qu'on n'ait pas a faire hnf_constr *)
       match EConstr.kind !evdref (whd_all env !evdref typ) with
       | Prod (_,c1,c2) ->

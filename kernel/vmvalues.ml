@@ -144,7 +144,7 @@ type zipper =
   | Zapp of arguments
   | Zfix of vfix*arguments  (* Possibly empty *)
   | Zswitch of vswitch
-  | Zproj of Constant.t (* name of the projection *)
+  | Zproj of Projection.Repr.t (* name of the projection *)
 
 type stack = zipper list
 
@@ -308,6 +308,7 @@ let val_of_str_const str = val_of_obj (obj_of_str_const str)
 let val_of_atom a = val_of_obj (obj_of_atom a)
 
 let atom_of_proj kn v =
+  (* fixme *)
   let r = Obj.new_block proj_tag 2 in
   Obj.set_field r 0 (Obj.repr kn);
   Obj.set_field r 1 (Obj.repr v);
@@ -539,4 +540,4 @@ and pr_zipper z =
   | Zapp args -> str "Zapp(len = " ++ int (nargs args) ++ str ")"
   | Zfix (f,args) -> str "Zfix(..., len=" ++ int (nargs args) ++ str ")"
   | Zswitch s -> str "Zswitch(...)"
-  | Zproj c -> str "Zproj(" ++ Constant.print c ++ str ")")
+  | Zproj c -> str "Zproj(" ++ Projection.Repr.print c ++ str ")")

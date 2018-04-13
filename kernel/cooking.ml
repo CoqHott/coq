@@ -39,6 +39,14 @@ let pop_con con =
   let (mp,dir,l) = Constant.repr3 con in
   Constant.make3 mp (pop_dirpath dir) l
 
+let pop_proj_repr repr =
+  let open Projection.Repr in
+  {repr with proj_ind = pop_mind repr.proj_ind }
+
+let pop_proj p =
+  let repr = Projection.repr p in
+  Projection.make (pop_proj_repr repr) (Projection.unfolded p)
+
 type my_global_reference =
   | ConstRef of Constant.t
   | IndRef of inductive
@@ -126,17 +134,12 @@ let expmod_constr cache modlist c =
 	    | Not_found -> Constr.map substrec c)
 
       | Proj (p, c') ->
-          (try 
-	     let p' = share_univs (ConstRef (Projection.constant p)) Univ.Instance.empty modlist in
-	     let make c = Projection.make c (Projection.unfolded p) in
-	     match kind p' with
-	     | Const (p',_) -> mkProj (make p', substrec c')
-	     | App (f, args) -> 
-	       (match kind f with 
-	       | Const (p', _) -> mkProj (make p', substrec c')
-	       | _ -> assert false)
-	     | _ -> assert false
-	   with Not_found -> Constr.map substrec c)
+        (if Mindmap.mem (Projection.mind p) (snd modlist)
+         then
+           let p' = pop_proj p in
+           mkProj (p', substrec c')
+         else
+           Constr.map substrec c)
 
   | _ -> Constr.map substrec c
 
@@ -156,7 +159,7 @@ type inline = bool
 type result = {
   cook_body : constant_def;
   cook_type : types;
-  cook_proj : bool;
+  cook_proj : Projection.Repr.t option;
   cook_universes : constant_universes;
   cook_inline : inline;
   cook_context : Context.Named.t option;
@@ -230,7 +233,7 @@ let cook_constant ~hcons env { from = cb; info } =
   {
     cook_body = body;
     cook_type = typ;
-    cook_proj = cb.const_proj;
+    cook_proj = Option.map pop_proj_repr cb.const_proj;
     cook_universes = univs;
     cook_inline = cb.const_inline_code;
     cook_context = Some const_hyps;

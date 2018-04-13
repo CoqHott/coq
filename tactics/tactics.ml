@@ -1579,9 +1579,10 @@ let make_projection env sigma params cstr sign elim i n c u =
       | Some proj ->
 	  let args = Context.Rel.to_extended_vect mkRel 0 sign in
 	  let proj =
-	    if Environ.is_projection proj env then
+            match Environ.lookup_projection_constant proj env with
+            | Some proj ->
 	      mkProj (Projection.make proj false, mkApp (c, args))
-	    else
+            | None ->
 	      mkApp (mkConstU (proj,u), Array.append (Array.of_list params)
 		[|mkApp (c, args)|])
 	  in

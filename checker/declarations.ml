@@ -210,9 +210,7 @@ let rec map_kn f f' c =
       | Const (kn, u) -> (try snd (f' kn u) with No_subst -> c)
       | Proj (p,t) -> 
           let p' = 
-	    Projection.map (fun kn ->
-			    try fst (f' kn Univ.Instance.empty)
-			    with No_subst -> kn) p
+            Projection.map f p
 	  in
 	  let t' = func t in
 	    if p' == p && t' == t then c
