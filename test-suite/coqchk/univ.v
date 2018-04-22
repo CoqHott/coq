@@ -59,3 +59,11 @@ Module CMP_CON.
 
   Definition yo : foo@{U} = foo@{V} := eq_refl.
 End CMP_CON.
+
+Module POLY_IND.
+
+  Polymorphic Inductive ind@{u v | u < v} : Prop := .
+
+  Polymorphic Definition cst@{u v | v < u} := Prop.
+
+End POLY_IND.
