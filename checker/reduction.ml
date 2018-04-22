@@ -133,7 +133,7 @@ let convert_universes univ u u' =
   if Univ.Instance.check_eq univ u u' then ()
   else raise NotConvertible
 
-let compare_stacks f fmind lft1 stk1 lft2 stk2 =
+let compare_stacks f fmind fproj lft1 stk1 lft2 stk2 =
   let rec cmp_rec pstk1 pstk2 =
     match (pstk1,pstk2) with
       | (z1::s1, z2::s2) ->
@@ -143,9 +143,7 @@ let compare_stacks f fmind lft1 stk1 lft2 stk2 =
             | (Zlfix(fx1,a1),Zlfix(fx2,a2)) ->
                 f fx1 fx2; cmp_rec a1 a2
 	    | (Zlproj (c1,l1),Zlproj (c2,l2)) -> 
-               if not (Names.Constant.UserOrd.equal
-		       (Names.Projection.constant c1)
-		       (Names.Projection.constant c2)) then 
+               if not (fproj c1 c2) then
 		raise NotConvertible
             | (Zlcase(ci1,l1,p1,br1),Zlcase(ci2,l2,p2,br2)) ->
                 if not (fmind ci1.ci_ind ci2.ci_ind) then
@@ -302,6 +300,15 @@ let eq_table_key univ =
   Names.eq_table_key (fun (c1,u1) (c2,u2) ->
       Constant.UserOrd.equal c1 c2 &&
       Univ.Instance.check_eq univ u1 u2)
+
+let proj_equiv_infos infos c1 c2 =
+  (Constant.UserOrd.equal
+     (Projection.constant c1)
+     (Projection.constant c2)) ||
+  let env = infos_env infos in
+  let pb1 = Environ.lookup_projection c1 env in
+  let pb2 = Environ.lookup_projection c2 env in
+  Int.equal pb1.proj_arg pb2.proj_arg && mind_equiv env (pb1.proj_ind,0) (pb2.proj_ind,0)
 
 (* Conversion between  [lft1]term1 and [lft2]term2 *)
 let rec ccnv univ cv_pb infos lft1 lft2 term1 term2 =
@@ -526,7 +533,7 @@ and eqappr univ cv_pb infos (lft1,st1) (lft2,st2) =
 and convert_stacks univ infos lft1 lft2 stk1 stk2 =
   compare_stacks
     (fun (l1,t1) (l2,t2) -> ccnv univ CONV infos l1 l2 t1 t2)
-    (mind_equiv_infos infos)
+    (mind_equiv_infos infos) (proj_equiv_infos infos)
     lft1 stk1 lft2 stk2
 
 and convert_vect univ infos lft1 lft2 v1 v2 =
