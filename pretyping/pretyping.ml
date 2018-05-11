@@ -182,7 +182,7 @@ let interp_known_universe_level evd r =
     let univ, k = Nametab.locate_universe qid.CAst.v in
     Univ.Level.make univ k
 
-let interp_universe_level_name ~anon_rigidity evd r =
+let interp_universe_level_name evd r =
   try evd, interp_known_universe_level evd r
   with Not_found ->
     match r with (* Qualified generated name *)
@@ -219,9 +219,7 @@ let interp_universe ?loc ?(allow_alg=false) evd = function
       let evd', u' =
         match l with
         | Some (l,n) ->
-           (* [univ_flexible_alg] can produce algebraic universes in terms *)
-          let anon_rigidity = univ_flexible in (* TODO if allow_alg then flex_alg *)
-           let evd', l = interp_universe_level_name ~anon_rigidity evd l in
+           let evd', l = interp_universe_level_name evd l in
            let u' = Univ.Universe.make l in
            (match n with
             | 0 -> evd', u'
@@ -230,8 +228,9 @@ let interp_universe ?loc ?(allow_alg=false) evd = function
                user_err ?loc ~hdr:"interp_universe"
                         (Pp.(str "Cannot interpret universe increment +" ++ int n)))
         | None ->
-           let evd, l = new_univ_level_variable ?loc univ_flexible evd in
-           evd, Univ.Universe.make l
+          let rigidity = if allow_alg then univ_flexible_alg else univ_flexible in
+          let evd, l = new_univ_level_variable ?loc rigidity evd in
+          evd, Univ.Universe.make l
       in (evd', Univ.sup u u'))
     (evd, Univ.Universe.type0m) l
 
@@ -247,7 +246,7 @@ let interp_known_level_info ?loc evd = function
 let interp_level_info ?loc evd : level_info -> _ = function
   | UUnknown -> new_univ_level_variable ?loc univ_rigid evd
   | UAnonymous -> new_univ_level_variable ?loc univ_flexible evd
-  | UNamed s -> interp_universe_level_name ~anon_rigidity:univ_flexible evd s
+  | UNamed s -> interp_universe_level_name evd s
 
 type inference_hook = env -> evar_map -> Evar.t -> evar_map * constr
 
