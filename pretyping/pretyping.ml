@@ -205,16 +205,22 @@ let interp_universe_level_name ~anon_rigidity evd r =
         else user_err ?loc ~hdr:"interp_universe_level_name"
                       (Pp.(str "Undeclared universe: " ++ Id.print id))
 
-let interp_universe ?loc evd = function
+let interp_universe ?loc ?(allow_alg=false) evd = function
   | [] -> let evd, l = new_univ_level_variable ?loc univ_rigid evd in
 	    evd, Univ.Universe.make l
   | l ->
+    (if not allow_alg
+     then match l with
+       | [Some (_,0)] | [None] -> ()
+       | _ ->
+         user_err ?loc ~hdr:"interp_universe"
+           Pp.(str "Algebraic universe not allowed here."));
     List.fold_left (fun (evd, u) l ->
       let evd', u' =
         match l with
         | Some (l,n) ->
            (* [univ_flexible_alg] can produce algebraic universes in terms *)
-           let anon_rigidity = univ_flexible in
+          let anon_rigidity = univ_flexible in (* TODO if allow_alg then flex_alg *)
            let evd', l = interp_universe_level_name ~anon_rigidity evd l in
            let u' = Univ.Universe.make l in
            (match n with
@@ -543,17 +549,17 @@ let pretype_ref ?loc evdref env ref us =
     let ty = unsafe_type_of env.ExtraEnv.env evd c in
       make_judge c ty
 
-let judge_of_Type ?loc evd s =
-  let evd, s = interp_universe ?loc evd s in
+let judge_of_Type ?loc ?allow_alg evd s =
+  let evd, s = interp_universe ?loc ?allow_alg evd s in
   let judge = 
     { uj_val = mkSort (Type s); uj_type = mkSort (Type (Univ.super s)) }
   in
     evd, judge
 
-let pretype_sort ?loc evdref = function
+let pretype_sort ?loc ?allow_alg evdref = function
   | GProp -> judge_of_prop
   | GSet -> judge_of_set
-  | GType s -> evd_comb1 (judge_of_Type ?loc) evdref s
+  | GType s -> evd_comb1 (judge_of_Type ?loc ?allow_alg) evdref s
 
 let new_type_evar env evdref loc =
   let sigma = !evdref in
@@ -580,10 +586,10 @@ let register_constr_interp0 = ConstrInterp.register0
 (* in environment [env], with existential variables [evdref] and *)
 (* the type constraint tycon *)
 
-let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdref (lvar : ltac_var_map) t =
+let rec pretype ?allow_alg k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdref (lvar : ltac_var_map) t =
   let inh_conv_coerce_to_tycon ?loc = inh_conv_coerce_to_tycon ?loc resolve_tc in
-  let pretype_type = pretype_type k0 resolve_tc in
-  let pretype = pretype k0 resolve_tc in
+  let pretype_type ?allow_alg = pretype_type ?allow_alg k0 resolve_tc in
+  let pretype ?allow_alg = pretype ?allow_alg k0 resolve_tc in
   let open Context.Rel.Declaration in
   let loc = t.CAst.loc in
   match DAst.get t with
@@ -733,7 +739,7 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
 	inh_conv_coerce_to_tycon ?loc env evdref fixj tycon
 
   | GSort s ->
-    let j = pretype_sort ?loc evdref s in
+    let j = pretype_sort ?loc ?allow_alg evdref s in
       inh_conv_coerce_to_tycon ?loc env evdref j tycon
 
   | GProj (p, c) ->
@@ -853,12 +859,12 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
        looked up in the rel context. *)
     let j' = match name with
       | Anonymous ->
-        let j = pretype_type empty_valcon env evdref lvar c2 in
+        let j = pretype_type ?allow_alg empty_valcon env evdref lvar c2 in
           { j with utj_val = lift 1 j.utj_val }
       | Name _ ->
         let var = LocalAssum (name, j.utj_val) in
         let env' = push_rel !evdref var env in
-          pretype_type empty_valcon env' evdref lvar c2
+          pretype_type ?allow_alg empty_valcon env' evdref lvar c2
     in
     let name = ltac_interp_name lvar name in
     let resj =
@@ -886,7 +892,7 @@ let rec pretype k0 resolve_tc (tycon : type_constraint) (env : ExtraEnv.t) evdre
        looked up in the rel context. *)
     let var = LocalDef (name, j.uj_val, t) in
     let tycon = lift_tycon 1 tycon in
-    let j' = pretype tycon (push_rel !evdref var env) evdref lvar c2 in
+    let j' = pretype ?allow_alg tycon (push_rel !evdref var env) evdref lvar c2 in
     let name = ltac_interp_name lvar name in
       { uj_val = mkLetIn (name, j.uj_val, t, j'.uj_val) ;
 	uj_type = subst1 j.uj_val j'.uj_type }
@@ -1133,7 +1139,7 @@ and pretype_instance k0 resolve_tc env evdref lvar loc hyps evk update =
   Array.map_of_list snd subst
 
 (* [pretype_type valcon env evdref lvar c] coerces [c] into a type *)
-and pretype_type k0 resolve_tc valcon (env : ExtraEnv.t) evdref lvar c = match DAst.get c with
+and pretype_type ?allow_alg k0 resolve_tc valcon (env : ExtraEnv.t) evdref lvar c = match DAst.get c with
   | GHole (knd, naming, None) ->
       let loc = loc_of_glob_constr c in
       (match valcon with
@@ -1160,7 +1166,7 @@ and pretype_type k0 resolve_tc valcon (env : ExtraEnv.t) evdref lvar c = match D
 	     { utj_val = e_new_evar env evdref ~src:(loc, knd) ~naming (mkSort s);
 	       utj_type = s})
   | _ ->
-      let j = pretype k0 resolve_tc empty_tycon env evdref lvar c in
+      let j = pretype ?allow_alg k0 resolve_tc empty_tycon env evdref lvar c in
       let loc = loc_of_glob_constr c in
       let tj = evd_comb1 (Coercion.inh_coerce_to_sort ?loc env.ExtraEnv.env) evdref j in
 	match valcon with
@@ -1185,7 +1191,7 @@ let ise_pretype_gen flags env sigma lvar kind c =
         let j = pretype k0 flags.use_typeclasses (mk_tycon exptyp) env evdref lvar c in
         j.uj_val, j.uj_type
     | IsType ->
-        let tj = pretype_type k0 flags.use_typeclasses empty_valcon env evdref lvar c in
+        let tj = pretype_type ~allow_alg:true k0 flags.use_typeclasses empty_valcon env evdref lvar c in
         tj.utj_val, mkSort tj.utj_type
   in
   process_inference_flags flags env.ExtraEnv.env sigma (!evdref,c',c'_ty)
