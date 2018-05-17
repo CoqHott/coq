@@ -265,7 +265,7 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
 		       const_entry_universes = Monomorphic_const_entry univs } as c) ->
       let env = push_context_set ~strict:true univs env in
       let { const_entry_body = body; const_entry_feedback = feedback_id } = c in
-      let tyj = infer_type env typ in
+      let tyj = infer_type ~allow_alg:true env typ in
       let proofterm =
         Future.chain body (fun ((body,uctx),side_eff) ->
           let j, uctx = match trust with
@@ -330,7 +330,7 @@ let infer_declaration (type a) ~(trust : a trust) env (dcl : a constant_entry) =
         | None ->
           Vars.subst_univs_level_constr usubst j.uj_type
         | Some t ->
-           let tj = infer_type env t in
+           let tj = infer_type ~allow_alg:true env t in
            let _ = judge_of_cast env j DEFAULTcast tj in
            Vars.subst_univs_level_constr usubst t
       in

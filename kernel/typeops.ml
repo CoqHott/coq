@@ -430,8 +430,25 @@ and execute_recdef env (names,lar,vdef) i =
 
 and execute_array env = Array.map (execute env)
 
+let rec check_no_alg env c =
+  match kind c with
+  | Sort (Type u) -> if not (Universe.is_level u) then error_disallowed_algebraic_universe env u
+  | _ -> Constr.iter (check_no_alg env) c
+
+let rec check_maybe_alg env c =
+  match kind c with
+  | Prod (_,a,b) ->
+    check_no_alg env a;
+    check_maybe_alg env b
+  | LetIn (_,b,t,c) ->
+    check_no_alg env t;
+    check_no_alg env b;
+    check_maybe_alg env c
+  | _ -> Constr.iter (check_no_alg env) c
+
 (* Derived functions *)
 let infer env constr =
+  check_no_alg env constr;
   let t = execute env constr in
     make_judge constr t
 
@@ -448,12 +465,14 @@ let type_judgment env {uj_val=c; uj_type=t} =
   let s = check_type env c t in
   {utj_val = c; utj_type = s }
 
-let infer_type env constr =
+let infer_type ?(allow_alg=false) env constr =
+  if allow_alg then check_maybe_alg env constr else check_no_alg env constr;
   let t = execute env constr in
   let s = check_type env constr t in
   {utj_val = constr; utj_type = s}
 
 let infer_v env cv =
+  Array.iter (check_no_alg env) cv;
   let jv = execute_array env cv in
     make_judgev cv jv
 
@@ -461,9 +480,11 @@ let infer_v env cv =
 
 let infer_local_decl env id = function
   | Entries.LocalDefEntry c ->
+      check_no_alg env c;
       let t = execute env c in
       RelDecl.LocalDef (Name id, c, t)
   | Entries.LocalAssumEntry c ->
+      check_no_alg env c;
       let t = execute env c in
       RelDecl.LocalAssum (Name id, check_assumption env c t)
 

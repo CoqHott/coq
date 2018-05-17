@@ -1,6 +1,12 @@
 Changes from 8.8.2 to 8.9+beta1
 ===============================
 
+Kernel
+
+- Algebraic universes are forbidden in most places. They remain
+  allowed only in the codomain of the type of a definition or
+  inductive type.
+
 Tactics
 
 - Added toplevel goal selector ! which expects a single focused goal.
