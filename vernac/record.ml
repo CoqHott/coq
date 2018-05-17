@@ -168,10 +168,13 @@ let typecheck_params_and_fields finite def id poly pl t ps nots fs =
           EConstr.mkSort (Sorts.sort_of_univ univ)
         else sigma, typ
   in
-  let sigma = Evd.minimize_universes sigma in
-  let newfs = List.map (EConstr.to_rel_decl sigma) newfs in
-  let newps = List.map (EConstr.to_rel_decl sigma) newps in
-  let typ = EConstr.to_constr sigma typ in
+  let sigma, (newfs, newps, typ) =
+    Evarutil.finalize env0 sigma (fun nf ->
+        let newfs = EConstr.map_rel_context_gen nf newfs in
+        let newps = EConstr.map_rel_context_gen nf newps in
+        let typ = nf typ in
+        newfs, newps, typ)
+  in
   let ce t = Pretyping.check_evars env0 (Evd.from_env env0) sigma (EConstr.of_constr t) in
   let univs = Evd.check_univ_decl ~poly sigma decl in
   let ubinders = Evd.universe_binders sigma in

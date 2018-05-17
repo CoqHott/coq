@@ -223,10 +223,16 @@ let interp_recursive ~program_mode ~cofix fixl notations =
 
   (* Instantiate evars and check all are resolved *)
   let sigma = solve_unif_constraints_with_heuristics env_rec sigma in
-  let sigma = Evd.minimize_universes sigma in
-  (* XXX: We still have evars here in Program *)
-  let fixdefs = List.map (fun c -> Option.map EConstr.(to_constr ~abort_on_undefined_evars:false sigma) c) fixdefs in
-  let fixtypes = List.map EConstr.(to_constr sigma) fixtypes in
+  let sigma, (rec_sign, fixdefs, fixtypes) =
+    (* NB: we still have evars in program mode *)
+    Evarutil.finalize ~abort_on_undefined_evars:false
+      env sigma
+      (fun nf ->
+         let fixdefs = List.map (fun c -> Option.map nf c) fixdefs in
+         let fixtypes = List.map nf fixtypes in
+         let rec_sign = List.map (map_constr (fun c -> EConstr.of_constr (nf c))) rec_sign in
+         rec_sign, fixdefs, fixtypes)
+  in
   let fixctxs = List.map (fun (_,ctx) -> ctx) fixctxs in
 
   (* Build the fix declaration block *)
@@ -244,7 +250,7 @@ let interp_fixpoint ~cofix l ntns =
   check_recursive true env evd fix;
   (fix,pl,Evd.evar_universe_context evd,info)
 
-let declare_fixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) indexes ntns =
+let declare_fixpoint local poly ((fixnames,fixdefs,fixtypes),pl,uctx,fiximps) indexes ntns =
   if List.exists Option.is_empty fixdefs then
     (* Some bodies to define by proof *)
     let thms =
@@ -253,7 +259,7 @@ let declare_fixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) ind
     let init_tac =
       Some (List.map (Option.cata (EConstr.of_constr %> Tactics.exact_no_check) Tacticals.New.tclIDTAC)
         fixdefs) in
-    let evd = Evd.from_ctx ctx in
+    let evd = Evd.from_ctx uctx in
     Lemmas.start_proof_with_initialization (local,poly,DefinitionBody Fixpoint)
       evd pl (Some(false,indexes,init_tac)) thms None (Lemmas.mk_hook (fun _ _ -> ()))
   else begin
@@ -263,13 +269,10 @@ let declare_fixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) ind
     let env = Global.env() in
     let indexes = search_guard env indexes fixdecls in
     let fiximps = List.map (fun (n,r,p) -> r) fiximps in
-    let vars = Univops.universes_of_constr env (mkFix ((indexes,0),fixdecls)) in
     let fixdecls =
       List.map_i (fun i _ -> mkFix ((indexes,i),fixdecls)) 0 fixnames in
-    let evd = Evd.from_ctx ctx in
-    let evd = Evd.restrict_universe_context evd vars in
-    let ctx = Evd.check_univ_decl ~poly evd pl in
-    let pl = Evd.universe_binders evd in
+    let ctx = UState.check_univ_decl ~poly uctx pl in
+    let pl = UState.universe_binders uctx in
     let fixdecls = List.map Safe_typing.mk_pure_proof fixdecls in
     ignore (List.map4 (DeclareDef.declare_fix (local, poly, Fixpoint) pl ctx)
               fixnames fixdecls fixtypes fiximps);
@@ -279,7 +282,7 @@ let declare_fixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) ind
   (* Declare notations *)
   List.iter (Metasyntax.add_notation_interpretation (Global.env())) ntns
 
-let declare_cofixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) ntns =
+let declare_cofixpoint local poly ((fixnames,fixdefs,fixtypes),pl,uctx,fiximps) ntns =
   if List.exists Option.is_empty fixdefs then
     (* Some bodies to define by proof *)
     let thms =
@@ -288,7 +291,7 @@ let declare_cofixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) n
     let init_tac =
       Some (List.map (Option.cata (EConstr.of_constr %> Tactics.exact_no_check) Tacticals.New.tclIDTAC)
         fixdefs) in
-    let evd = Evd.from_ctx ctx in
+    let evd = Evd.from_ctx uctx in
       Lemmas.start_proof_with_initialization (Global,poly, DefinitionBody CoFixpoint)
       evd pl (Some(true,[],init_tac)) thms None (Lemmas.mk_hook (fun _ _ -> ()))
   else begin
@@ -296,14 +299,10 @@ let declare_cofixpoint local poly ((fixnames,fixdefs,fixtypes),pl,ctx,fiximps) n
     let fixdefs = List.map Option.get fixdefs in
     let fixdecls = prepare_recursive_declaration fixnames fixtypes fixdefs in
     let fixdecls = List.map_i (fun i _ -> mkCoFix (i,fixdecls)) 0 fixnames in
-    let env = Global.env () in
-    let vars = Univops.universes_of_constr env (List.hd fixdecls) in
     let fixdecls = List.map Safe_typing.mk_pure_proof fixdecls in
     let fiximps = List.map (fun (len,imps,idx) -> imps) fiximps in
-    let evd = Evd.from_ctx ctx in
-    let evd = Evd.restrict_universe_context evd vars in
-    let ctx = Evd.check_univ_decl ~poly evd pl in
-    let pl = Evd.universe_binders evd in
+    let ctx = UState.check_univ_decl ~poly uctx pl in
+    let pl = UState.universe_binders uctx in
     ignore (List.map4 (DeclareDef.declare_fix (local, poly, CoFixpoint) pl ctx)
               fixnames fixdecls fixtypes fiximps);
     (* Declare the recursive definitions *)

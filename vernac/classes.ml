@@ -198,10 +198,9 @@ let new_instance ?(abstract=false) ?(global=false) ?(refine= !refine_instance)
 	in
 	let (_, ty_constr) = instance_constructor (k,u) subst in
         let termtype = it_mkProd_or_LetIn ty_constr (ctx' @ ctx) in
-        let sigma = Evd.minimize_universes sigma in
         Pretyping.check_evars env (Evd.from_env env) sigma termtype;
+        let sigma, termtype = Evarutil.finalize env sigma (fun nf -> nf termtype) in
         let univs = Evd.check_univ_decl ~poly sigma decl in
-        let termtype = to_constr sigma termtype in
         let cst = Declare.declare_constant ~internal:Declare.InternalTacticRequest id
           (ParameterEntry
             (None,(termtype,univs),None), Decl_kinds.IsAssumption Decl_kinds.Logical)
