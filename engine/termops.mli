@@ -226,7 +226,7 @@ val names_of_rel_context : env -> names_context
 (* [context_chop n Γ] returns (Γ₁,Γ₂) such that [Γ]=[Γ₂Γ₁], [Γ₁] has
    [n] hypotheses, excluding local definitions, and [Γ₁], if not empty,
    starts with an hypothesis (i.e. [Γ₁] has the form empty or [x:A;Γ₁'] *)
-val context_chop : int -> Context.Rel.t -> Context.Rel.t * Context.Rel.t
+val context_chop : int -> 'e Context.Rel.gen -> 'e Context.Rel.gen * 'e Context.Rel.gen
 
 (* [env_rel_context_chop n env] extracts out the [n] top declarations
    of the rel_context part of [env], counting both local definitions and
@@ -240,7 +240,7 @@ val add_vname : Id.Set.t -> Name.t -> Id.Set.t
 (** other signature iterators *)
 val process_rel_context : (rel_declaration -> env -> env) -> env -> env
 val assums_of_rel_context : ('c, 't) Context.Rel.pt -> (Name.t * 't) list
-val lift_rel_context : int -> Context.Rel.t -> Context.Rel.t
+val lift_rel_context : int -> 'e Evkey.t Context.Rel.gen -> 'e Context.Rel.gen
 val substl_rel_context : Constr.constr list -> Context.Rel.t -> Context.Rel.t
 val smash_rel_context : Context.Rel.t -> Context.Rel.t (** expand lets in context *)
 

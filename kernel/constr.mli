@@ -361,6 +361,7 @@ val destCoFix : constr -> cofixpoint
 (** [equal a b] is true if [a] equals [b] modulo alpha, casts,
    and application grouping *)
 val equal : constr -> constr -> bool
+val equal_g : 'e Evkey.t constr_g -> 'e constr_g -> bool
 
 (** [eq_constr_univs u a b] is [true] if [a] equals [b] modulo alpha, casts,
    application grouping and the universe equalities in [u]. *)

@@ -59,7 +59,7 @@ let mkCoFix f = of_kind (CoFix f)
 let mkProj (p, c) = of_kind (Proj (p, c))
 let mkArrow t1 t2 = of_kind (Prod (Anonymous, t1, t2))
 
-let applist (f, arg) = mkApp (f, Array.of_list arg)
+let applist (f, arg) = Constr.of_kind (App (f, Array.of_list arg))
 
 let isRel sigma c = match kind sigma c with Rel _ -> true | _ -> false
 let isVar sigma c = match kind sigma c with Var _ -> true | _ -> false

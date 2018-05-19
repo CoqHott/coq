@@ -84,7 +84,7 @@ val type_case_branches :
 
 val build_branches_type :
   pinductive -> mutual_inductive_body * one_inductive_body ->
-    constr list -> constr -> types array
+    'e Evkey.t constr_g list -> 'e constr_g -> 'e types_g array
 
 (** Return the arity of an inductive type *)
 val mind_arity : one_inductive_body -> Context.Rel.t * Sorts.family

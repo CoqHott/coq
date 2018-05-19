@@ -350,17 +350,18 @@ let lambda_applist c l =
 
 let lambda_appvect c v = lambda_applist c (Array.to_list v)
 
-let lambda_applist_assum n c l =
+let lambda_applist_assum_g n c l =
   let rec app n subst t l =
     if Int.equal n 0 then
       if l == [] then substl subst t
       else anomaly (Pp.str "Too many arguments.")
-    else match kind_of_term t, l with
+    else match kind_g t, l with
     | Lambda(_,_,c), arg::l -> app (n-1) (arg::subst) c l
     | LetIn(_,b,_,c), _ -> app (n-1) (substl subst b::subst) c l
     | _, [] -> anomaly (Pp.str "Not enough arguments.")
     | _ -> anomaly (Pp.str "Not enough lambda/let's.") in
   app n [] c l
+let lambda_applist_assum = lambda_applist_assum_g
 
 let lambda_appvect_assum n c v = lambda_applist_assum n c (Array.to_list v)
 
@@ -444,16 +445,17 @@ let decompose_lam_n n =
 
 (* Transforms a product term (x1:T1)..(xn:Tn)T into the pair
    ([(xn,Tn);...;(x1,T1)],T), where T is not a product *)
-let decompose_prod_assum =
+let decompose_prod_assum_g =
   let open Context.Rel.Declaration in
   let rec prodec_rec l c =
-    match kind_of_term c with
+    match kind_g c with
     | Prod (x,t,c)    -> prodec_rec (Context.Rel.add (LocalAssum (x,t)) l) c
     | LetIn (x,b,t,c) -> prodec_rec (Context.Rel.add (LocalDef (x,b,t)) l) c
     | Cast (c,_,_)      -> prodec_rec l c
     | _               -> l,c
   in
-  prodec_rec Context.Rel.empty
+  fun c -> prodec_rec Context.Rel.empty c
+let decompose_prod_assum = decompose_prod_assum_g
 
 (* Transforms a lambda term [x1:T1]..[xn:Tn]T into the pair
    ([(xn,Tn);...;(x1,T1)],T), where T is not a lambda *)

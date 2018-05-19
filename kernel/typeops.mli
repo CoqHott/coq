@@ -100,7 +100,7 @@ val judge_of_case : ground env -> case_info
   -> unsafe_judgment -> unsafe_judgment -> unsafe_judgment array
     -> unsafe_judgment
 
-val type_of_projection_constant : ground env -> Projection.t puniverses -> types
+val type_of_projection_constant : 'e env -> Projection.t puniverses -> types
 
 val type_of_constant_in : ground env -> pconstant -> types
 

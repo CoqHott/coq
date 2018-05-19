@@ -141,6 +141,7 @@ val subst_univs_level_constr_g : universe_level_subst -> 'e Evkey.t constr_g -> 
 val subst_univs_level_context : Univ.universe_level_subst -> Context.Rel.t -> Context.Rel.t
 
 (** Instance substitution for polymorphism. *)
-val subst_instance_constr : Instance.t -> constr -> constr
+val subst_instance_constr : Instance.t -> 'e Evkey.t constr_g -> 'e constr_g
 val subst_instance_constr_g : Instance.t -> 'e Evkey.t constr_g -> 'e constr_g
 val subst_instance_context : Instance.t -> Context.Rel.t -> Context.Rel.t
+val subst_instance_context_g : Instance.t -> 'e Evkey.t Context.Rel.gen -> 'e Context.Rel.gen

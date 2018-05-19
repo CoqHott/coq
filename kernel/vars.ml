@@ -315,6 +315,7 @@ let subst_instance_constr = subst_instance_constr_g
 (* let substkey = CProfile.declare_profile "subst_instance_constr";; *)
 (* let subst_instance_constr inst c = CProfile.profile2 substkey subst_instance_constr inst c;; *)
 
-let subst_instance_context s ctx = 
+let subst_instance_context_g s ctx =
   if Univ.Instance.is_empty s then ctx
   else Context.Rel.map (fun x -> subst_instance_constr s x) ctx
+let subst_instance_context = subst_instance_context_g

@@ -126,7 +126,7 @@ val mkFix : (t, t) pfixpoint -> t
 val mkCoFix : (t, t) pcofixpoint -> t
 val mkArrow : t -> t -> t
 
-val applist : t * t list -> t
+val applist : 'e constr_g * 'e constr_g list -> 'e constr_g
 
 val mkProd_or_LetIn : rel_declaration -> t -> t
 val mkLambda_or_LetIn : rel_declaration -> t -> t

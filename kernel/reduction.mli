@@ -18,6 +18,7 @@ open Environ
 
 val whd_betaiotazeta        : ground env -> constr -> constr
 val whd_all                 : ground env -> constr -> constr
+val whd_all_g : 'e Evkey.t env -> 'e constr_g -> 'e constr_g
 val whd_allnolet : ground env -> constr -> constr
 
 val whd_betaiota     : ground env -> constr -> constr
@@ -128,6 +129,7 @@ val dest_lam_assum  : ground env -> types -> Context.Rel.t * types
 exception NotArity
 
 val dest_arity : ground env -> types -> Term.arity (* raises NotArity if not an arity *)
+val dest_arity_g : 'e Evkey.t env -> 'e types_g -> 'e Context.Rel.gen * Sorts.t (* raises NotArity if not an arity *)
 val is_arity   : ground env -> types -> bool
 
 val warn_bytecode_compiler_failed : ?loc:Loc.t -> unit -> unit

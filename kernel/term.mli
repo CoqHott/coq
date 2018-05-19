@@ -177,7 +177,7 @@ val destCoFix : constr -> cofixpoint
    [forall (_:t1), t2]. Beware [t_2] is NOT lifted.
    Eg: in context [A:Prop], [A->A] is built by [(mkArrow (mkRel 1) (mkRel 2))]
 *)
-val mkArrow : types -> types -> constr
+val mkArrow : 'e types_g -> 'e types_g -> 'e constr_g
 
 (** Named version of the functions from [Term]. *)
 val mkNamedLambda : Id.t -> types -> constr -> constr
@@ -198,10 +198,10 @@ val mkNamedLambda_or_LetIn : Context.Named.Declaration.t -> constr -> constr
 
 (** [applist (f,args)] and its variants work as [mkApp] *)
 
-val applist : constr * constr list -> constr
-val applistc : constr -> constr list -> constr
-val appvect : constr * constr array -> constr
-val appvectc : constr -> constr array -> constr
+val applist : 'e constr_g * 'e constr_g list -> 'e constr_g
+val applistc : 'e constr_g -> 'e constr_g list -> 'e constr_g
+val appvect : 'e constr_g * 'e constr_g array -> 'e constr_g
+val appvectc : 'e constr_g -> 'e constr_g array -> 'e constr_g
 
 (** [prodn n l b] = [forall (x_1:T_1)...(x_n:T_n), b]
    where [l] is [(x_n,T_n)...(x_1,T_1)...]. *)
@@ -248,6 +248,7 @@ val lambda_appvect : constr -> constr array -> constr
     returns [c] with the assumptions of [Γ] instantiated by [args] and
     the local definitions of [Γ] expanded. *)
 val lambda_applist_assum : int -> constr -> constr list -> constr
+val lambda_applist_assum_g : int -> 'e Evkey.t constr_g -> 'e constr_g list -> 'e constr_g
 val lambda_appvect_assum : int -> constr -> constr array -> constr
 
 (** pseudo-reduction rule *)
@@ -290,6 +291,7 @@ val decompose_lam_n : int -> constr -> (Name.t * constr) list * constr
 (** Extract the premisses and the conclusion of a term of the form
    "(xi:Ti) ... (xj:=cj:Tj) ..., T" where T is not a product nor a let *)
 val decompose_prod_assum : types -> Context.Rel.t * types
+val decompose_prod_assum_g : 'e Evkey.t types_g -> 'e Context.Rel.gen * 'e types_g
 
 (** Idem with lambda's and let's *)
 val decompose_lam_assum : constr -> Context.Rel.t * constr
@@ -333,7 +335,7 @@ val strip_lam_assum : constr -> constr
 type arity = Context.Rel.t * Sorts.t
 
 (** Build an "arity" from its canonical form *)
-val mkArity : arity -> types
+val mkArity : 'e Context.Rel.gen * Sorts.t -> 'e types_g
 
 (** Destruct an "arity" into its canonical form *)
 val destArity : types -> arity

@@ -151,6 +151,7 @@ let whd_all env t =
       end
     | Rel _ | Cast _ | LetIn _ | Case _ | Proj _ | Const _ | Var _ ->
         whd_val (create_clos_infos all env) (create_tab ()) (inject t)
+let whd_all_g = whd_all
 
 let whd_allnolet env t =
   match kind_g t with
@@ -888,7 +889,7 @@ let dest_prod env =
 let dest_prod_assum env =
   let rec prodec_rec env l ty =
     let rty = whd_allnolet env ty in
-    match kind rty with
+    match kind_g rty with
     | Prod (x,t,c)  ->
         let d = LocalAssum (x,t) in
 	prodec_rec (push_rel d env) (Context.Rel.add d l) c
@@ -897,7 +898,7 @@ let dest_prod_assum env =
 	prodec_rec (push_rel d env) (Context.Rel.add d l) c
     | _               ->
       let rty' = whd_all env rty in
-	if Constr.equal rty' rty then l, rty
+        if Constr.equal_g rty' rty then l, rty
 	else prodec_rec env l rty'
   in
   prodec_rec env Context.Rel.empty
@@ -920,9 +921,10 @@ exception NotArity
 
 let dest_arity env c =
   let l, c = dest_prod_assum env c in
-  match kind c with
+  match kind_g c with
     | Sort s -> l,s
     | _ -> raise NotArity
+let dest_arity_g = dest_arity
 
 let is_arity env c =
   try

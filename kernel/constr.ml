@@ -832,6 +832,7 @@ let rec eq_constr nargs m n =
   (m == n) || compare_head_gen (fun _ _ -> Instance.equal) Sorts.equal eq_constr nargs m n
 
 let equal n m = eq_constr 0 m n (* to avoid tracing a recursive fun *)
+let equal_g = equal
 
 let eq_constr_univs_g univs m n =
   if m == n then true

@@ -48,7 +48,7 @@ let arities_of_constructors env (ind,u as indu) =
   Inductive.arities_of_constructors indu specif
 
 (* [inductive_family] = [inductive_instance] applied to global parameters *)
-type inductive_family = pinductive * constr list
+type inductive_family = pinductive * evars constr_g list
 
 let make_ind_family (mis, params) = (mis,params)
 let dest_ind_family (mis,params) = (mis,params)
@@ -299,12 +299,12 @@ let make_case_info env ind style =
 
 (*s Useful functions *)
 
-type constructor_summary = {
+type 'e constructor_summary = {
   cs_cstr : pconstructor;
-  cs_params : constr list;
+  cs_params : 'e constr_g list;
   cs_nargs : int;
-  cs_args : Context.Rel.t;
-  cs_concl_realargs : constr array
+  cs_args : 'e Context.Rel.gen;
+  cs_concl_realargs : 'e constr_g array
 }
 
 let lift_constructor n cs = {
@@ -322,15 +322,15 @@ let instantiate_params t params sign =
   let _,sign = context_chop nnonrecpar sign in
   let _,t = decompose_prod_n_assum (Context.Rel.length sign) t in
   let subst = subst_of_rel_context_instance sign params in
-  substl subst t
+  substl subst (t:>evars constr_g)
 
 let get_constructor ((ind,u as indu),mib,mip,params) j =
   assert (j <= Array.length mip.mind_consnames);
   let typi = mis_nf_constructor_type (indu,mib,mip) j in
   let ctx = Vars.subst_instance_context u mib.mind_params_ctxt in
-  let typi = instantiate_params typi params ctx in
-  let (args,ccl) = decompose_prod_assum typi in
-  let (_,allargs) = decompose_app ccl in
+  let typi = instantiate_params typi params (ctx:>evars Context.Rel.gen) in
+  let (args,ccl) = decompose_prod_assum_g typi in
+  let (_,allargs) = decompose_app_g ccl in
   let vargs = List.skipn (List.length params) allargs in
   { cs_cstr = (ith_constructor_of_inductive ind j,u);
     cs_params = params;
@@ -390,6 +390,7 @@ let substnl_rel_context subst n sign =
 let substl_rel_context subst = substnl_rel_context subst 0
 
 let get_arity env ((ind,u),params) =
+  let unground_ctx : type e. Context.Rel.t -> e Context.Rel.gen = Obj.magic in
   let (mib,mip) = Inductive.lookup_mind_specif env ind in
   let parsign =
     (* Dynamically detect if called with an instance of recursively
@@ -406,9 +407,9 @@ let get_arity env ((ind,u),params) =
   let parsign = Vars.subst_instance_context u parsign in
   let arproperlength = List.length mip.mind_arity_ctxt - List.length parsign in
   let arsign,_ = List.chop arproperlength mip.mind_arity_ctxt in
-  let subst = subst_of_rel_context_instance parsign params in
+  let subst = subst_of_rel_context_instance (unground_ctx parsign) params in
   let arsign = Vars.subst_instance_context u arsign in
-  (substl_rel_context subst arsign, Inductive.inductive_sort_family mip)
+  (substl_rel_context subst (unground_ctx arsign), Inductive.inductive_sort_family mip)
 
 (* Functions to build standard types related to inductive *)
 let build_dependent_constructor cs =
@@ -444,7 +445,7 @@ let make_arity env sigma dep indf s =
 
 (* [p] is the predicate and [cs] a constructor summary *)
 let build_branch_type env sigma dep p cs =
-  let base = appvect (lift cs.cs_nargs p, cs.cs_concl_realargs) in
+  let base = mkApp (lift cs.cs_nargs p, cs.cs_concl_realargs) in
   if dep then
     EConstr.Unsafe.to_constr (Namegen.it_mkProd_or_LetIn_name env sigma
       (EConstr.of_constr (applist (base,[build_dependent_constructor cs])))
@@ -572,7 +573,7 @@ let type_case_branches_with_names env sigma indspec p c =
   let (params,realargs) = List.chop nparams args in
   let lbrty = Inductive.build_branches_type ind specif params p in
   (* Build case type *)
-  let conclty = lambda_appvect_assum (mip.mind_nrealdecls+1) p (Array.of_list (realargs@[c])) in
+  let conclty = lambda_applist_assum_g (mip.mind_nrealdecls+1) p (realargs@[c]) in
   (* Adjust names *)
   if is_elim_predicate_explicitly_dependent env sigma p (ind,params) then
     (set_pattern_names env sigma (fst ind) (Array.map EConstr.of_constr lbrty), conclty)
@@ -599,7 +600,7 @@ let rec instantiate_universes env evdref scl is = function
   | d::sign, None::exp ->
       d :: instantiate_universes env evdref scl is (sign, exp)
   | (LocalAssum (na,ty))::sign, Some l::exp ->
-      let ctx,_ = Reduction.dest_arity env ty in
+      let ctx,_ = Reduction.dest_arity_g (EConstr.Unsafe.to_env env) ty in
       let u = Univ.Universe.make l in
       let s =
         (* Does the sort of parameter [u] appear in (or equal)
@@ -626,7 +627,7 @@ let type_of_inductive_knowing_conclusion env sigma ((mib,mip),u) conclty =
     let evdref = ref sigma in
     let ctx =
       instantiate_universes
-        env evdref scl ar.template_level (ctx,ar.template_param_levels) in
+        env evdref scl ar.template_level ((ctx:>evars Context.Rel.gen),ar.template_param_levels) in
       !evdref, EConstr.of_constr (mkArity (List.rev ctx,scl))
 
 let type_of_projection_knowing_arg env sigma p c ty =
@@ -637,7 +638,7 @@ let type_of_projection_knowing_arg env sigma p c ty =
       raise (Invalid_argument "type_of_projection_knowing_arg_type: not an inductive type")
   in
   let (_,u), pars = dest_ind_family pars in
-  substl (c :: List.rev pars) (Typeops.type_of_projection_constant env (p,u))
+  substl (c :: List.rev pars) (Typeops.type_of_projection_constant env (p,u) :> evars constr_g)
 
 (***********************************************)
 (* Guard condition *)
@@ -645,17 +646,17 @@ let type_of_projection_knowing_arg env sigma p c ty =
 (* A function which checks that a term well typed verifies both
    syntactic conditions *)
 
-let control_only_guard env sigma c =
-  let check_fix_cofix e c =
-    match kind (EConstr.to_constr sigma c) with
-    | CoFix (_,(_,_,_) as cofix) ->
-      Inductive.check_cofix e cofix
-    | Fix (_,(_,_,_) as fix) ->
-      Inductive.check_fix e fix
-    | _ -> ()
-  in
-  let rec iter env c =
-    check_fix_cofix env c;
-    iter_constr_with_full_binders sigma EConstr.push_rel iter env c
-  in
-  iter env c
+(* let control_only_guard env sigma c = *)
+(*   let check_fix_cofix e c = *)
+(*     match kind_g (EConstr.to_constr ?abort_on_undefined_evars:false sigma c) with *)
+(*     | CoFix (_,(_,_,_) as cofix) -> *)
+(*       Inductive.check_cofix e cofix *)
+(*     | Fix (_,(_,_,_) as fix) -> *)
+(*       Inductive.check_fix e fix *)
+(*     | _ -> () *)
+(*   in *)
+(*   let rec iter env c = *)
+(*     check_fix_cofix env c; *)
+(*     iter_constr_with_full_binders sigma push_rel iter env c *)
+(*   in *)
+(*   iter env c *)

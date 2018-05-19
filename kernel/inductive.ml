@@ -44,8 +44,8 @@ let find_inductive env c =
     | _ -> raise Not_found
 
 let find_coinductive env c =
-  let (t, l) = decompose_app (whd_all env c) in
-  match kind t with
+  let (t, l) = decompose_app_g (whd_all_g env c) in
+  match kind_g t with
     | Ind ind
         when (fst (lookup_mind_specif env (out_punivs ind))).mind_finite == CoFinite -> (ind, l)
     | _ -> raise Not_found
@@ -83,10 +83,10 @@ let instantiate_params full t u args sign =
   let (rem_args, subs, ty) =
     Context.Rel.fold_outside
       (fun decl (largs,subs,ty) ->
-        match (decl, largs, kind ty) with
+        match (decl, largs, kind_g ty) with
           | (LocalAssum _, a::args, Prod(_,_,t)) -> (args, a::subs, t)
           | (LocalDef (_,b,_), _, LetIn(_,_,_,t))    ->
-	     (largs, (substl subs (subst_instance_constr u b))::subs, t)
+             (largs, (substl subs (subst_instance_constr u (to_econstr b)))::subs, t)
 	  | (_,[],_)                -> if full then fail() else ([], subs, ty)
 	  | _                       -> fail ())
       sign
@@ -353,16 +353,16 @@ let is_correct_arity env c pj ind specif params =
    and [cty] is the type of the constructor (params not instantiated) *)
 let build_branches_type (ind,u) (_,mip as specif) params p =
   let build_one_branch i cty =
-    let typi = full_constructor_instantiate (ind,u,specif,params) cty in
-    let (cstrsign,ccl) = Term.decompose_prod_assum typi in
+    let typi = full_constructor_instantiate (ind,u,specif,params) (to_econstr cty) in
+    let (cstrsign,ccl) = Term.decompose_prod_assum_g typi in
     let nargs = Context.Rel.length cstrsign in
-    let (_,allargs) = decompose_app ccl in
+    let (_,allargs) = decompose_app_g ccl in
     let (lparams,vargs) = List.chop (inductive_params specif) allargs in
     let cargs =
       let cstr = ith_constructor_of_inductive ind (i+1) in
       let dep_cstr = Term.applist (mkConstructU (cstr,u),lparams@(Context.Rel.to_extended_list mkRel 0 cstrsign)) in
       vargs @ [dep_cstr] in
-    let base = Term.lambda_appvect_assum (mip.mind_nrealdecls+1) (lift nargs p) (Array.of_list cargs) in
+    let base = Term.lambda_applist_assum_g (mip.mind_nrealdecls+1) (lift nargs p) cargs in
     Term.it_mkProd_or_LetIn base cstrsign in
   Array.mapi build_one_branch mip.mind_nf_lc
 
@@ -1116,14 +1116,14 @@ let anomaly_ill_typed () =
   anomaly ~label:"check_one_cofix" (Pp.str "too many arguments applied to constructor.")
 
 let rec codomain_is_coind env c =
-  let b = whd_all env c in
-  match kind b with
+  let b = whd_all_g env c in
+  match kind_g b with
     | Prod (x,a,b) ->
 	codomain_is_coind (push_rel (LocalAssum (x,a)) env) b
     | _ ->
 	(try find_coinductive env b
         with Not_found ->
-	  raise (CoFixGuardError (env, CodomainNotInductiveType b)))
+          raise (CoFixGuardError (env, CodomainNotInductiveType b)))
 
 let check_one_cofix env nbfix def deftype =
   let rec check_rec_call env alreadygrd n tree vlra  t =
