@@ -25,7 +25,7 @@ val mk_new_meta : unit -> constr
 (** {6 Creating a fresh evar given their type and context} *)
 
 val new_evar_from_context :
-  named_context_val -> evar_map -> ?src:Evar_kinds.t Loc.located -> ?filter:Filter.t ->
+  Evd.evar named_context_val -> evar_map -> ?src:Evar_kinds.t Loc.located -> ?filter:Filter.t ->
   ?candidates:constr list -> ?store:Store.t ->
   ?naming:Misctypes.intro_pattern_naming_expr ->
   ?principal:bool -> types -> evar_map * EConstr.t
@@ -43,7 +43,7 @@ val new_evar :
   ?principal:bool -> ?hypnaming:naming_mode -> types -> evar_map * EConstr.t
 
 val new_pure_evar :
-  named_context_val -> evar_map -> ?src:Evar_kinds.t Loc.located -> ?filter:Filter.t ->
+  Evd.evar named_context_val -> evar_map -> ?src:Evar_kinds.t Loc.located -> ?filter:Filter.t ->
   ?candidates:constr list -> ?store:Store.t ->
   ?naming:Misctypes.intro_pattern_naming_expr ->
   ?principal:bool -> types -> evar_map * Evar.t
@@ -88,7 +88,7 @@ val e_new_global : evar_map ref -> Globnames.global_reference -> constr
    of [inst] are typed in the occurrence context and their type (seen
    as a telescope) is [sign] *)
 val new_evar_instance :
- named_context_val -> evar_map -> types -> 
+ Evd.evar named_context_val -> evar_map -> types ->
   ?src:Evar_kinds.t Loc.located -> ?filter:Filter.t -> ?candidates:constr list ->
   ?store:Store.t -> ?naming:Misctypes.intro_pattern_naming_expr ->
   ?principal:bool ->
@@ -96,7 +96,8 @@ val new_evar_instance :
 
 val make_pure_subst : evar_info -> 'a array -> (Id.t * 'a) list
 
-val safe_evar_value : evar_map -> Constr.existential -> Constr.constr option
+val safe_evar_value : evar_map -> (evars, evars constr_g) pexistential ->
+  evars constr_g option
 
 (** {6 Evars/Metas switching...} *)
 
@@ -140,7 +141,7 @@ val advance : evar_map -> Evar.t -> Evar.t option
     [nf_evar]. *)
 
 val undefined_evars_of_term : evar_map -> constr -> Evar.Set.t
-val undefined_evars_of_named_context : evar_map -> Context.Named.t -> Evar.Set.t
+val undefined_evars_of_named_context : evar_map -> evar Context.Named.gen -> Evar.Set.t
 val undefined_evars_of_evar_info : evar_map -> evar_info -> Evar.Set.t
 
 type undefined_evars_cache
@@ -173,7 +174,7 @@ val jv_nf_evar :
 val tj_nf_evar :
    evar_map -> unsafe_type_judgment -> unsafe_type_judgment
 
-val nf_named_context_evar : evar_map -> Context.Named.t -> Context.Named.t
+val nf_named_context_evar : evar_map -> evar Context.Named.gen -> evar Context.Named.gen
 val nf_rel_context_evar : evar_map -> rel_context -> rel_context
 val nf_env_evar : evar_map -> env -> env
 
@@ -183,16 +184,16 @@ val nf_evar_map_undefined : evar_map -> evar_map
 
 (** Presenting terms without solved evars *)
 
-val nf_evars_universes : evar_map -> Constr.constr -> Constr.constr
+val nf_evars_universes : evar_map -> evars Constr.constr_g -> evars Constr.constr_g
 
-val nf_evars_and_universes : evar_map -> evar_map * (Constr.constr -> Constr.constr)
+val nf_evars_and_universes : evar_map -> evar_map * (evars Constr.constr_g -> evars Constr.constr_g)
 [@@ocaml.deprecated "Use Evd.minimize_universes and nf_evars_universes"]
-val e_nf_evars_and_universes : evar_map ref -> (Constr.constr -> Constr.constr) * Universes.universe_opt_subst
+val e_nf_evars_and_universes : evar_map ref -> (evars Constr.constr_g -> evars Constr.constr_g) * Universes.universe_opt_subst
 [@@ocaml.deprecated "Use Evd.minimize_universes and nf_evars_universes"]
 
 (** Normalize the evar map w.r.t. universes, after simplification of constraints.
     Return the substitution function for constrs as well. *)
-val nf_evar_map_universes : evar_map -> evar_map * (Constr.constr -> Constr.constr)
+val nf_evar_map_universes : evar_map -> evar_map * (evars Constr.constr_g -> evars Constr.constr_g)
 [@@ocaml.deprecated "Use Evd.minimize_universes and nf_evar_map and nf_evars_universes"]
 
 (** Replacing all evars, possibly raising [Uninstantiated_evar] *)
@@ -204,8 +205,7 @@ val flush_and_check_evars :  evar_map -> constr -> Constr.constr
 (** Like {!Constr.kind} except that [kind_of_term sigma t] exposes [t]
     as an evar [e] only if [e] is uninstantiated in [sigma]. Otherwise the
     value of [e] in [sigma] is (recursively) used. *)
-val kind_of_term_upto : evar_map -> Constr.constr ->
-  (Constr.constr, Constr.types, Sorts.t, Univ.Instance.t) kind_of_term
+val kind_of_term_upto : evar_map -> evars constr_g -> evars kind_g
 
 (** [eq_constr_univs_test sigma1 sigma2 t u] tests equality of [t] and
     [u] up to existential variable instantiation and equalisable
@@ -233,15 +233,15 @@ raise OccurHypInSimpleClause if the removal breaks dependencies *)
 
 type clear_dependency_error =
 | OccurHypInSimpleClause of Id.t option
-| EvarTypingBreak of Constr.existential
+| EvarTypingBreak of existential
 
 exception ClearDependencyError of Id.t * clear_dependency_error * Globnames.global_reference option
 
-val clear_hyps_in_evi : env -> evar_map ref -> named_context_val -> types ->
-  Id.Set.t -> named_context_val * types
+val clear_hyps_in_evi : env -> evar_map ref -> evars named_context_val -> types ->
+  Id.Set.t -> evars named_context_val * types
 
-val clear_hyps2_in_evi : env -> evar_map ref -> named_context_val -> types -> types ->
-  Id.Set.t -> named_context_val * types * types
+val clear_hyps2_in_evi : env -> evar_map ref -> evars named_context_val -> types -> types ->
+  Id.Set.t -> evars named_context_val * types * types
 
 type csubst
 
@@ -255,8 +255,8 @@ val push_rel_decl_to_named_context : ?hypnaming:naming_mode ->
   evar_map -> rel_declaration -> ext_named_context -> ext_named_context
 
 val push_rel_context_to_named_context : ?hypnaming:naming_mode ->
-  Environ.env -> evar_map -> types ->
-  named_context_val * types * constr list * csubst
+  env -> evar_map -> types ->
+  evar named_context_val * types * constr list * csubst
 
 val generalize_evar_over_rels : evar_map -> existential -> types * constr list
 

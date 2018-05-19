@@ -31,7 +31,7 @@ val empty_environment : safe_environment
 
 val is_initial : safe_environment -> bool
 
-val env_of_safe_env : safe_environment -> Constr.ground Environ.env
+val env_of_safe_env : safe_environment -> 'e Environ.env
 
 (** The safe_environment state monad *)
 

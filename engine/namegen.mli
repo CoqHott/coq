@@ -11,7 +11,6 @@
 (** This file features facilities to generate fresh names. *)
 
 open Names
-open Environ
 open Evd
 open EConstr
 

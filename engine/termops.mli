@@ -23,8 +23,9 @@ val pr_fix : ('a -> Pp.t) -> ('a, 'a) pfixpoint -> Pp.t
 
 (** about contexts *)
 val push_rel_assum : Name.t * types -> env -> env
-val push_rels_assum : (Name.t * Constr.types) list -> env -> env
-val push_named_rec_types : Name.t array * Constr.types array * 'a -> env -> env
+val push_rels_assum : (Name.t * 'e Constr.types_g) list -> 'e Environ.env -> 'e Environ.env
+val push_named_rec_types : Name.t array * 'e Evkey.t Constr.types_g array * 'a ->
+  'e Environ.env -> 'e Environ.env
 
 val lookup_rel_id : Id.t -> ('c, 't) Context.Rel.pt -> int * 'c option * 't
 (** Associates the contents of an identifier in a [rel_context]. Raise
@@ -75,7 +76,7 @@ val fold_constr_with_binders : Evd.evar_map ->
   ('a -> 'a) -> ('a -> 'b -> constr -> 'b) -> 'a -> 'b -> constr -> 'b
 
 val fold_constr_with_full_binders : Evd.evar_map ->
-  (Context.Rel.Declaration.t -> 'a -> 'a) -> ('a -> 'b -> constr -> 'b) ->
+  (Evd.evar Context.Rel.Declaration.gen -> 'a -> 'a) -> ('a -> 'b -> constr -> 'b) ->
     'a -> 'b -> constr -> 'b
 
 val iter_constr_with_full_binders : Evd.evar_map ->
@@ -244,13 +245,14 @@ val substl_rel_context : Constr.constr list -> Context.Rel.t -> Context.Rel.t
 val smash_rel_context : Context.Rel.t -> Context.Rel.t (** expand lets in context *)
 
 val map_rel_context_in_env :
-  (env -> Constr.constr -> Constr.constr) -> env -> Context.Rel.t -> Context.Rel.t
+  ('e Environ.env -> 'e Constr.constr_g -> 'e Constr.constr_g) ->
+  'e Environ.env -> 'e Context.Rel.gen -> 'e Context.Rel.gen
 val map_rel_context_with_binders :
   (int -> 'c -> 'c) -> ('c, 'c) Context.Rel.pt -> ('c, 'c) Context.Rel.pt
 val fold_named_context_both_sides :
   ('a -> Context.Named.Declaration.t -> Context.Named.Declaration.t list -> 'a) ->
     Context.Named.t -> init:'a -> 'a
-val mem_named_context_val : Id.t -> named_context_val -> bool
+val mem_named_context_val : Id.t -> 'e named_context_val -> bool
 val compact_named_context : Context.Named.t -> Context.Compacted.t
 
 val map_rel_decl : ('a -> 'b) -> ('a, 'a) Context.Rel.Declaration.pt -> ('b, 'b) Context.Rel.Declaration.pt
@@ -313,6 +315,6 @@ val set_print_constr : (env -> Evd.evar_map -> constr -> Pp.t) -> unit
 val print_constr     : constr -> Pp.t
 val print_constr_env : env -> Evd.evar_map -> constr -> Pp.t
 val print_named_context : env -> Pp.t
-val pr_rel_decl : env -> Context.Rel.Declaration.t -> Pp.t
+val pr_rel_decl : env -> evar Context.Rel.Declaration.gen -> Pp.t
 val print_rel_context : env -> Pp.t
 val print_env : env -> Pp.t

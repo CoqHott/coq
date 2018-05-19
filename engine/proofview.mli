@@ -45,7 +45,7 @@ val compact : entry -> proofview -> entry * proofview
     empty [evar_map] (indeed a proof can be triggered by an incomplete
     pretyping), [init] takes an additional argument to represent the
     initial [evar_map]. *)
-val init : Evd.evar_map -> (Environ.env * types) list -> entry * proofview
+val init : Evd.evar_map -> (env * types) list -> entry * proofview
 
 (** A [telescope] is a list of environment and conclusion like in
     {!init}, except that each element may depend on the previous
@@ -54,7 +54,7 @@ val init : Evd.evar_map -> (Environ.env * types) list -> entry * proofview
     [evar_map] is threaded in state passing style. *)
 type telescope =
   | TNil of Evd.evar_map
-  | TCons of Environ.env * Evd.evar_map * types * (Evd.evar_map -> constr -> telescope)
+  | TCons of env * Evd.evar_map * types * (Evd.evar_map -> constr -> telescope)
 
 (** Like {!init}, but goals are allowed to be dependent on one
     another. Dependencies between goals is represented with the type
@@ -156,7 +156,7 @@ type +'a tactic
     tactic has given up. In case of multiple success the first one is
     selected. If there is no success, fails with
     {!Logic_monad.TacticFailure}*)
-val apply : Environ.env -> 'a tactic -> proofview -> 'a
+val apply : env -> 'a tactic -> proofview -> 'a
                                                    * proofview
                                                    * (bool*Evar.t list*Evar.t list)
                                                    * Proofview_monad.Info.tree
@@ -372,7 +372,7 @@ val tclEVARMAP : Evd.evar_map tactic
     environment. It is not the environment of a particular goal,
     rather the "global" environment of the proof. The goal-wise
     environment is obtained via {!Proofview.Goal.env}. *)
-val tclENV : Environ.env tactic
+val tclENV : env tactic
 
 
 (** {7 Put-like primitives} *)
@@ -424,7 +424,7 @@ module Unsafe : sig
   val tclEVARSADVANCE : Evd.evar_map -> unit tactic
 
   (** Set the global environment of the tactic *)
-  val tclSETENV : Environ.env -> unit tactic
+  val tclSETENV : env -> unit tactic
 
   (** [tclNEWGOALS gls] adds the goals [gls] to the ones currently
       being proved, appending them to the list of focused goals. If a
@@ -508,7 +508,7 @@ module Goal : sig
       hypotheses) and the current evar map. *)
   val concl : t -> constr
   val hyps : t -> named_context
-  val env : t -> Environ.env
+  val env : t -> env
   val sigma : t -> Evd.evar_map
   val extra : t -> Evd.Store.t
   val state : t -> Proofview_monad.StateStore.t
@@ -536,7 +536,7 @@ module Goal : sig
 
   (** Compatibility: avoid if possible *)
   val goal : t -> Evar.t
-  val print : t -> Goal.goal Evd.sigma
+  val print : t -> Evar.t Evd.sigma
 
 end
 

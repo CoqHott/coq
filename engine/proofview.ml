@@ -39,14 +39,13 @@ let proofview p =
 
 let compact el ({ solution } as pv) =
   let nf c = Evarutil.nf_evar solution c in
-  let nf0 c = EConstr.Unsafe.to_constr (Evarutil.nf_evar solution (EConstr.of_constr c)) in
   let size = Evd.fold (fun _ _ i -> i+1) solution 0 in
   let new_el = List.map (fun (t,ty) -> nf t, nf ty) el in
   let pruned_solution = Evd.drop_all_defined solution in
   let apply_subst_einfo _ ei =
     Evd.({ ei with
        evar_concl =  nf ei.evar_concl;
-       evar_hyps = Environ.map_named_val nf0 ei.evar_hyps;
+       evar_hyps = Environ.map_named_val nf ei.evar_hyps;
        evar_candidates = Option.map (List.map nf) ei.evar_candidates }) in
   let new_solution = Evd.raw_map_undefined apply_subst_einfo pruned_solution in
   let new_size = Evd.fold (fun _ _ i -> i+1) new_solution 0 in
@@ -58,7 +57,7 @@ let compact el ({ solution } as pv) =
 
 type telescope =
   | TNil of Evd.evar_map
-  | TCons of Environ.env * Evd.evar_map * EConstr.types * (Evd.evar_map -> EConstr.constr -> telescope)
+  | TCons of EConstr.env * Evd.evar_map * EConstr.types * (Evd.evar_map -> EConstr.constr -> telescope)
 
 let typeclass_resolvable = Evd.Store.field ()
 
@@ -74,6 +73,7 @@ let dependent_init =
   | TCons (env, sigma, typ, t) ->
     let (sigma, econstr) = Evarutil.new_evar env sigma ~src ~store typ in
     let (gl, _) = EConstr.destEvar sigma econstr in
+    let gl = Evd.evar_repr gl in
     let ret, { solution = sol; comb = comb } = aux (t sigma econstr) in
     let entry = (econstr, typ) :: ret in
     entry, { solution = sol; comb = with_empty_state gl :: comb; shelf = [] }
@@ -875,7 +875,7 @@ module Progress = struct
 
   (** equality function on hypothesis contexts *)
   let eq_named_context_val sigma1 sigma2 ctx1 ctx2 =
-    let c1 = EConstr.named_context_of_val ctx1 and c2 = EConstr.named_context_of_val ctx2 in
+    let c1 = Environ.named_context_of_val ctx1 and c2 = Environ.named_context_of_val ctx2 in
     let eq_named_declaration d1 d2 =
       match d1, d2 with
       | LocalAssum (i1,t1), LocalAssum (i2,t2) ->
@@ -1078,7 +1078,7 @@ let catchable_exception = function
 module Goal = struct
 
   type t = {
-    env : Environ.env;
+    env : EConstr.env;
     sigma : Evd.evar_map;
     concl : EConstr.constr ;
     state : StateStore.t;
@@ -1093,7 +1093,7 @@ module Goal = struct
 
   let env {env} = env
   let sigma {sigma} = sigma
-  let hyps {env} = EConstr.named_context env
+  let hyps {env} = Environ.named_context env
   let concl {concl} = concl
   let extra {sigma; self} = goal_extra sigma self
 
@@ -1280,7 +1280,8 @@ module V82 = struct
    { Evd.it = List.map drop_state comb ; sigma = solution }
 
   let top_goals initial { solution=solution; } =
-    let goals = CList.map (fun (t,_) -> fst (Constr.destEvar (EConstr.Unsafe.to_constr t))) initial in
+    let goals = CList.map (fun (t,_) ->
+        Constr.Evkey.evar (fst (Constr.destEvar (EConstr.Unsafe.to_constr t)))) initial in
     { Evd.it = goals ; sigma=solution; }
 
   let top_evars initial =

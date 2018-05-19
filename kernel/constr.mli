@@ -428,6 +428,7 @@ val map_with_binders_g :
    not specified *)
 
 val iter : (constr -> unit) -> constr -> unit
+val iter_g : ('e Evkey.t constr_g -> unit) -> 'e constr_g -> unit
 
 (** [iter_with_binders g f n c] iters [f n] on the immediate
    subterms of [c]; it carries an extra data [n] (typically a lift

@@ -17,7 +17,7 @@ open Names
    [Safe_typing]. *)
 
 val safe_env : unit -> Safe_typing.safe_environment
-val env : unit -> Constr.ground Environ.env
+val env : unit -> 'e Environ.env
 
 val env_is_initial : unit -> bool
 

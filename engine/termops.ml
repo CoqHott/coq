@@ -49,7 +49,7 @@ let pr_puniverses p u =
   if Univ.Instance.is_empty u then p 
   else p ++ str"(*" ++ Univ.Instance.pr Universes.pr_with_global_universes u ++ str"*)"
 
-let rec pr_constr c = match kind c with
+let rec pr_constr c = match kind_g c with
   | Rel n -> str "#"++int n
   | Meta n -> str "Meta(" ++ int n ++ str ")"
   | Var id -> Id.print id
@@ -74,7 +74,7 @@ let rec pr_constr c = match kind c with
       (str"(" ++ pr_constr c ++ spc() ++
        prlist_with_sep spc pr_constr (Array.to_list l) ++ str")")
   | Evar (e,l) -> hov 1
-      (str"Evar#" ++ int (Evar.repr e) ++ str"{" ++
+      (str"Evar#" ++ int (Evar.repr (Evkey.evar e)) ++ str"{" ++
        prlist_with_sep spc pr_constr (Array.to_list l) ++str"}")
   | Const (c,u) -> str"Cst(" ++ pr_puniverses (pr_con c) u ++ str")"
   | Ind ((sp,i),u) -> str"Ind(" ++ pr_puniverses (MutInd.print sp ++ str"," ++ int i) u ++ str")"
@@ -315,7 +315,7 @@ let print_env_short env =
   let pr_rel_decl = function
     | RelDecl.LocalAssum (n,_) -> Name.print n
     | RelDecl.LocalDef (n,b,_) -> str "(" ++ Name.print n ++ str " := "
-                                  ++ print_constr (EConstr.of_constr b) ++ str ")"
+                                  ++ print_constr b ++ str ")"
   in
   let pr_named_decl = NamedDecl.to_rel_decl %> pr_rel_decl in
   let nc = List.rev (named_context env) in
@@ -438,10 +438,9 @@ let pr_var_decl env decl =
     | LocalAssum _ ->  mt ()
     | LocalDef (_,c,_) ->
 	(* Force evaluation *)
-	let c = EConstr.of_constr c in
-	let pb = print_constr_env env Evd.empty c in
+        let pb = print_constr_env env Evd.empty c in
 	  (str" := " ++ pb ++ cut () ) in
-  let pt = print_constr_env env Evd.empty (EConstr.of_constr (get_type decl)) in
+  let pt = print_constr_env env Evd.empty (get_type decl) in
   let ptyp = (str" : " ++ pt) in
     (Id.print (get_id decl) ++ hov 0 (pbody ++ ptyp))
 
@@ -451,10 +450,9 @@ let pr_rel_decl env decl =
     | LocalAssum _ -> mt ()
     | LocalDef (_,c,_) ->
 	(* Force evaluation *)
-	let c = EConstr.of_constr c in
-	let pb = print_constr_env env Evd.empty c in
+        let pb = print_constr_env env Evd.empty c in
 	  (str":=" ++ spc () ++ pb ++ spc ()) in
-  let ptyp = print_constr_env env Evd.empty (EConstr.of_constr (get_type decl)) in
+  let ptyp = print_constr_env env Evd.empty (get_type decl) in
     match get_name decl with
       | Anonymous -> hov 0 (str"<>" ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp)
       | Name id -> hov 0 (Id.print id ++ spc () ++ pbody ++ str":" ++ spc () ++ ptyp)
@@ -498,7 +496,6 @@ let rel_list n m =
 
 let push_rel_assum (x,t) env =
   let open RelDecl in
-  let open EConstr in
   push_rel (LocalAssum (x,t)) env
 
 let push_rels_assum assums =
@@ -776,24 +773,23 @@ let map_constr_with_full_binders sigma g f l cstr =
 
 let fold_constr_with_full_binders sigma g f n acc c =
   let open RelDecl in
-  let inj c = EConstr.Unsafe.to_constr c in
   match EConstr.kind sigma c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> acc
   | Cast (c,_, t) -> f n (f n acc c) t
-  | Prod (na,t,c) -> f (g (LocalAssum (na, inj t)) n) (f n acc t) c
-  | Lambda (na,t,c) -> f (g (LocalAssum (na, inj t)) n) (f n acc t) c
-  | LetIn (na,b,t,c) -> f (g (LocalDef (na, inj b, inj t)) n) (f n (f n acc b) t) c
+  | Prod (na,t,c) -> f (g (LocalAssum (na, t)) n) (f n acc t) c
+  | Lambda (na,t,c) -> f (g (LocalAssum (na, t)) n) (f n acc t) c
+  | LetIn (na,b,t,c) -> f (g (LocalDef (na, b, t)) n) (f n (f n acc b) t) c
   | App (c,l) -> Array.fold_left (f n) (f n acc c) l
   | Proj (p,c) -> f n acc c
   | Evar (_,l) -> Array.fold_left (f n) acc l
   | Case (_,p,c,bl) -> Array.fold_left (f n) (f n (f n acc p) c) bl
   | Fix (_,(lna,tl,bl)) ->
-      let n' = CArray.fold_left2 (fun c n t -> g (LocalAssum (n, inj t)) c) n lna tl in
+      let n' = CArray.fold_left2 (fun c n t -> g (LocalAssum (n, t)) c) n lna tl in
       let fd = Array.map2 (fun t b -> (t,b)) tl bl in
       Array.fold_left (fun acc (t,b) -> f n' (f n acc t) b) acc fd
   | CoFix (_,(lna,tl,bl)) ->
-      let n' = CArray.fold_left2 (fun c n t -> g (LocalAssum (n, inj t)) c) n lna tl in
+      let n' = CArray.fold_left2 (fun c n t -> g (LocalAssum (n, t)) c) n lna tl in
       let fd = Array.map2 (fun t b -> (t,b)) tl bl in
       Array.fold_left (fun acc (t,b) -> f n' (f n acc t) b) acc fd
 
@@ -854,12 +850,13 @@ let occur_meta_or_existential sigma c =
 
 let occur_evar sigma n c =
   let rec occur_rec c = match EConstr.kind sigma c with
-    | Evar (sp,_) when Evar.equal sp n -> raise Occur
+    | Evar (sp,_) when Evar.equal (Evd.evar_repr sp) n -> raise Occur
     | _ -> EConstr.iter sigma occur_rec c
   in
   try occur_rec c; false with Occur -> true
 
 let occur_in_global env id constr =
+  let env = EConstr.Unsafe.to_env env in
   let vars = vars_of_global env constr in
   if Id.Set.mem id vars then raise Occur
 
@@ -915,6 +912,7 @@ let collect_vars sigma c =
   aux Id.Set.empty c
 
 let vars_of_global_reference env gr =
+  let env = EConstr.Unsafe.to_env env in
   let c, _ = Global.constr_of_global_in_context env gr in
   vars_of_global (Global.env ()) c
 
@@ -1224,6 +1222,7 @@ let filtering sigma env cv_pb c1 c2 =
   let open Vars in
   let evm = ref Evar.Map.empty in
   let define cv_pb e1 ev c1 =
+    let ev = Evd.evar_repr ev in
     try let (e2,c2) = Evar.Map.find ev !evm in
     let shift = List.length e1 - List.length e2 in
     if constr_cmp sigma cv_pb c1 (lift shift c2) then () else raise CannotFilter
@@ -1328,7 +1327,7 @@ let rec eta_reduce_head sigma c =
 (* iterator on rel context *)
 let process_rel_context f env =
   let sign = named_context_val env in
-  let rels = EConstr.rel_context env in
+  let rels = Environ.rel_context env in
   let env0 = reset_with_named_context sign env in
   Context.Rel.fold_outside f rels ~init:env0
 
@@ -1414,6 +1413,7 @@ let clear_named_body id env =
   fold_named_context aux env ~init:(reset_context env)
 
 let global_vars_set env sigma constr =
+  let env = EConstr.Unsafe.to_env env in
   let rec filtrec acc c =
     let acc = match EConstr.kind sigma c with
     | Var _ | Const _ | Ind _ | Construct _ ->
@@ -1495,7 +1495,6 @@ let context_chop k ctx =
 
 (* Do not skip let-in's *)
 let env_rel_context_chop k env =
-  let open EConstr in
   let rels = rel_context env in
   let ctx1,ctx2 = List.chop k rels in
   push_rel_context ctx2 (reset_with_named_context (named_context_val env) env),

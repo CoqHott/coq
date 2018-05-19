@@ -74,7 +74,7 @@ let canonical_gr = function
   | ConstructRef ((kn,i),j )-> ConstructRef((MutInd.make1(MutInd.canonical kn),i),j)
   | VarRef id -> VarRef id
 
-let global_of_constr c = match kind c with
+let global_of_constr c = match kind_g c with
   | Const (sp,u) -> ConstRef sp
   | Ind (ind_sp,u) -> IndRef ind_sp
   | Construct (cstr_cp,u) -> ConstructRef cstr_cp
@@ -82,7 +82,7 @@ let global_of_constr c = match kind c with
   |  _ -> raise Not_found
 
 let is_global c t =
-  match c, kind t with
+  match c, kind_g t with
   | ConstRef c, Const (c', _) -> Constant.equal c c'
   | IndRef i, Ind (i', _) -> eq_ind i i'
   | ConstructRef i, Construct (i', _) -> eq_constructor i i'

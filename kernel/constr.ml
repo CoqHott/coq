@@ -494,7 +494,7 @@ let fold = fold_g
    not recursive and the order with which subterms are processed is
    not specified *)
 
-let iter f c = match kind_g c with
+let iter_g f c = match kind_g c with
   | (Rel _ | Meta _ | Var _   | Sort _ | Const _ | Ind _
     | Construct _) -> ()
   | Cast (c,_,t) -> f c; f t
@@ -507,6 +507,8 @@ let iter f c = match kind_g c with
   | Case (_,p,c,bl) -> f p; f c; Array.iter f bl
   | Fix (_,(_,tl,bl)) -> Array.iter f tl; Array.iter f bl
   | CoFix (_,(_,tl,bl)) -> Array.iter f tl; Array.iter f bl
+
+let iter = iter_g
 
 exception NotGround
 let force_ground ?(unsafe=false) (c:'e constr_g) : constr =

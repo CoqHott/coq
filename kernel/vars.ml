@@ -157,7 +157,7 @@ let make_subst = function
 (* The type of substitutions, with term substituting most recent
     binder at the head *)
 
-type substl = Constr.t list
+type 'e substl = 'e Constr.constr_g list
 
 let substnl laml n c = substn_many (make_subst laml) n c
 let substl laml c = substn_many (make_subst laml) 0 c

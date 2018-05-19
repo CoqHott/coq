@@ -59,16 +59,17 @@ let new_global evd x =
 
 exception Uninstantiated_evar of Evar.t
 
-let rec flush_and_check_evars sigma c =
-  match kind c with
+let rec flush_and_check_evars sigma (c:evars constr_g) =
+  match kind_g c with
   | Evar (evk,_ as ev) ->
       (match existential_opt_value0 sigma ev with
-       | None -> raise (Uninstantiated_evar evk)
+       | None -> raise (Uninstantiated_evar (Evkey.evar evk))
        | Some c -> flush_and_check_evars sigma c)
-  | _ -> Constr.map (flush_and_check_evars sigma) c
+  | _ -> Constr.map_g (flush_and_check_evars sigma) c
 
 let flush_and_check_evars sigma c =
-  flush_and_check_evars sigma (EConstr.Unsafe.to_constr c)
+  let c = flush_and_check_evars sigma (EConstr.Unsafe.to_constr c) in
+  Constr.force_ground ~unsafe:true c
 
 (** Term exploration up to instantiation. *)
 let kind_of_term_upto = EConstr.kind_upto
@@ -107,15 +108,15 @@ let nf_evar_map_universes evm =
         Evd.raw_map (fun _ -> map_evar_info f') evm, f
 
 let nf_named_context_evar sigma ctx =
-  Context.Named.map (nf_evar0 sigma) ctx
+  Context.Named.map (nf_evar sigma) ctx
 
 let nf_rel_context_evar sigma ctx =
   Context.Rel.map (nf_evar sigma) ctx
 
 let nf_env_evar sigma env =
   let nc' = nf_named_context_evar sigma (Environ.named_context env) in
-  let rel' = nf_rel_context_evar sigma (EConstr.rel_context env) in
-    EConstr.push_rel_context rel' (reset_with_named_context (val_of_named_context nc') env)
+  let rel' = nf_rel_context_evar sigma (Environ.rel_context env) in
+    Environ.push_rel_context rel' (reset_with_named_context (val_of_named_context nc') env)
 
 let nf_evar_info evc info = map_evar_info (nf_evar evc) info
 
@@ -142,10 +143,10 @@ let is_ground_term evd t =
 
 let is_ground_env evd env =
   let is_ground_rel_decl = function
-    | RelDecl.LocalDef (_,b,_) -> is_ground_term evd (EConstr.of_constr b)
+    | RelDecl.LocalDef (_,b,_) -> is_ground_term evd b
     | _ -> true in
   let is_ground_named_decl = function
-    | NamedDecl.LocalDef (_,b,_) -> is_ground_term evd (EConstr.of_constr b)
+    | NamedDecl.LocalDef (_,b,_) -> is_ground_term evd b
     | _ -> true in
   List.for_all is_ground_rel_decl (rel_context env) &&
   List.for_all is_ground_named_decl (named_context env)
@@ -167,8 +168,8 @@ exception NoHeadEvar
 let head_evar sigma c =
   (** FIXME: this breaks if using evar-insensitive code *)
   let c = EConstr.Unsafe.to_constr c in
-  let rec hrec c = match kind c with
-    | Evar (evk,_)   -> evk
+  let rec hrec c = match kind_g c with
+    | Evar (evk,_)   -> Evkey.evar evk
     | Case (_,_,c,_) -> hrec c
     | App (c,_)      -> hrec c
     | Cast (c,_,_)   -> hrec c
@@ -277,10 +278,10 @@ type subst_val =
 type csubst = {
   csubst_len : int;
   (** Cardinal of [csubst_rel] *)
-  csubst_var : Constr.t Id.Map.t;
+  csubst_var : evars Constr.constr_g Id.Map.t;
   (** A mapping of variables to variables. We use the more general
       [Constr.t] to share allocations, but all values are of shape [Var _]. *)
-  csubst_rel : Constr.t Int.Map.t;
+  csubst_rel : evars Constr.constr_g Int.Map.t;
   (** A contiguous mapping of integers to variables. Same remark for values. *)
   csubst_rev : subst_val Id.Map.t;
   (** Reverse mapping of the substitution *)
@@ -300,14 +301,14 @@ let empty_csubst = {
 let csubst_subst { csubst_len = k; csubst_var = v; csubst_rel = s } c =
   (** Safe because this is a substitution *)
   let c = EConstr.Unsafe.to_constr c in
-  let rec subst n c = match Constr.kind c with
+  let rec subst n c = match Constr.kind_g c with
   | Rel m ->
     if m <= n then c
     else if m - n <= k then Int.Map.find (k - m + n) s
     else mkRel (m - k)
   | Var id ->
     begin try Id.Map.find id v with Not_found -> c end
-  | _ -> Constr.map_with_binders succ subst n c
+  | _ -> Constr.map_with_binders_g succ subst n c
   in
   let c = if k = 0 && Id.Map.is_empty v then c else subst 0 c in
   EConstr.of_constr c
@@ -468,7 +469,7 @@ let new_evar_instance sign evd typ ?src ?filter ?candidates ?store ?naming ?prin
   assert (not !Flags.debug ||
             List.distinct (ids_of_named_context (named_context_of_val sign)));
   let (evd, newevk) = new_pure_evar sign evd ?src ?filter ?candidates ?store ?naming ?principal typ in
-  evd, mkEvar (newevk,Array.of_list instance)
+  evd, mkEvar (seal_evar newevk,Array.of_list instance)
 
 let new_evar_from_context sign evd ?src ?filter ?candidates ?store ?naming ?principal typ =
   let instance = List.map (NamedDecl.get_id %> EConstr.mkVar) (named_context_of_val sign) in
@@ -519,6 +520,7 @@ let e_new_evar env evdref ?(src=default_source) ?filter ?candidates ?store ?nami
    the de Bruijn part of the context *)
 let generalize_evar_over_rels sigma (ev,args) =
   let open EConstr in
+  let ev = evar_repr ev in
   let evi = Evd.find sigma ev in
   let sign = named_context_of_val evi.evar_hyps in
   List.fold_left2
@@ -538,12 +540,13 @@ exception ClearDependencyError of Id.t * clear_dependency_error * Globnames.glob
 
 exception Depends of Id.t
 
-let rec check_and_clear_in_constr env evdref err ids global c =
+(* NB: somehow type goes badly wrong without annotation *)
+let rec check_and_clear_in_constr (env:evars Environ.env) evdref err ids global (c:evars constr_g) =
   (* returns a new constr where all the evars have been 'cleaned'
      (ie the hypotheses ids have been removed from the contexts of
      evars). [global] should be true iff there is some variable of [ids] which
      is a section variable *)
-    match kind c with
+    match kind_g c with
       | Var id' ->
       if Id.Set.mem id' ids then raise (ClearDependencyError (id', err, None)) else c
 
@@ -558,6 +561,7 @@ let rec check_and_clear_in_constr env evdref err ids global c =
         c
 
       | Evar (evk,l as ev) ->
+          let evk = Evkey.evar evk in
 	  if Evd.is_defined !evdref evk then
 	    (* If evk is already defined we replace it by its definition *)
             let nc = Evd.existential_value !evdref (EConstr.of_existential ev) in
@@ -598,6 +602,7 @@ let rec check_and_clear_in_constr env evdref err ids global c =
                 let nids = Id.Map.domain rids in
                 let global = Id.Set.exists is_section_variable nids in
                 let concl = EConstr.Unsafe.to_constr (evar_concl evi) in
+                let ev = EConstr.of_existential ev in
                 check_and_clear_in_constr env evdref (EvarTypingBreak ev) nids global concl
               with ClearDependencyError (rid,err,where) ->
                 raise (ClearDependencyError (Id.Map.find rid rids,err,where)) in
@@ -611,12 +616,13 @@ let rec check_and_clear_in_constr env evdref err ids global c =
               evdref := evd;
               Evd.existential_value0 !evdref ev
 
-      | _ -> Constr.map (check_and_clear_in_constr env evdref err ids global) c
+      | _ -> Constr.map_g (check_and_clear_in_constr env evdref err ids global) c
 
 let clear_hyps_in_evi_main env evdref hyps terms ids =
   (* clear_hyps_in_evi erases hypotheses ids in hyps, checking if some
      hypothesis does not depend on a element of ids, and erases ids in
      the contexts of the evars occurring in evi *)
+  let env = EConstr.Unsafe.to_env env in
   let terms = List.map EConstr.Unsafe.to_constr terms in
   let global = Id.Set.exists is_section_variable ids in
   let terms =
@@ -668,7 +674,7 @@ let process_dependent_evar q acc evm is_dependent e =
     match decl with
     | LocalAssum _ -> ()
     | LocalDef (_,b,_) -> queue_term q true b
-  end (EConstr.named_context_of_val evi.evar_hyps);
+  end (named_context_of_val evi.evar_hyps);
   match evi.evar_body with
   | Evar_empty ->
       if is_dependent then Evar.Map.add e None acc else acc
@@ -727,16 +733,17 @@ let rec advance sigma evk =
 let undefined_evars_of_term evd t =
   let rec evrec acc c =
     match EConstr.kind evd c with
-      | Evar (n, l) ->
-        let acc = Evar.Set.add n acc in
-	Array.fold_left evrec acc l
+    | Evar (n, l) ->
+      let n = evar_repr n in
+      let acc = Evar.Set.add n acc in
+      Array.fold_left evrec acc l
       | _ -> EConstr.fold evd evrec acc c
   in
   evrec Evar.Set.empty t
 
 let undefined_evars_of_named_context evd nc =
   Context.Named.fold_outside
-    (NamedDecl.fold_constr (fun c s -> Evar.Set.union s (undefined_evars_of_term evd (EConstr.of_constr c))))
+    (NamedDecl.fold_constr (fun c s -> Evar.Set.union s (undefined_evars_of_term evd c)))
     nc
     ~init:Evar.Set.empty
 
@@ -805,10 +812,10 @@ let filtered_undefined_evars_of_evar_info ?cache sigma evi =
    do not have this luxury, and need the more complete version. *)
 let occur_evar_upto sigma n c =
   let c = EConstr.Unsafe.to_constr c in
-  let rec occur_rec c = match kind c with
-    | Evar (sp,_) when Evar.equal sp n -> raise Occur
+  let rec occur_rec c = match kind_g c with
+    | Evar (sp,_) when Evar.equal (Evkey.evar sp) n -> raise Occur
     | Evar e -> Option.iter occur_rec (existential_opt_value0 sigma e)
-    | _ -> Constr.iter occur_rec c
+    | _ -> Constr.iter_g occur_rec c
   in
   try occur_rec c; false with Occur -> true
 

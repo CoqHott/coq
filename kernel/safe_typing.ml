@@ -263,7 +263,7 @@ let universes_of_private eff =
     )
     [] (Term_typing.uniq_seff eff)
 
-let env_of_safe_env senv = senv.env
+let env_of_safe_env senv : 'e Environ.env = Obj.magic senv.env
 let env_of_senv = env_of_safe_env
 
 type constraints_addition =

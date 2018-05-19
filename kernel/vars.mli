@@ -55,7 +55,7 @@ val lift : int -> 'e Evkey.t constr_g -> 'e constr_g
     Note that [u₁..un] is represented as a list with [un] at the head of
     the list, i.e. as [[un;...;u₁]]. *)
 
-type substl = constr list
+type 'e substl = 'e constr_g list
 
 (** Let [Γ] be a context interleaving declarations [x₁:T₁..xn:Tn]
    and definitions [y₁:=c₁..yp:=cp] in some context [Γ₀]. Let
@@ -70,7 +70,7 @@ type substl = constr list
    as if usable in [applist] while the substitution is
    represented the other way round, i.e. ending with either [u₁] or
    [c₁], as if usable for [substl]. *)
-val subst_of_rel_context_instance : Context.Rel.t -> constr list -> substl
+val subst_of_rel_context_instance : 'e Evkey.t Context.Rel.gen -> 'e constr_g list -> 'e substl
 
 (** For compatibility: returns the substitution reversed *)
 val adjust_subst_to_rel_context : Context.Rel.t -> constr list -> constr list
@@ -84,26 +84,28 @@ val adjust_rel_to_rel_context : ('a, 'b) Context.Rel.pt -> int -> int
     accordingly indexes in [an],...,[a1] and [c]. In terms of typing, if
     Γ ⊢ a{_n}..a₁ : Δ and Γ, Δ, Γ' ⊢ c : T with |Γ'|=k, then
     Γ, Γ' ⊢ [substnl [a₁;...;an] k c] : [substnl [a₁;...;an] k T]. *)
-val substnl : substl -> int -> constr -> constr
+val substnl : 'e Evkey.t substl -> int -> 'e constr_g -> 'e constr_g
 
 (** [substl σ c] is a short-hand for [substnl σ 0 c] *)
-val substl : substl -> constr -> constr
+val substl : 'e Evkey.t substl -> 'e constr_g -> 'e constr_g
 
 (** [substl a c] is a short-hand for [substnl [a] 0 c] *)
-val subst1 : constr -> constr -> constr
+val subst1 : 'e Evkey.t constr_g -> 'e constr_g -> 'e constr_g
 
 (** [substnl_decl [a₁;...;an] k Ω] substitutes in parallel [a₁], ..., [an]
     for respectively [Rel(k+1)], ..., [Rel(k+n)] in [Ω]; it relocates
     accordingly indexes in [a₁],...,[an] and [c]. In terms of typing, if
     Γ ⊢ a{_n}..a₁ : Δ and Γ, Δ, Γ', Ω ⊢ with |Γ'|=[k], then
     Γ, Γ', [substnl_decl [a₁;...;an]] k Ω ⊢. *)
-val substnl_decl : substl -> int -> Context.Rel.Declaration.t -> Context.Rel.Declaration.t
+val substnl_decl : 'e Evkey.t substl -> int ->
+  'e Context.Rel.Declaration.gen -> 'e Context.Rel.Declaration.gen
 
 (** [substl_decl σ Ω] is a short-hand for [substnl_decl σ 0 Ω] *)
-val substl_decl : substl -> Context.Rel.Declaration.t -> Context.Rel.Declaration.t
+val substl_decl : 'e Evkey.t substl ->
+  'e Context.Rel.Declaration.gen -> 'e Context.Rel.Declaration.gen
 
 (** [subst1_decl a Ω] is a short-hand for [substnl_decl [a] 0 Ω] *)
-val subst1_decl : constr -> Context.Rel.Declaration.t -> Context.Rel.Declaration.t
+val subst1_decl : 'e Evkey.t constr_g -> 'e Context.Rel.Declaration.gen -> 'e Context.Rel.Declaration.gen
 
 (** [replace_vars k [(id₁,c₁);...;(idn,cn)] t] substitutes [Var idj] by
     [cj] in [t]. *)
@@ -117,16 +119,16 @@ val replace_vars_g : (Id.t * 'e Evkey.t constr_g) list -> 'e constr_g -> 'e cons
    then Γ\\{id₁,...,id{_n}\},x{_n}:U{_n},...,x₁:U₁,Γ' ⊢ [substn_vars
    (|Γ'|+1) [id₁;...;idn] t] : [substn_vars (|Γ'|+1) [id₁;...;idn]
    T]. *)
-val substn_vars : int -> Id.t list -> constr -> constr
+val substn_vars : int -> Id.t list -> 'e Evkey.t constr_g -> 'e constr_g
 
 (** [subst_vars [id1;...;idn] t] is a short-hand for [substn_vars
    [id1;...;idn] 1 t]: it substitutes [Var idj] by [Rel j] in [t]. If
    two names are identical, the one of least index is kept. *)
-val subst_vars : Id.t list -> constr -> constr
+val subst_vars : Id.t list -> 'e Evkey.t constr_g -> 'e constr_g
 
 (** [subst_var id t] is a short-hand for [substn_vars [id] 1 t]: it
     substitutes [Var id] by [Rel 1] in [t]. *)
-val subst_var : Id.t -> constr -> constr
+val subst_var : Id.t -> 'e Evkey.t constr_g -> 'e constr_g
 
 (** {3 Substitution of universes} *)
 
@@ -134,7 +136,7 @@ open Univ
 
 (** Level substitutions for polymorphism. *)
 
-val subst_univs_level_constr : universe_level_subst -> constr -> constr
+val subst_univs_level_constr : universe_level_subst -> 'e Evkey.t constr_g -> 'e constr_g
 val subst_univs_level_constr_g : universe_level_subst -> 'e Evkey.t constr_g -> 'e constr_g
 val subst_univs_level_context : Univ.universe_level_subst -> Context.Rel.t -> Context.Rel.t
 

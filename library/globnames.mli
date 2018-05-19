@@ -33,7 +33,7 @@ val destConstRef : global_reference -> Constant.t
 val destIndRef : global_reference -> inductive
 val destConstructRef : global_reference -> constructor
 
-val is_global : global_reference -> constr -> bool
+val is_global : global_reference -> 'e Evkey.t constr_g -> bool
 
 val subst_constructor : substitution -> constructor -> constructor * constr
 val subst_global : substitution -> global_reference -> global_reference * constr
@@ -45,7 +45,7 @@ val printable_constr_of_global : global_reference -> constr
 
 (** Turn a construction denoting a global reference into a global reference;
    raise [Not_found] if not a global reference *)
-val global_of_constr : constr -> global_reference
+val global_of_constr : 'e Evkey.t constr_g -> global_reference
 
 (** Obsolete synonyms for constr_of_global and global_of_constr *)
 val reference_of_constr : constr -> global_reference

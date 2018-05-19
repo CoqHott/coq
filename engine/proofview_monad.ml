@@ -177,7 +177,7 @@ type proofview = {
 (** Parameters of the logic monads *)
 module P = struct
 
-  type s = proofview * Environ.env
+  type s = proofview * EConstr.env
 
   (** Recording info trace (true) or not. *)
   type e = bool
@@ -231,7 +231,7 @@ module Comb : State with type t = goal_with_state list = struct
   let modify f = Pv.modify (fun pv -> { pv with comb = f pv.comb })
 end
 
-module Env : State with type t := Environ.env = struct
+module Env : State with type t := EConstr.env = struct
   let get = Logical.(map snd get)
   let set e = Logical.modify (fun (p,_) -> (p,e))
   let modify f = Logical.modify (fun (p,e) -> (p,f e))

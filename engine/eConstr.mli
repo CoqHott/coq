@@ -14,6 +14,7 @@ open Constr
 open Environ
 
 type t = Evd.econstr
+type nonrec env = Evd.evar env
 (** Type of incomplete terms. Essentially a wrapper around {!Constr.t} ensuring
     that {!Constr.kind} does not observe defined evars. *)
 
@@ -66,9 +67,10 @@ val kind : Evd.evar_map -> t -> (Evd.evar, t, t, ESorts.t, EInstance.t) Constr.k
 (** Same as {!Constr.kind} except that it expands evars and normalizes
     universes on the fly. *)
 
-val kind_upto : Evd.evar_map -> evars constr_g -> (Constr.evars, Constr.t, Constr.t, Sorts.t, Univ.Instance.t) Constr.kind_of_term
+val kind_upto : Evd.evar_map -> evars constr_g ->
+  Constr.evars Constr.kind_g
 
-val to_constr : ?abort_on_undefined_evars:bool -> Evd.evar_map -> t -> Constr.t
+val to_constr : ?abort_on_undefined_evars:bool -> Evd.evar_map -> t -> evars Constr.constr_g
 (** Returns the evar-normal form of the argument. Note that this
    function is supposed to be called when the original term has not
    more free-evars anymore. If you need compatibility with the old
@@ -84,7 +86,7 @@ val kind_of_type : Evd.evar_map -> t -> (t, t) Term.kind_of_type
 val of_kind : (Evd.evar, t, t, ESorts.t, EInstance.t) Constr.kind_of_term -> t
 (** Construct a term from a view. *)
 
-val of_constr : Constr.t -> t
+val of_constr : 'e Evkey.t Constr.constr_g -> t
 (** Translate a kernel term into an incomplete term in O(1). *)
 
 (** {5 Insensitive primitives}
@@ -260,26 +262,8 @@ end
 
 (** {5 Environment handling} *)
 
-val push_rel : rel_declaration -> 'e env -> 'e env
-val push_rel_context : rel_context -> 'e env -> 'e env
-val push_rec_types : (t, t) Constr.prec_declaration -> 'e env -> 'e env
-
-val push_named : named_declaration -> 'e env -> 'e env
-val push_named_context : named_context -> 'e env -> 'e env
-val push_named_context_val  : named_declaration -> 'e named_context_val -> 'e named_context_val
-
-val rel_context : 'e env -> rel_context
-val named_context : 'e env -> named_context
-
-val val_of_named_context : named_context -> 'e named_context_val
-val named_context_of_val : 'e named_context_val -> named_context
-
-val lookup_rel : int -> 'e env -> rel_declaration
-val lookup_named : variable -> 'e env -> named_declaration
-val lookup_named_val : variable -> 'e named_context_val -> named_declaration
-
 val map_rel_context_in_env :
-  ('e env -> constr -> constr) -> 'e env -> rel_context -> rel_context
+  ('e Environ.env -> 'e constr_g -> 'e constr_g) -> 'e Environ.env -> 'e Context.Rel.gen -> 'e Context.Rel.gen
 
 (* XXX Missing Sigma proxy *)
 val fresh_global :
@@ -291,25 +275,28 @@ val is_global : Evd.evar_map -> Globnames.global_reference -> t -> bool
 (** {5 Extra} *)
 
 val of_existential : (evars, evars constr_g) pexistential -> existential
-val of_named_decl : (Constr.t, Constr.types) Context.Named.Declaration.pt -> (t, types) Context.Named.Declaration.pt
-val of_rel_decl : (Constr.t, Constr.types) Context.Rel.Declaration.pt -> (t, types) Context.Rel.Declaration.pt
+val of_named_decl : (evars Constr.constr_g, evars Constr.types_g) Context.Named.Declaration.pt ->
+  (t, types) Context.Named.Declaration.pt
+val of_rel_decl : (evars Constr.constr_g, evars Constr.types_g) Context.Rel.Declaration.pt ->
+  (t, types) Context.Rel.Declaration.pt
 
-val to_rel_decl : Evd.evar_map -> (t, types) Context.Rel.Declaration.pt -> (Constr.t, Constr.types) Context.Rel.Declaration.pt
+val to_rel_decl : Evd.evar_map -> (t, types) Context.Rel.Declaration.pt ->
+  (evars Constr.constr_g, evars Constr.types_g) Context.Rel.Declaration.pt
 
 (** {5 Unsafe operations} *)
 
 module Unsafe :
 sig
-  val to_constr : t -> Constr.t
+  val to_constr : t -> evars Constr.constr_g
   (** Physical identity. Does not care for defined evars. *)
 
-  val to_rel_decl : (t, types) Context.Rel.Declaration.pt -> (Constr.t, Constr.types) Context.Rel.Declaration.pt
+  val to_rel_decl : (t, types) Context.Rel.Declaration.pt -> (evars Constr.constr_g, evars Constr.types_g) Context.Rel.Declaration.pt
   (** Physical identity. Does not care for defined evars. *)
 
-  val to_named_decl : (t, types) Context.Named.Declaration.pt -> (Constr.t, Constr.types) Context.Named.Declaration.pt
+  val to_named_decl : (t, types) Context.Named.Declaration.pt -> (evars Constr.constr_g, evars Constr.types_g) Context.Named.Declaration.pt
   (** Physical identity. Does not care for defined evars. *)
 
-  val to_named_context : (t, types) Context.Named.pt -> Context.Named.t
+  val to_named_context : (t, types) Context.Named.pt -> evars Context.Named.gen
 
   val to_sorts : ESorts.t -> Sorts.t
   (** Physical identity. Does not care for normalization. *)
@@ -317,6 +304,8 @@ sig
   val to_instance : EInstance.t -> Univ.Instance.t
   (** Physical identity. Does not care for normalization. *)
 
-  val eq : (t, Constr.t) eq
+  val to_env : env -> evars Environ.env
+
+  val eq : (t, evars Constr.constr_g) eq
   (** Use for transparent cast between types. *)
 end

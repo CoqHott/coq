@@ -16,7 +16,7 @@
 
 open Util
 open Names
-open Term
+open Constr
 open Environ
 open EConstr
 open Vars
@@ -124,8 +124,8 @@ let lowercase_first_char id = (* First character of a constr *)
         s ^ Unicode.lowercase_first_char s'
 
 let sort_hdchar = function
-  | Prop(_) -> "P"
-  | Type(_) -> "T"
+  | Sorts.Prop(_) -> "P"
+  | Sorts.Type(_) -> "T"
 
 let hdchar env sigma c =
   let rec hdrec k c =

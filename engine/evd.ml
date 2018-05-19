@@ -24,6 +24,7 @@ module NamedDecl = Context.Named.Declaration
 type evar = evars
 
 let evar_repr = Evkey.evar
+let seal_evar = Evkey.make
 
 type econstr = evars constr_g
 type etypes = evars types_g
@@ -1290,9 +1291,10 @@ module MiniEConstr = struct
   let kind_upto = kind
   let kind_of_type sigma c = Term.kind_of_type_g (whd_evar sigma c)
   let of_kind = Constr.of_kind
-  let of_constr c = c
+  let of_constr (c:'e Evkey.t constr_g) = (c :> econstr)
   let unsafe_to_constr c = c
   let unsafe_eq = Refl
+  let unsafe_evar_eq = Refl
 
   let to_constr ?(abort_on_undefined_evars=true) sigma c =
     let evar_value =

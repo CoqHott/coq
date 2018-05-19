@@ -27,6 +27,7 @@ type named_declaration = (constr, types) Context.Named.Declaration.pt
 type rel_declaration = (constr, types) Context.Rel.Declaration.pt
 type named_context = (constr, types) Context.Named.pt
 type rel_context = (constr, types) Context.Rel.pt
+type nonrec env = Evd.evar Environ.env
 
 type 'a puniverses = 'a * EInstance.t
 
@@ -632,25 +633,25 @@ let cast_list : type a b. (a,b) eq -> a list -> b list =
 let cast_list_snd : type a b. (a,b) eq -> ('c * a) list -> ('c * b) list =
   fun Refl x -> x
 
-let cast_rel_decl :
-  type a b. (a,b) eq -> (a, a) Rel.Declaration.pt -> (b, b) Rel.Declaration.pt =
-  fun Refl x -> x
+(* let cast_rel_decl : *)
+(*   type a b. (a,b) eq -> (a, a) Rel.Declaration.pt -> (b, b) Rel.Declaration.pt = *)
+(*   fun Refl x -> x *)
 
 let cast_rel_context :
   type a b. (a,b) eq -> (a, a) Rel.pt -> (b, b) Rel.pt =
   fun Refl x -> x
 
-let cast_rec_decl :
-  type a b. (a,b) eq -> (a, a) Constr.prec_declaration -> (b, b) Constr.prec_declaration =
-  fun Refl x -> x
+(* let cast_rec_decl : *)
+(*   type a b. (a,b) eq -> (a, a) Constr.prec_declaration -> (b, b) Constr.prec_declaration = *)
+(*   fun Refl x -> x *)
 
-let cast_named_decl :
-  type a b. (a,b) eq -> (a, a) Named.Declaration.pt -> (b, b) Named.Declaration.pt =
-  fun Refl x -> x
+(* let cast_named_decl : *)
+(*   type a b. (a,b) eq -> (a, a) Named.Declaration.pt -> (b, b) Named.Declaration.pt = *)
+(*   fun Refl x -> x *)
 
-let cast_named_context :
-  type a b. (a,b) eq -> (a, a) Named.pt -> (b, b) Named.pt =
-  fun Refl x -> x
+(* let cast_named_context : *)
+(*   type a b. (a,b) eq -> (a, a) Named.pt -> (b, b) Named.pt = *)
+(*   fun Refl x -> x *)
 
 
 module Vars =
@@ -674,7 +675,7 @@ let substl_decl subst d = of_rel_decl (Vars.substl_decl (cast_list unsafe_eq sub
 let subst1_decl c d = of_rel_decl (Vars.subst1_decl (to_constr c) (to_rel_decl d))
 
 let replace_vars subst c =
-  of_constr (Vars.replace_vars (cast_list_snd unsafe_eq subst) (to_constr c))
+  of_constr (Vars.replace_vars_g (cast_list_snd unsafe_eq subst) (to_constr c))
 let substn_vars n subst c = of_constr (Vars.substn_vars n subst (to_constr c))
 let subst_vars subst c = of_constr (Vars.subst_vars subst (to_constr c))
 let subst_var subst c = of_constr (Vars.subst_var subst (to_constr c))
@@ -764,26 +765,14 @@ let mkNamedLambda_or_LetIn decl c =
 let it_mkProd_or_LetIn t ctx = List.fold_left (fun c d -> mkProd_or_LetIn d c) t ctx
 let it_mkLambda_or_LetIn t ctx = List.fold_left (fun c d -> mkLambda_or_LetIn d c) t ctx
 
-let push_rel d e = push_rel (cast_rel_decl unsafe_eq d) e
-let push_rel_context d e = push_rel_context (cast_rel_context unsafe_eq d) e
-let push_rec_types d e = push_rec_types (cast_rec_decl unsafe_eq d) e
-let push_named d e = push_named (cast_named_decl unsafe_eq d) e
-let push_named_context d e = push_named_context (cast_named_context unsafe_eq d) e
-let push_named_context_val d e = push_named_context_val (cast_named_decl unsafe_eq d) e
+let of_existential : (evars, evars constr_g) pexistential -> existential =
+  Obj.magic
+  (* let gen : type a b. (a,b) eq -> 'c * b array -> 'c * a array = fun Refl x -> x in *)
+  (* gen unsafe_eq *)
 
-let rel_context e = cast_rel_context (sym unsafe_eq) (rel_context e)
-let named_context e = cast_named_context (sym unsafe_eq) (named_context e)
-
-let val_of_named_context e = val_of_named_context (cast_named_context unsafe_eq e)
-let named_context_of_val e = cast_named_context (sym unsafe_eq) (named_context_of_val e)
-
-let of_existential : Constr.existential -> existential =
-  let gen : type a b. (a,b) eq -> 'c * b array -> 'c * a array = fun Refl x -> x in
-  gen unsafe_eq
-
-let lookup_rel i e = cast_rel_decl (sym unsafe_eq) (lookup_rel i e)
-let lookup_named n e = cast_named_decl (sym unsafe_eq) (lookup_named n e)
-let lookup_named_val n e = cast_named_decl (sym unsafe_eq) (lookup_named_val n e)
+(* let lookup_rel i e = cast_rel_decl (sym unsafe_eq) (lookup_rel i e) *)
+(* let lookup_named n e = cast_named_decl (sym unsafe_eq) (lookup_named n e) *)
+(* let lookup_named_val n e = cast_named_decl (sym unsafe_eq) (lookup_named_val n e) *)
 
 let map_rel_context_in_env f env sign =
   let rec aux env acc = function
@@ -814,4 +803,9 @@ let to_named_context =
   in
   gen unsafe_eq
 let eq = unsafe_eq
+let to_env =
+  let gen : type a b. (a, b) eq -> a Environ.env -> b Environ.env
+    = fun Refl x -> x
+  in
+  gen unsafe_evar_eq
 end

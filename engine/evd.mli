@@ -31,6 +31,7 @@ open Environ
 type evar
 
 val evar_repr : evar -> Evar.t
+val seal_evar : Evar.t -> evar
 
 type econstr = evar constr_g
 type etypes = econstr
@@ -467,7 +468,7 @@ val loc_of_conv_pb : evar_map -> evar_constraint -> Loc.t option
     contained in the object; need the term to be evar-normal otherwise
     defined evars are returned too. *)
 
-val evars_of_term : constr -> Evar.Set.t
+val evars_of_term : evars constr_g -> Evar.Set.t
   (** including evars in instances of evars *)
 
 val evars_of_named_context : (econstr, etypes) Context.Named.pt -> Evar.Set.t
@@ -707,13 +708,14 @@ module MiniEConstr : sig
 
   val of_kind : (evar, t, t, ESorts.t, EInstance.t) Constr.kind_of_term -> t
 
-  val of_constr : evars constr_g -> t
+  val of_constr : 'e Evkey.t constr_g -> t
 
   val to_constr : ?abort_on_undefined_evars:bool -> evar_map -> t -> evars constr_g
 
   val unsafe_to_constr : t -> evars constr_g
 
   val unsafe_eq : (t, evars constr_g) eq
+  val unsafe_evar_eq : (evar, evars) eq
 
   val of_named_decl : (evars constr_g, evars types_g) Context.Named.Declaration.pt ->
     (t, t) Context.Named.Declaration.pt
