@@ -35,7 +35,7 @@ type position_reporting = (position * int) * constr
 
 type subterm_unification_error = bool * position_reporting * position_reporting * (constr * constr * unification_error) option
 
-type type_error = (constr, types) ptype_error
+type type_error = (Evd.evar, constr, types) ptype_error
 
 type pretype_error =
   (** Old Case *)

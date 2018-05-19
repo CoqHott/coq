@@ -711,6 +711,7 @@ module MiniEConstr : sig
   val of_constr : 'e Evkey.t constr_g -> t
 
   val to_constr : ?abort_on_undefined_evars:bool -> evar_map -> t -> evars constr_g
+  val to_ground : evar_map -> t -> Constr.t
 
   val unsafe_to_constr : t -> evars constr_g
 

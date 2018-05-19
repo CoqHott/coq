@@ -874,7 +874,7 @@ let rec whd_state_gen ?csts ~refold ~tactic_mode flags env sigma =
       | Some body -> whrec cst_l (body, stack)
       | None -> fold ())
     | Const (c,u as const) ->
-      reduction_effect_hook env sigma (EConstr.to_constr sigma x)
+      reduction_effect_hook env sigma (EConstr.to_ground sigma x)
          (lazy (EConstr.to_constr sigma (Stack.zip sigma (x,stack))));
       if CClosure.RedFlags.red_set flags (CClosure.RedFlags.fCONST c) then
        let u' = EInstance.kind sigma u in
@@ -1233,6 +1233,7 @@ let nf_evar = Evarutil.nf_evar
    a [nf_evar] here *)
 let clos_norm_flags flgs env sigma t =
   try
+    let env = EConstr.Unsafe.to_env env in
     let evars ev = safe_evar_value sigma ev in
     EConstr.of_constr (CClosure.norm_val
       (CClosure.create_clos_infos ~evars flgs env)
@@ -1242,6 +1243,7 @@ let clos_norm_flags flgs env sigma t =
 
 let clos_whd_flags flgs env sigma t =
   try
+    let env = EConstr.Unsafe.to_env env in
     let evars ev = safe_evar_value sigma ev in
     EConstr.of_constr (CClosure.whd_val
       (CClosure.create_clos_infos ~evars flgs env)
@@ -1297,8 +1299,9 @@ let f_conv_leq ?l2r ?reds env ?evars x y =
   let inj = EConstr.Unsafe.to_constr in
   Reduction.conv_leq ?l2r ?reds env ?evars (inj x) (inj y)
 
-let test_trans_conversion (f: constr Reduction.extended_conversion_function) reds env sigma x y =
+let test_trans_conversion (f: _ Reduction.extended_conversion_function) reds env sigma x y =
   try
+  let env = EConstr.Unsafe.to_env env in
     let evars ev = safe_evar_value sigma ev in
     let _ = f ~reds env ~evars:(evars, Evd.universes sigma) x y in
     true
@@ -1316,6 +1319,7 @@ let check_conv ?(pb=Reduction.CUMUL) ?(ts=full_transparent_state) env sigma x y 
     | Reduction.CONV -> f_conv
     | Reduction.CUMUL -> f_conv_leq
   in
+  let env = EConstr.Unsafe.to_env env in
     try f ~reds:ts env ~evars:(safe_evar_value sigma, Evd.universes sigma) x y; true
     with Reduction.NotConvertible -> false
     | Univ.UniverseInconsistency _ -> false
@@ -1367,6 +1371,7 @@ let infer_conv_gen conv_fun ?(catch_incon=true) ?(pb=Reduction.CUMUL)
     in
       if b then sigma, true
       else
+        let env = EConstr.Unsafe.to_env env in
         let x = EConstr.Unsafe.to_constr x in
         let y = EConstr.Unsafe.to_constr y in
 	let sigma' = 

@@ -1306,6 +1306,11 @@ module MiniEConstr = struct
     in
     Universes.nf_evars_and_universes_opt_subst evar_value (universe_subst sigma) c
 
+  let to_ground sigma c =
+    match to_constr ~abort_on_undefined_evars:true sigma c with
+    | c -> Constr.force_ground ~unsafe:true c
+    | exception _ -> raise Constr.NotGround
+
   let of_named_decl d = d
   let unsafe_to_named_decl d = d
   let of_rel_decl d = d

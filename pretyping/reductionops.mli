@@ -13,7 +13,6 @@ open Constr
 open EConstr
 open Univ
 open Evd
-open Environ
 
 (** Reduction Functions. *)
 
@@ -38,14 +37,14 @@ type effect_name = string
 (* [declare_reduction_effect name f] declares [f] under key [name];
    [name] must be a unique in "world". *)
 val declare_reduction_effect : effect_name ->
-  (Environ.env -> Evd.evar_map -> Constr.constr -> unit) -> unit
+  (env -> Evd.evar_map -> evars Constr.constr_g -> unit) -> unit
 
 (* [set_reduction_effect cst name] declares effect [name] to be called when [cst] is found *)
 val set_reduction_effect : Globnames.global_reference -> effect_name -> unit
 
 (* [effect_hook env sigma key term] apply effect associated to [key] on [term] *)
-val reduction_effect_hook : Environ.env -> Evd.evar_map -> Constr.constr ->
-  Constr.constr Lazy.t -> unit
+val reduction_effect_hook : env -> Evd.evar_map -> Constr.t ->
+  evars Constr.constr_g Lazy.t -> unit
 
 (** {6 Machinery about a stack of unfolded constant }
 
@@ -154,10 +153,10 @@ i*)
 val stacklam : (state -> 'a) -> constr list -> evar_map -> constr -> constr Stack.t -> 'a
 
 val whd_state_gen : ?csts:Cst_stack.t -> refold:bool -> tactic_mode:bool ->
-  CClosure.RedFlags.reds -> Environ.env -> Evd.evar_map -> state -> state * Cst_stack.t
+  CClosure.RedFlags.reds -> env -> Evd.evar_map -> state -> state * Cst_stack.t
 
 val iterate_whd_gen : bool -> CClosure.RedFlags.reds ->
-  Environ.env -> Evd.evar_map -> constr -> constr
+  env -> Evd.evar_map -> constr -> constr
 
 (** {6 Generic Optimized Reduction Function using Closures } *)
 
@@ -215,7 +214,9 @@ val shrink_eta : constr -> constr
 
 (** Various reduction functions *)
 
-val safe_evar_value : evar_map -> Constr.existential -> Constr.constr option
+val safe_evar_value : evar_map -> (evars, evars constr_g) pexistential ->
+  evars constr_g option
+[@@ocaml.deprecated "see evarutil"]
 
 val beta_applist : evar_map -> constr * constr list -> constr
 
@@ -245,15 +246,16 @@ type 'a miota_args = {
 val reducible_mind_case : evar_map -> constr -> bool
 val reduce_mind_case : evar_map -> constr miota_args -> constr
 
-val find_conclusion : env -> evar_map -> constr -> (constr, constr, ESorts.t, EInstance.t) kind_of_term
+val find_conclusion : env -> evar_map -> constr ->
+  (evar, constr, constr, ESorts.t, EInstance.t) kind_of_term
 val is_arity : env ->  evar_map -> constr -> bool
 val is_sort : env -> evar_map -> types -> bool
 
-val contract_fix : ?env:Environ.env -> evar_map -> ?reference:Constant.t -> fixpoint -> constr
+val contract_fix : ?env:('e Environ.env) -> evar_map -> ?reference:Constant.t -> fixpoint -> constr
 val fix_recarg : ('a, 'a) pfixpoint -> 'b Stack.t -> (int * 'b) option
 
 (** {6 Querying the kernel conversion oracle: opaque/transparent constants } *)
-val is_transparent : Environ.env -> Constant.t tableKey -> bool
+val is_transparent : 'e Environ.env -> Constant.t tableKey -> bool
 
 (** {6 Conversion Functions (uses closures, lazy strategy) } *)
 
@@ -289,7 +291,7 @@ val vm_infer_conv : ?pb:conv_pb -> env -> evar_map -> constr -> constr ->
 (** [infer_conv_gen] behaves like [infer_conv] but is parametrized by a
 conversion function. Used to pretype vm and native casts. *)
 val infer_conv_gen : (conv_pb -> l2r:bool -> evar_map -> transparent_state ->
-    (Constr.constr, evar_map) Reduction.generic_conversion_function) ->
+    (evars, evars Constr.constr_g, evar_map) Reduction.generic_conversion_function) ->
   ?catch_incon:bool -> ?pb:conv_pb -> ?ts:transparent_state -> env ->
   evar_map -> constr -> constr -> evar_map * bool
 
@@ -304,7 +306,7 @@ val betazetaevar_applist : evar_map -> int -> constr -> constr list -> constr
 (** {6 Heuristic for Conversion with Evar } *)
 
 val whd_betaiota_deltazeta_for_iota_state :
-  transparent_state -> Environ.env -> Evd.evar_map -> Cst_stack.t -> state ->
+  transparent_state -> env -> Evd.evar_map -> Cst_stack.t -> state ->
   state * Cst_stack.t
 
 (** {6 Meta-related reduction functions } *)
