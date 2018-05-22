@@ -196,7 +196,7 @@ val flush_and_check_evars :  evar_map -> constr -> Constr.constr
 
     Note that the normalizer passed to [f] holds some imperative state
    in its closure. *)
-val finalize : ?abort_on_undefined_evars:bool -> env -> evar_map ->
+val finalize : ?abort_on_undefined_evars:bool -> ?skip_restrict:bool -> env -> evar_map ->
   ((EConstr.t -> Constr.t) -> 'a) ->
   evar_map * 'a
 

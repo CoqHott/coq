@@ -223,15 +223,14 @@ let interp_recursive ~program_mode ~cofix fixl notations =
 
   (* Instantiate evars and check all are resolved *)
   let sigma = solve_unif_constraints_with_heuristics env_rec sigma in
-  let sigma, (rec_sign, fixdefs, fixtypes) =
+  let sigma, (fixdefs, fixtypes) =
     (* NB: we still have evars in program mode *)
-    Evarutil.finalize ~abort_on_undefined_evars:false
+    Evarutil.finalize ~abort_on_undefined_evars:false ~skip_restrict:program_mode
       env sigma
       (fun nf ->
          let fixdefs = List.map (fun c -> Option.map nf c) fixdefs in
          let fixtypes = List.map nf fixtypes in
-         let rec_sign = List.map (map_constr (fun c -> EConstr.of_constr (nf c))) rec_sign in
-         rec_sign, fixdefs, fixtypes)
+         fixdefs, fixtypes)
   in
   let fixctxs = List.map (fun (_,ctx) -> ctx) fixctxs in
 
