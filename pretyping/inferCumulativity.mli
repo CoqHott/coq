@@ -8,5 +8,5 @@
 (*         *     (see LICENSE file for the text of the license)         *)
 (************************************************************************)
 
-val infer_inductive : Environ.env -> Entries.mutual_inductive_entry ->
+val infer_inductive : Constr.ground Environ.env -> Entries.mutual_inductive_entry ->
   Entries.mutual_inductive_entry
