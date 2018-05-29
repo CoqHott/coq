@@ -73,7 +73,7 @@ type 'e substl = 'e constr_g list
 val subst_of_rel_context_instance : 'e Evkey.t Context.Rel.gen -> 'e constr_g list -> 'e substl
 
 (** For compatibility: returns the substitution reversed *)
-val adjust_subst_to_rel_context : Context.Rel.t -> constr list -> constr list
+val adjust_subst_to_rel_context : 'e Evkey.t Context.Rel.gen -> 'e constr_g list -> 'e constr_g list
 
 (** Take an index in an instance of a context and returns its index wrt to
     the full context (e.g. 2 in [x:A;y:=b;z:C] is 3, i.e. a reference to z) *)

@@ -323,6 +323,7 @@ val decompose_app_g : 'e Evkey.t constr_g -> 'e constr_g * 'e constr_g list
 
 (** Same as [decompose_app], but returns an array. *)
 val decompose_appvect : constr -> constr * constr array
+val decompose_appvect_g : 'e Evkey.t constr_g -> 'e constr_g * 'e constr_g array
 
 (** Destructs a constant *)
 val destConst : constr -> Constant.t Univ.puniverses

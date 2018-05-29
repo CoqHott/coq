@@ -54,27 +54,27 @@ let invert_tag cst tag reloc_tbl =
              (* Argggg, ces constructeurs de ... qui commencent a 1*)
 
 let find_rectype_a env c =
-  let (t, l) = decompose_appvect (whd_all env c) in
-  match kind t with
+  let (t, l) = decompose_appvect_g (whd_all_g env c) in
+  match kind_g t with
   | Ind ind -> (ind, l)
   | _ -> assert false
 
 (* Instantiate inductives and parameters in constructor type *)
 
 let type_constructor mind mib u typ params =
-  let s = ind_subst mind mib u in
+  let s = List.map to_econstr (ind_subst mind mib u) in
   let ctyp = substl s typ in
   let ctyp = subst_instance_constr u ctyp in
   let ndecls = Context.Rel.length mib.mind_params_ctxt in
   if Int.equal ndecls 0 then ctyp
   else
-    let _,ctyp = decompose_prod_n_assum ndecls ctyp in
+    let _,ctyp = decompose_prod_n_assum_g ndecls ctyp in
     substl (List.rev (adjust_subst_to_rel_context mib.mind_params_ctxt (Array.to_list params)))
       ctyp
 
 
 
-let construct_of_constr const env tag typ =
+let construct_of_constr const env tag (typ:evars types_g) =
   let ((mind,_ as ind), u) as indu, allargs = find_rectype_a env typ in
   (* spiwack : here be a branch for specific decompilation handled by retroknowledge *)
   try
@@ -141,7 +141,7 @@ let rec nf_val env sigma v t = nf_whd env sigma (Vmvalues.whd_val v) t
 
 and nf_vtype env sigma v =  nf_val env sigma v crazy_type
 
-and nf_whd env sigma whd typ =
+and nf_whd env sigma whd (typ:evars types_g) =
   match whd with
   | Vprod p ->
       let dom = nf_vtype env sigma (dom p) in

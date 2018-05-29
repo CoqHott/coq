@@ -474,20 +474,22 @@ let decompose_lam_assum =
    of the form [forall (x1:T1)..(xi:=ci:Ti)..(xn:Tn), T] into the pair
    of the quantifying context [(xn,None,Tn);..;(xi,Some
    ci,Ti);..;(x1,None,T1)] and of the inner type [T]) *)
-let decompose_prod_n_assum n =
+let decompose_prod_n_assum_g n =
   if n < 0 then
     user_err (str "decompose_prod_n_assum: integer parameter must be positive");
   let rec prodec_rec l n c =
     if Int.equal n 0 then l,c
     else
       let open Context.Rel.Declaration in
-      match kind_of_term c with
+      match kind_g c with
       | Prod (x,t,c)    -> prodec_rec (Context.Rel.add (LocalAssum (x,t)) l) (n-1) c
       | LetIn (x,b,t,c) -> prodec_rec (Context.Rel.add (LocalDef (x,b,t)) l) (n-1) c
       | Cast (c,_,_)      -> prodec_rec l n c
       | c -> user_err (str  "decompose_prod_n_assum: not enough assumptions")
   in
   prodec_rec Context.Rel.empty n
+
+let decompose_prod_n_assum = decompose_prod_n_assum_g
 
 (* Given a positive integer n, decompose a lambda or let-in term [fun
    (x1:T1)..(xi:=ci:Ti)..(xn:Tn) => T] into the pair of the abstracted

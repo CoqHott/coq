@@ -298,6 +298,7 @@ val decompose_lam_assum : constr -> Context.Rel.t * constr
 
 (** Idem but extract the first [n] premisses, counting let-ins. *)
 val decompose_prod_n_assum : int -> types -> Context.Rel.t * types
+val decompose_prod_n_assum_g : int -> 'e Evkey.t types_g -> 'e Context.Rel.gen * 'e types_g
 
 (** Idem for lambdas, _not_ counting let-ins *)
 val decompose_lam_n_assum : int -> constr -> Context.Rel.t * constr

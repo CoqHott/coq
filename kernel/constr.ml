@@ -452,17 +452,17 @@ let destCoFix c = match kind c with
 (* Flattening and unflattening of embedded applications and casts *)
 (******************************************************************)
 
-let decompose_app_g c =
+let decompose_appvect_g c =
   match kind_g c with
-    | App (f,cl) -> (f, Array.to_list cl)
-    | _ -> (c,[])
+    | App (f,cl) -> (f, cl)
+    | _ -> (c,[||])
+
+let decompose_appvect = decompose_appvect_g
+
+let decompose_app_g c = on_snd Array.to_list (decompose_appvect_g c)
 
 let decompose_app = decompose_app_g
 
-let decompose_appvect c =
-  match kind c with
-    | App (f,cl) -> (f, cl)
-    | _ -> (c,[||])
 
 (****************************************************************************)
 (*              Functions to recur through subterms                         *)
