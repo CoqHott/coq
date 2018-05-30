@@ -771,49 +771,26 @@ type module_path = ModPath.t =
   | MPdot of module_path * Label.t
 
 (** Compatibility layer for [Constant] *)
-
 module Projection =
-struct
-  type t = Constant.t * bool
+struct 
+  type t = Constant.t
+    
+  let make c b = c
 
-  let make c b = (c, b)
+  let constant x = x
+  let unfolded _ = true
+  let unfold c = c
+  let equal = Constant.equal
 
-  let constant = fst
-  let unfolded = snd
-  let unfold (c, b as p) = if b then p else (c, true)
-  let equal (c, b) (c', b') = Constant.equal c c' && b == b'
+  let hash = Constant.hash
 
-  let hash (c, b) = (if b then 0 else 1) + Constant.hash c
+  module SyntacticOrd = Constant.SyntacticOrd
 
-  module SyntacticOrd = struct
-    let compare (c, b) (c', b') =
-      if b = b' then Constant.SyntacticOrd.compare c c' else -1
-    let equal (c, b as x) (c', b' as x') =
-      x == x' || b = b' && Constant.SyntacticOrd.equal c c'
-    let hash (c, b) = (if b then 0 else 1) + Constant.SyntacticOrd.hash c
-  end
+  let hcons = hcons_con
 
-  module Self_Hashcons =
-    struct
-      type nonrec t = t
-      type u = Constant.t -> Constant.t
-      let hashcons hc (c,b) = (hc c,b)
-      let eq ((c,b) as x) ((c',b') as y) =
-        x == y || (c == c' && b == b')
-      let hash = hash
-    end
+  let compare = Constant.CanOrd.compare
 
-  module HashProjection = Hashcons.Make(Self_Hashcons)
-
-  let hcons = Hashcons.simple_hcons HashProjection.generate HashProjection.hcons hcons_con
-
-  let compare (c, b) (c', b') =
-    if b == b' then Constant.CanOrd.compare c c'
-    else if b then 1 else -1
-
-  let map f (c, b as x) =
-    let c' = f c in
-      if c' == c then x else (c', b)
+  let map f c = f c
 
   let to_string p = Constant.to_string (constant p)
   let print p = Constant.print (constant p)
