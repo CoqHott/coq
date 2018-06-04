@@ -987,7 +987,7 @@ let expand_arg tms (p,ccl) ((_,t),_,na) =
 
 let use_unit_judge evd =
   let j, ctx = coq_unit_judge () in
-  let evd' = Evd.merge_context_set Evd.univ_flexible_alg evd ctx in
+  let evd' = Evd.merge_context_set Evd.univ_flexible evd ctx in
     evd', j
 
 let add_assert_false_case pb tomatch =
@@ -2040,7 +2040,7 @@ let prepare_predicate ?loc typing_fun env sigma lvar tomatchs arsign tycon pred 
 	| Some t -> refresh_tycon sigma t
 	| None -> 
           let (sigma, (t, _)) =
-	    new_type_evar env sigma univ_flexible_alg ~src:(Loc.tag ?loc @@ Evar_kinds.CasesType false) in
+            new_type_evar env sigma univ_flexible ~src:(Loc.tag ?loc @@ Evar_kinds.CasesType false) in
 	    sigma, t
 	in
         (* First strategy: we build an "inversion" predicate *)
@@ -2052,7 +2052,7 @@ let prepare_predicate ?loc typing_fun env sigma lvar tomatchs arsign tycon pred 
     | Some rtntyp, _ ->
       (* We extract the signature of the arity *)
       let envar = List.fold_right push_rel_context typing_arsign env in
-      let sigma, newt = new_sort_variable univ_flexible_alg sigma in
+      let sigma, newt = new_sort_variable univ_flexible sigma in
       let evdref = ref sigma in
       let predcclj = typing_fun (mk_tycon (mkSort newt)) envar evdref lvar rtntyp in
       let sigma = !evdref in
