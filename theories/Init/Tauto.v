@@ -14,7 +14,7 @@ Local Ltac axioms flags :=
   match reverse goal with
     | |- ?X1 => is_unit_or_eq flags X1; constructor 1
     | _:?X1 |- _ => is_empty flags X1; elimtype X1; assumption
-    | _:?X1 |- ?X1 => assumption
+    | _ => assumption
   end.
 
 Local Ltac simplif flags :=
@@ -25,7 +25,7 @@ Local Ltac simplif flags :=
       | id: (Coq.Init.Logic.iff _ _) |- _ => elim id; do 2 intro; clear id
       | id: (Coq.Init.Logic.not _) |- _ => red in id
       | id: ?X1 |- _ => is_disj flags X1; elim id; intro; clear id
-      | id0: (forall (_: ?X1), ?X2), id1: ?X1|- _ =>
+      | id0: (forall (_: ?X1), ?X2), id1: _ |- _ =>
     (* generalize (id0 id1); intro; clear id0 does not work
        (see Marco Maggiesi's BZ#301)
     so we instead use Assert and exact. *)
