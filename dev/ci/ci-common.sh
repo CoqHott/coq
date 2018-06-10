@@ -104,7 +104,7 @@ install_ssreflect()
 # this installs just the ssreflect + algebra library of math-comp
 install_ssralg()
 {
-  echo 'Installing ssreflect' && echo -en 'travis_fold:start:ssr.install\\r'
+  echo 'Installing ssralg' && echo -en 'travis_fold:start:ssralg.install\\r'
 
   git_checkout "${mathcomp_CI_BRANCH}" "${mathcomp_CI_GITURL}" "${mathcomp_CI_DIR}"
 
@@ -113,6 +113,6 @@ install_ssralg()
     make -f Makefile.coq algebra/all_algebra.vo && \
     make -f Makefile.coq install )
 
-  echo -en 'travis_fold:end:ssr.install\\r'
+  echo -en 'travis_fold:end:ssralg.install\\r'
 
 }
