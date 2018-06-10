@@ -9,4 +9,6 @@ git_checkout "${GeoCoq_CI_BRANCH}" "${GeoCoq_CI_GITURL}" "${GeoCoq_CI_DIR}"
 
 install_ssralg
 
-( cd "${GeoCoq_CI_DIR}" && ./configure.sh && make )
+( cd "${GeoCoq_CI_DIR}" && \
+  sed  -i '1i Set Nested Proofs Allowed.' Meta_theory/Models/hilbert_to_tarski.v && \
+  ./configure.sh && make )
