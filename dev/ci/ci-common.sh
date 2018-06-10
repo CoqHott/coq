@@ -93,16 +93,9 @@ install_ssreflect()
   git_checkout "${mathcomp_CI_BRANCH}" "${mathcomp_CI_GITURL}" "${mathcomp_CI_DIR}"
 
   ( cd "${mathcomp_CI_DIR}/mathcomp" && \
-    sed -i.bak '/ssrtest/d'     Make && \
-    sed -i.bak '/odd_order/d'   Make && \
-    sed -i.bak '/all\/all.v/d'  Make && \
-    sed -i.bak '/character/d'   Make && \
-    sed -i.bak '/real_closed/d' Make && \
-    sed -i.bak '/solvable/d'    Make && \
-    sed -i.bak '/field/d'       Make && \
-    sed -i.bak '/fingroup/d'    Make && \
-    sed -i.bak '/algebra/d'     Make && \
-    make Makefile.coq && make -f Makefile.coq all && make install )
+    make Makefile.coq && \
+    make -f Makefile.coq ssreflect/all_ssreflect.vo && \
+    make -f Makefile.coq install )
 
   echo -en 'travis_fold:end:ssr.install\\r'
 
@@ -116,14 +109,9 @@ install_ssralg()
   git_checkout "${mathcomp_CI_BRANCH}" "${mathcomp_CI_GITURL}" "${mathcomp_CI_DIR}"
 
   ( cd "${mathcomp_CI_DIR}/mathcomp" && \
-    sed -i.bak '/ssrtest/d'     Make && \
-    sed -i.bak '/odd_order/d'   Make && \
-    sed -i.bak '/all\/all.v/d'  Make && \
-    sed -i.bak '/character/d'   Make && \
-    sed -i.bak '/real_closed/d' Make && \
-    sed -i.bak '/solvable/d'    Make && \
-    sed -i.bak '/field/d'       Make && \
-    make Makefile.coq && make -f Makefile.coq all && make install )
+    make Makefile.coq && \
+    make -f Makefile.coq algebra/all_algebra.vo && \
+    make -f Makefile.coq install )
 
   echo -en 'travis_fold:end:ssr.install\\r'
 
