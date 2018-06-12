@@ -32,14 +32,14 @@ type 'a puniverses = 'a * EInstance.t
 
 let in_punivs a = (a, EInstance.empty)
 
-let mkProp = of_kind (Sort (ESorts.make Sorts.prop))
-let mkSet = of_kind (Sort (ESorts.make Sorts.set))
+let mkProp = of_constr mkProp
+let mkSet = of_constr mkSet
 let mkType u = of_kind (Sort (ESorts.make (Sorts.Type u)))
-let mkRel n = of_kind (Rel n)
+let mkRel n = of_constr (mkRel n)
 let mkVar id = of_kind (Var id)
 let mkMeta n = of_kind (Meta n)
 let mkEvar e = of_kind (Evar e)
-let mkSort s = of_kind (Sort (ESorts.make s))
+let mkSort s = of_constr (mkSort s)
 let mkCast (b, k, t) = of_kind (Cast (b, k, t))
 let mkProd (na, t, u) = of_kind (Prod (na, t, u))
 let mkLambda (na, t, c) = of_kind (Lambda (na, t, c))
