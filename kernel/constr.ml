@@ -1077,7 +1077,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | Fix (ln,(lna,tl,bl)) ->
 	let bl,hbl = hash_term_array bl in
 	let tl,htl = hash_term_array tl in
-        let () = Array.iteri (fun i x -> Array.unsafe_set lna i (sh_na x)) lna in
+        let () = Array.iteri (fun i x -> Array.set lna i (sh_na x)) lna in
         let fold accu na = combine (Name.hash na) accu in
         let hna = Array.fold_left fold 0 lna in
         let h = combine3 hna hbl htl in
@@ -1085,7 +1085,7 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
       | CoFix(ln,(lna,tl,bl)) ->
 	let bl,hbl = hash_term_array bl in
 	let tl,htl = hash_term_array tl in
-        let () = Array.iteri (fun i x -> Array.unsafe_set lna i (sh_na x)) lna in
+        let () = Array.iteri (fun i x -> Array.set lna i (sh_na x)) lna in
         let fold accu na = combine (Name.hash na) accu in
         let hna = Array.fold_left fold 0 lna in
         let h = combine3 hna hbl htl in
@@ -1106,9 +1106,9 @@ let hashcons (sh_sort,sh_ci,sh_construct,sh_ind,sh_con,sh_na,sh_id) =
   and hash_term_array t =
     let accu = ref 0 in
     for i = 0 to Array.length t - 1 do
-      let x, h = sh_rec (Array.unsafe_get t i) in
+      let x, h = sh_rec (Array.get t i) in
       accu := combine !accu h;
-      Array.unsafe_set t i x
+      Array.set t i x
     done;
     (* [h] must be positive. *)
     let h = !accu land 0x3FFFFFFF in

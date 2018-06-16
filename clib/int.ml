@@ -73,8 +73,8 @@ struct
   | DSet (i, v, t') ->
     let next () = match !t' with
     | Root a as n ->
-      let v' = Array.unsafe_get a i in
-      let () = Array.unsafe_set a i v in
+      let v' = Array.get a i in
+      let () = Array.set a i v in
       let () = t := n in
       let () = t' := DSet (i, v', t) in
       k ()
@@ -89,13 +89,13 @@ struct
   match !t with
   | Root a ->
     if Array.length a <= i then None
-    else Array.unsafe_get a i
+    else Array.get a i
   | DSet _ ->
     let () = reroot t in
     match !t with
     | Root a ->
       if Array.length a <= i then None
-      else Array.unsafe_get a i
+      else Array.get a i
     | DSet _ -> assert false
 
   let set t i v =
@@ -106,10 +106,10 @@ struct
     | Root a as n ->
       let len = Array.length a in
       if i < len then
-        let old = Array.unsafe_get a i in
+        let old = Array.get a i in
         if old == v then t
         else
-          let () = Array.unsafe_set a i v in
+          let () = Array.set a i v in
           let res = ref n in
           let () = t := DSet (i, old, res) in
           res
@@ -121,7 +121,7 @@ struct
         let () = assert (i < nlen) in
         let a' = Array.make nlen None in
         let () = Array.blit a 0 a' 0 len in
-        let () = Array.unsafe_set a' i v in
+        let () = Array.set a' i v in
         let res = ref (Root a') in
         let () = t := DSet (i, None, res) in
         res

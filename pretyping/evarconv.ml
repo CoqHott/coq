@@ -1076,7 +1076,7 @@ let filter_possible_projections evd c ty ctxt args =
   let tyvars = collect_vars evd ty in
   List.map_i (fun i decl ->
     let () = assert (i < len) in
-    let a = Array.unsafe_get args i in
+    let a = Array.get args i in
     (match decl with
      | NamedDecl.LocalAssum _ -> false
      | NamedDecl.LocalDef (_,c,_) -> not (isRel evd c || isVar evd c)) ||

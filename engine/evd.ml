@@ -98,7 +98,7 @@ struct
     let fold b (i, ans) =
       if b then
         let () = assert (0 <= i) in
-        (pred i, Array.unsafe_get subfilter i :: ans)
+        (pred i, Array.get subfilter i :: ans)
       else
         (i, false :: ans)
     in
@@ -227,7 +227,7 @@ let evar_instance_array test_id info args =
     instrec filter ctxt i
   | true :: filter, d :: ctxt ->
     if i < len then
-      let c = Array.unsafe_get args i in
+      let c = Array.get args i in
       if test_id d c then instrec filter ctxt (succ i)
       else (NamedDecl.get_id d, c) :: instrec filter ctxt (succ i)
     else instance_mismatch ()
@@ -237,7 +237,7 @@ let evar_instance_array test_id info args =
   | None ->
      let map i d =
       if (i < len) then
-        let c = Array.unsafe_get args i in
+        let c = Array.get args i in
         if test_id d c then None else Some (NamedDecl.get_id d, c)
       else instance_mismatch ()
     in

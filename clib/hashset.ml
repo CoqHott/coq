@@ -84,7 +84,7 @@ module Make (E : EqType) =
       | false -> iter_bucket (i+1) j b
     in
     for i = 0 to pred (Array.length t.table) do
-      iter_bucket 0 i (Array.unsafe_get t.table i)
+      iter_bucket 0 i (Array.get t.table i)
     done
 
   let rec count_bucket i b accu =

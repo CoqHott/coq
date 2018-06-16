@@ -501,7 +501,7 @@ let remove_instance_local_defs evd evk args =
     let () = assert (i = len) in []
   | LocalAssum _ :: sign ->
     let () = assert (i < len) in
-    (Array.unsafe_get args i) :: aux sign (succ i)
+    (Array.get args i) :: aux sign (succ i)
   | LocalDef _ :: sign ->
     aux sign (succ i)
   in
@@ -719,7 +719,7 @@ let materialize_evar define_fun env evd k (evk1,args1) ty_in_env =
 let restrict_upon_filter evd evk p args =
   let oldfullfilter = evar_filter (Evd.find_undefined evd evk) in
   let len = Array.length args in
-  Filter.restrict_upon oldfullfilter len (fun i -> p (Array.unsafe_get args i))
+  Filter.restrict_upon oldfullfilter len (fun i -> p (Array.get args i))
 
 (***************)
 (* Unification *)

@@ -129,7 +129,7 @@ let substn_many lamv n c =
     let rec substrec depth c = match Constr.kind c with
       | Constr.Rel k     ->
           if k<=depth then c
-          else if k-depth <= lv then lift_substituend depth (Array.unsafe_get lamv (k-depth-1))
+          else if k-depth <= lv then lift_substituend depth (Array.get lamv (k-depth-1))
           else Constr.mkRel (k-lv)
       | _ -> Constr.map_with_binders succ substrec depth c in
     substrec n c
@@ -149,7 +149,7 @@ let make_subst = function
     match !s with
     | [] -> assert false
     | x :: tl ->
-      Array.unsafe_set subst i (make_substituend x);
+      Array.set subst i (make_substituend x);
       s := tl
   done;
   subst

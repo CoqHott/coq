@@ -500,7 +500,7 @@ let map4 f l1 l2 l3 l4 = match l1, l2, l3, l4 with
 let rec map_of_array_loop f p a i l =
   if Int.equal i l then ()
   else
-    let c = { head = f (Array.unsafe_get a i); tail = [] } in
+    let c = { head = f (Array.get a i); tail = [] } in
     p.tail <- cast c;
     map_of_array_loop f c a (i + 1) l
 
@@ -508,7 +508,7 @@ let map_of_array f a =
   let l = Array.length a in
   if Int.equal l 0 then []
   else
-    let c = { head = f (Array.unsafe_get a 0); tail = [] } in
+    let c = { head = f (Array.get a 0); tail = [] } in
     map_of_array_loop f c a 1 l;
     cast c
 

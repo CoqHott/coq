@@ -97,7 +97,7 @@ end
 
 include Array
 
-let uget = Array.unsafe_get
+let uget = Array.get
 
 (* Arrays *)
 
@@ -240,8 +240,8 @@ let rev t =
     else
       for i = 0 to pred (n/2) do
         let tmp = uget t ((pred n)-i) in
-        Array.unsafe_set t ((pred n)-i) (uget t i);
-        Array.unsafe_set t i tmp
+        Array.set t ((pred n)-i) (uget t i);
+        Array.set t i tmp
       done
 
 let fold_right_i f v a =
@@ -319,7 +319,7 @@ let rev_of_list = function
   let rec set i = function
   | [] -> ()
   | x :: l ->
-    Array.unsafe_set ans i x;
+    Array.set ans i x;
     set (pred i) l
   in
   let () = set (len - 1) l in
@@ -332,7 +332,7 @@ let map_of_list f l =
   let rec fill i v = function
   | [] -> ()
   | x :: l ->
-    Array.unsafe_set v i (f x);
+    Array.set v i (f x);
     fill (succ i) v l
   in
   match l with
@@ -356,7 +356,7 @@ let map2 f v1 v2 =
   else begin
     let res = Array.make len1 (f (uget v1 0) (uget v2 0)) in
     for i = 1 to pred len1 do
-      Array.unsafe_set res i (f (uget v1 i) (uget v2 i))
+      Array.set res i (f (uget v1 i) (uget v2 i))
     done;
     res
   end
@@ -370,7 +370,7 @@ let map2_i f v1 v2 =
   else begin
     let res = Array.make len1 (f 0 (uget v1 0) (uget v2 0)) in
     for i = 1 to pred len1 do
-      Array.unsafe_set res i (f i (uget v1 i) (uget v2 i))
+      Array.set res i (f i (uget v1 i) (uget v2 i))
     done;
     res
   end
@@ -386,7 +386,7 @@ let map3 f v1 v2 v3 =
   else begin
     let res = Array.make len1 (f (uget v1 0) (uget v2 0) (uget v3 0)) in
     for i = 1 to pred len1 do
-      Array.unsafe_set res i (f (uget v1 i) (uget v2 i) (uget v3 i))
+      Array.set res i (f (uget v1 i) (uget v2 i) (uget v3 i))
     done;
     res
   end
@@ -396,7 +396,7 @@ let map_left f a = (* Ocaml does not guarantee Array.map is LR *)
   if Int.equal l 0 then [||] else begin
     let r = Array.make l (f (uget a 0)) in
     for i = 1 to l - 1 do
-      Array.unsafe_set r i (f (uget a i))
+      Array.set r i (f (uget a i))
     done;
     r
   end
@@ -476,7 +476,7 @@ struct
     let break = ref true in
     let temp = ref None in
     while !break && (!i < len) do
-      let v = Array.unsafe_get ar !i in
+      let v = Array.get ar !i in
       let v' = f v in
       if v == v' then incr i
       else begin
@@ -488,12 +488,12 @@ struct
       (** The array is not the same as the original one *)
       let ans : 'a array = Array.copy ar in
       let v = match !temp with None -> assert false | Some x -> x in
-      Array.unsafe_set ans !i v;
+      Array.set ans !i v;
       incr i;
       while !i < len do
-        let v = Array.unsafe_get ans !i in
+        let v = Array.get ans !i in
         let v' = f v in
-        if v != v' then Array.unsafe_set ans !i v';
+        if v != v' then Array.set ans !i v';
         incr i
       done;
       ans
@@ -507,8 +507,8 @@ struct
     let break = ref true in
     let temp = ref None in
     while !break && (!i < len) do
-      let v = Array.unsafe_get ar !i in
-      let w = Array.unsafe_get aux_ar !i in
+      let v = Array.get ar !i in
+      let w = Array.get aux_ar !i in
       let v' = f w v in
       if v == v' then incr i
       else begin
@@ -520,13 +520,13 @@ struct
       (** The array is not the same as the original one *)
       let ans : 'a array = Array.copy ar in
       let v = match !temp with None -> assert false | Some x -> x in
-      Array.unsafe_set ans !i v;
+      Array.set ans !i v;
       incr i;
       while !i < len do
-        let v = Array.unsafe_get ans !i in
-        let w = Array.unsafe_get aux_ar !i in
+        let v = Array.get ans !i in
+        let w = Array.get aux_ar !i in
         let v' = f w v in
-        if v != v' then Array.unsafe_set ans !i v';
+        if v != v' then Array.set ans !i v';
         incr i
       done;
       ans
@@ -541,7 +541,7 @@ struct
     (** This variable is never accessed unset *)
     let temp = ref None in
     while !break && (!i < len) do
-      let v = Array.unsafe_get ar !i in
+      let v = Array.get ar !i in
       let (accu, v') = f !r v in
       r := accu;
       if v == v' then incr i
@@ -553,13 +553,13 @@ struct
     if !i < len then begin
       let ans : 'a array = Array.copy ar in
       let v = match !temp with None -> assert false | Some x -> x in
-      Array.unsafe_set ans !i v;
+      Array.set ans !i v;
       incr i;
       while !i < len do
-        let v = Array.unsafe_get ar !i in
+        let v = Array.get ar !i in
         let (accu, v') = f !r v in
         r := accu;
-        if v != v' then Array.unsafe_set ans !i v';
+        if v != v' then Array.set ans !i v';
         incr i
       done;
       !r, ans
@@ -576,8 +576,8 @@ struct
     (** This variable is never accessed unset *)
     let temp = ref None in
     while !break && (!i < len) do
-      let v = Array.unsafe_get ar !i in
-      let w = Array.unsafe_get aux_ar !i in
+      let v = Array.get ar !i in
+      let w = Array.get aux_ar !i in
       let (accu, v') = f !r w v in
       r := accu;
       if v == v' then incr i
@@ -589,14 +589,14 @@ struct
     if !i < len then begin
       let ans : 'a array = Array.copy ar in
       let v = match !temp with None -> assert false | Some x -> x in
-      Array.unsafe_set ans !i v;
+      Array.set ans !i v;
       incr i;
       while !i < len do
-        let v = Array.unsafe_get ar !i in
-        let w = Array.unsafe_get aux_ar !i in
+        let v = Array.get ar !i in
+        let w = Array.get aux_ar !i in
         let (accu, v') = f !r w v in
         r := accu;
-        if v != v' then Array.unsafe_set ans !i v';
+        if v != v' then Array.set ans !i v';
         incr i
       done;
       !r, ans
@@ -615,11 +615,11 @@ struct
   | [| |] -> [| |]
   | _ ->
     let len = Array.length v in
-    let x0 = Array.unsafe_get v 0 in
+    let x0 = Array.get v 0 in
     let ans = Array.make len (f arg x0) in
     for i = 1 to pred len do
-      let x = Array.unsafe_get v i in
-      Array.unsafe_set ans i (f arg x)
+      let x = Array.get v i in
+      Array.set ans i (f arg x)
     done;
     ans
 
@@ -649,7 +649,7 @@ struct
       let break = ref true in
       let temp = ref None in
       while !break && (!i < len) do
-        let v = Array.unsafe_get ar !i in
+        let v = Array.get ar !i in
         let v' = f arg v in
         if v == v' then incr i
         else begin
@@ -661,12 +661,12 @@ struct
         (** The array is not the same as the original one *)
         let ans : 'a array = Array.copy ar in
         let v = match !temp with None -> assert false | Some x -> x in
-        Array.unsafe_set ans !i v;
+        Array.set ans !i v;
         incr i;
         while !i < len do
-          let v = Array.unsafe_get ans !i in
+          let v = Array.get ans !i in
           let v' = f arg v in
-          if v != v' then Array.unsafe_set ans !i v';
+          if v != v' then Array.set ans !i v';
           incr i
         done;
         ans

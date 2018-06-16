@@ -800,10 +800,10 @@ struct
 	if Int.equal len 0 then empty
 	else begin
 	  for i = 0 to len - 1 do
-	    let x = Array.unsafe_get a i in
+            let x = Array.get a i in
 	    let x' = huniv x in
 	      if x == x' then ()
-	      else Array.unsafe_set a i x'
+              else Array.set a i x'
 	  done;
 	  a
 	end
@@ -818,7 +818,7 @@ struct
     let hash a = 
       let accu = ref 0 in
 	for i = 0 to Array.length a - 1 do
-	  let l = Array.unsafe_get a i in
+          let l = Array.get a i in
 	  let h = Level.hash l in
 	    accu := Hashset.Combine.combine !accu h;
 	done;

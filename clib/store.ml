@@ -53,20 +53,20 @@ let set (s : t) (i : 'a field) (v : 'a) : t =
   let () = assert (0 <= i) in
   let ans = allocate nlen in
   Array.blit s 0 ans 0 len;
-  Array.unsafe_set ans i (Some (Obj.repr v));
+  Array.set ans i (Some (Obj.repr v));
   ans
 
 let get (s : t) (i : 'a field) : 'a option =
   let len = Array.length s in
   if len <= i then None
-  else Obj.magic (Array.unsafe_get s i)
+  else Obj.magic (Array.get s i)
 
 let remove (s : t) (i : 'a field) =
   let len = Array.length s in
   let () = assert (0 <= i) in
   let ans = allocate len in
   Array.blit s 0 ans 0 len;
-  if i < len then Array.unsafe_set ans i None;
+  if i < len then Array.set ans i None;
   ans
 
 let merge (s1 : t) (s2 : t) : t =
@@ -77,10 +77,10 @@ let merge (s1 : t) (s2 : t) : t =
   (** Important: No more allocation from here. *)
   Array.blit s2 0 ans 0 len2;
   for i = 0 to pred len1 do
-    let v = Array.unsafe_get s1 i in
+    let v = Array.get s1 i in
     match v with
     | None -> ()
-    | Some _ -> Array.unsafe_set ans i v
+    | Some _ -> Array.set ans i v
   done;
   ans
 
