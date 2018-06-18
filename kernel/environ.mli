@@ -317,7 +317,7 @@ val remove_hyps : Id.Set.t -> (Context.Named.Declaration.t -> Context.Named.Decl
 open Retroknowledge
 (** functions manipulating the retroknowledge 
     @author spiwack *)
-val retroknowledge : (retroknowledge->'a) -> env -> 'a
+val retroknowledge : env -> retroknowledge
 
 val registered : env -> field -> bool
 

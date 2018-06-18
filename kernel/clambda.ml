@@ -662,7 +662,7 @@ let rec lambda_of_constr env c =
     let entry = mkInd ind in
     let la =
       try
-        Retroknowledge.get_vm_before_match_info env.global_env.retroknowledge
+        Retroknowledge.get_vm_before_match_info (retroknowledge env.global_env)
           entry la
       with Not_found -> la
     in
@@ -722,7 +722,7 @@ and lambda_of_app env f args =
                 falls back on its normal behavior *)
     (try
       (* We delay the compilation of arguments to avoid an exponential behavior *)
-      let f = Retroknowledge.get_vm_compiling_info env.global_env.retroknowledge
+      let f = Retroknowledge.get_vm_compiling_info (retroknowledge env.global_env)
           (mkConstU (kn,u)) in
       let args = lambda_of_args env 0 args in
       f args
@@ -749,7 +749,7 @@ and lambda_of_app env f args =
       try
         try
           Retroknowledge.get_vm_constant_static_info
-            env.global_env.retroknowledge
+            (retroknowledge env.global_env)
             f args
         with NotClosed ->
           (* 2/ if the arguments are not all closed (this is
@@ -770,7 +770,7 @@ and lambda_of_app env f args =
           let rargs = Array.sub args nparams arity in
           let args = lambda_of_args env nparams rargs in
           Retroknowledge.get_vm_constant_dynamic_info
-            env.global_env.retroknowledge
+            (retroknowledge env.global_env)
             f args
       with Not_found ->
         (* 3/ if no special behavior is available, then the compiler
@@ -783,7 +783,7 @@ and lambda_of_app env f args =
                 behavior of the constructor, as in 2/ above *)
       (try
          (Retroknowledge.get_vm_constant_dynamic_info
-            env.global_env.retroknowledge
+            (retroknowledge env.global_env)
             f) args
        with Not_found ->
          if nparams <= nargs then (* got all parameters *)

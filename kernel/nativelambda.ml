@@ -441,7 +441,7 @@ let is_lazy prefix t =
 	let entry = mkInd (fst c) in
 	(try
 	    let _ =
-	      Retroknowledge.get_native_before_match_info (!global_env).retroknowledge
+              Retroknowledge.get_native_before_match_info (retroknowledge !global_env)
 							  entry prefix c Llazy;
 	    in
 	    false
@@ -544,7 +544,7 @@ let rec lambda_of_constr env sigma c =
       let entry = mkInd ind in
       let la =
 	try
-	  Retroknowledge.get_native_before_match_info (!global_env).retroknowledge
+          Retroknowledge.get_native_before_match_info (retroknowledge !global_env)
 						      entry prefix (ind,1) la
 	with Not_found -> la
       in
@@ -591,7 +591,7 @@ and lambda_of_app env sigma f args =
           let prefix = get_const_prefix !global_env kn in
 	  (* We delay the compilation of arguments to avoid an exponential behavior *)
 	  let f = Retroknowledge.get_native_compiling_info
-		    (!global_env).retroknowledge (mkConst kn) prefix in
+                    (retroknowledge !global_env) (mkConst kn) prefix in
 	  let args = lambda_of_args env sigma 0 args in
 	  f args
       with Not_found ->
@@ -620,13 +620,13 @@ and lambda_of_app env sigma f args =
       try
 	try
 	  Retroknowledge.get_native_constant_static_info
-                         (!global_env).retroknowledge
+                         (retroknowledge !global_env)
                          f args
           with NotClosed ->
 	    assert (Int.equal nparams 0); (* should be fine for int31 *)
 	    let args = lambda_of_args env sigma nparams args in
 	    Retroknowledge.get_native_constant_dynamic_info
-                           (!global_env).retroknowledge f prefix c args
+                           (retroknowledge !global_env) f prefix c args
         with Not_found ->
 	  let args = lambda_of_args env sigma nparams args in
 	  makeblock !global_env c u tag args
@@ -634,7 +634,7 @@ and lambda_of_app env sigma f args =
 	let args = lambda_of_args env sigma 0 args in
 	(try
 	    Retroknowledge.get_native_constant_dynamic_info
-              (!global_env).retroknowledge f prefix c args
+              (retroknowledge !global_env) f prefix c args
 	  with Not_found ->
             mkLapp (Lconstruct (prefix, (c,u))) args)
   | _ -> 

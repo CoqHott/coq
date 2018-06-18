@@ -679,11 +679,11 @@ let remove_hyps ids check_context check_value ctxt =
 open Retroknowledge
 
 (* lifting of the "get" functions works also for "mem"*)
-let retroknowledge f env =
-  f env.retroknowledge
+let retroknowledge env =
+  env.retroknowledge
 
 let registered env field =
-    retroknowledge mem env field
+    mem (retroknowledge env) field
 
 let register_one env field entry =
   { env with retroknowledge = Retroknowledge.add_field env.retroknowledge field entry }

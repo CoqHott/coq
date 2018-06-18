@@ -220,7 +220,7 @@ val delta_of_senv :
 
 open Retroknowledge
 
-val retroknowledge : (retroknowledge-> 'a) -> safe_environment -> 'a
+val retroknowledge : safe_environment -> retroknowledge
 
 val register :
   field -> Retroknowledge.entry -> Constr.constr -> safe_transformer0
