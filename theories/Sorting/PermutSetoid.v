@@ -39,7 +39,7 @@ Variable eqA : relation A.
 Hypothesis eqA_equiv : Equivalence eqA.
 Hypothesis eqA_dec : forall x y:A, {eqA x y} + {~ eqA x y}.
 
-Let emptyBag := EmptyBag A.
+Let emptyBag := @EmptyBag A.
 Let singletonBag := SingletonBag _ eqA_dec.
 
 (** contents of a list *)
@@ -460,10 +460,10 @@ Lemma permut_map :
       permutation _ eqB_dec (map f l1) (map f l2).
 Proof.
   intros f; induction l1.
-  intros l2 P; rewrite (permut_nil eqA_equiv (permut_sym P)); apply permut_refl.
+  intros l2 P; rewrite (@permut_nil _ _ eqA_equiv _ _ (permut_sym P)); apply permut_refl.
   intros l2 P.
   simpl.
-  assert (H0:=permut_cons_InA eqA_equiv P).
+  assert (H0:=@permut_cons_InA _ _ eqA_equiv _ _ _ _ P).
   destruct (InA_split H0) as (h2,(b,(t2,(H1,H2)))).
   subst l2.
   rewrite map_app.

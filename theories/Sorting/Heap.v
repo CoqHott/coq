@@ -18,6 +18,14 @@
 
 Require Import List Multiset PermutSetoid Relations Sorting.
 
+Polymorphic Cumulative Inductive Tree A :=
+| Tree_Leaf : Tree A
+| Tree_Node : A -> Tree A -> Tree A -> Tree A.
+
+Arguments Tree_Leaf {_}.
+Arguments Tree_Node {_} _ _ _.
+
+
 Section defs.
 
   (** * Trees and heap trees *)
@@ -39,18 +47,13 @@ Section defs.
   Hint Resolve leA_refl : core.
   Hint Immediate eqA_dec leA_dec leA_antisym : core.
 
-  Let emptyBag := EmptyBag A.
+  Let emptyBag := @EmptyBag A.
   Let singletonBag := SingletonBag _ eqA_dec.
-
-  #[universes(template)]
-  Inductive Tree :=
-    | Tree_Leaf : Tree
-    | Tree_Node : A -> Tree -> Tree -> Tree.
 
   (** [a] is lower than a Tree [T] if [T] is a Leaf
       or [T] is a Node holding [b>a] *)
 
-  Definition leA_Tree (a:A) (t:Tree) :=
+  Definition leA_Tree (a:A) (t:Tree A) :=
     match t with
       | Tree_Leaf => True
       | Tree_Node b T1 T2 => leA a b
@@ -62,7 +65,7 @@ Section defs.
   Qed.
 
   Lemma leA_Tree_Node :
-    forall (a b:A) (G D:Tree), leA a b -> leA_Tree a (Tree_Node b G D).
+    forall (a b:A) (G D:Tree A), leA a b -> leA_Tree a (Tree_Node b G D).
   Proof.
     simpl; auto with datatypes.
   Qed.
@@ -70,16 +73,16 @@ Section defs.
 
   (** ** The heap property *)
 
-  Inductive is_heap : Tree -> Prop :=
+  Inductive is_heap : Tree A -> Prop :=
     | nil_is_heap : is_heap Tree_Leaf
     | node_is_heap :
-      forall (a:A) (T1 T2:Tree),
+      forall (a:A) (T1 T2:Tree A),
         leA_Tree a T1 ->
         leA_Tree a T2 ->
         is_heap T1 -> is_heap T2 -> is_heap (Tree_Node a T1 T2).
 
   Lemma invert_heap :
-    forall (a:A) (T1 T2:Tree),
+    forall (a:A) (T1 T2:Tree A),
       is_heap (Tree_Node a T1 T2) ->
       leA_Tree a T1 /\ leA_Tree a T2 /\ is_heap T1 /\ is_heap T2.
   Proof.
@@ -88,13 +91,13 @@ Section defs.
 
   (* This lemma ought to be generated automatically by the Inversion tools *)
   Lemma is_heap_rect :
-    forall P:Tree -> Type,
+    forall P:Tree A -> Type,
       P Tree_Leaf ->
-      (forall (a:A) (T1 T2:Tree),
+      (forall (a:A) (T1 T2:Tree A),
 	leA_Tree a T1 ->
 	leA_Tree a T2 ->
 	is_heap T1 -> P T1 -> is_heap T2 -> P T2 -> P (Tree_Node a T1 T2)) ->
-      forall T:Tree, is_heap T -> P T.
+      forall T:Tree A, is_heap T -> P T.
   Proof.
     simple induction T; auto with datatypes.
     intros a G PG D PD PN.
@@ -105,13 +108,13 @@ Section defs.
 
   (* This lemma ought to be generated automatically by the Inversion tools *)
   Lemma is_heap_rec :
-    forall P:Tree -> Set,
+    forall P:Tree A -> Set,
       P Tree_Leaf ->
-      (forall (a:A) (T1 T2:Tree),
+      (forall (a:A) (T1 T2:Tree A),
 	leA_Tree a T1 ->
 	leA_Tree a T2 ->
 	is_heap T1 -> P T1 -> is_heap T2 -> P T2 -> P (Tree_Node a T1 T2)) ->
-      forall T:Tree, is_heap T -> P T.
+      forall T:Tree A, is_heap T -> P T.
   Proof.
     simple induction T; auto with datatypes.
     intros a G PG D PD PN.
@@ -121,7 +124,7 @@ Section defs.
   Qed.
 
   Lemma low_trans :
-    forall (T:Tree) (a b:A), leA a b -> leA_Tree b T -> leA_Tree a T.
+    forall (T:Tree A) (a b:A), leA a b -> leA_Tree b T -> leA_Tree a T.
   Proof.
     simple induction T; auto with datatypes.
     intros; simpl; apply leA_trans with b; auto with datatypes.
@@ -186,7 +189,7 @@ Section defs.
       in not used. Actually, we could just take as postulate:
       [Parameter SingletonBag : A->multiset].  *)
 
-  Fixpoint contents (t:Tree) : multiset A :=
+  Fixpoint contents (t:Tree A) : multiset A :=
     match t with
       | Tree_Leaf => emptyBag
       | Tree_Node a t1 t2 =>
@@ -195,7 +198,7 @@ Section defs.
 
 
   (** equivalence of two trees is equality of corresponding multisets *)
-  Definition equiv_Tree (t1 t2:Tree) := meq (contents t1) (contents t2).
+  Definition equiv_Tree (t1 t2:Tree A) := meq (contents t1) (contents t2).
 
 
 
@@ -204,16 +207,16 @@ Section defs.
   (** ** Specification of heap insertion *)
 
   #[universes(template)]
-  Inductive insert_spec (a:A) (T:Tree) : Type :=
+  Inductive insert_spec (a:A) (T:Tree A) : Type :=
     insert_exist :
-    forall T1:Tree,
+    forall T1:Tree A,
       is_heap T1 ->
       meq (contents T1) (munion (contents T) (singletonBag a)) ->
       (forall b:A, leA b a -> leA_Tree b T -> leA_Tree b T1) ->
       insert_spec a T.
 
 
-  Lemma insert : forall T:Tree, is_heap T -> forall a:A, insert_spec a T.
+  Lemma insert : forall T:Tree A, is_heap T -> forall a:A, insert_spec a T.
   Proof.
     simple induction 1; intros.
     apply insert_exist with (Tree_Node a Tree_Leaf Tree_Leaf);
@@ -240,7 +243,7 @@ Section defs.
   #[universes(template)]
   Inductive build_heap (l:list A) : Type :=
     heap_exist :
-    forall T:Tree,
+    forall T:Tree A,
       is_heap T ->
       meq (list_contents _ eqA_dec l) (contents T) -> build_heap l.
 
@@ -259,30 +262,29 @@ Section defs.
     apply meq_sym; trivial with datatypes.
   Qed.
 
+End defs.
 
-  (** ** Building the sorted list *)
+(** ** Building the sorted list *)
 
-  #[universes(template)]
-  Inductive flat_spec (T:Tree) : Type :=
-    flat_exist :
-    forall l:list A,
-      Sorted leA l ->
-      (forall a:A, leA_Tree a T -> HdRel leA a l) ->
-      meq (contents T) (list_contents _ eqA_dec l) -> flat_spec T.
+  Polymorphic Cumulative Inductive flat_spec (A : Type) (leA eqA : relation A) eqA_dec (T : Tree A) : Type :=
+    flat_exist : forall l : list A,
+                 Sorted leA l ->
+                 (forall a : A, leA_Tree A leA a T -> HdRel leA a l) ->
+                 meq (contents A eqA eqA_dec T) (list_contents eqA eqA_dec l) -> flat_spec A leA eqA eqA_dec T.
 
-  Lemma heap_to_list : forall T:Tree, is_heap T -> flat_spec T.
+  Lemma heap_to_list A leA eqA eqA_dec (leA_dec:forall x y:A, {leA x y} + {leA y x}) : forall T:Tree A, is_heap A leA T -> flat_spec A leA eqA eqA_dec T.
   Proof.
     intros T h; elim h; intros.
     apply flat_exist with (nil (A:=A)); auto with datatypes.
     elim X; intros l1 s1 i1 m1; elim X0; intros l2 s2 i2 m2.
-    elim (merge _ s1 _ s2); intros.
+    elim (merge A leA eqA leA_dec eqA_dec _ s1 _ s2); intros.
     apply flat_exist with (a :: l); simpl; auto with datatypes.
     apply meq_trans with
       (munion (list_contents _ eqA_dec l1)
-	(munion (list_contents _ eqA_dec l2) (singletonBag a))).
+        (munion (list_contents _ eqA_dec l2) (SingletonBag _ eqA_dec a))).
     apply meq_congr; auto with datatypes.
     apply meq_trans with
-      (munion (singletonBag a)
+      (munion (SingletonBag _ eqA_dec a)
 	(munion (list_contents _ eqA_dec l1) (list_contents _ eqA_dec l2))).
     apply munion_rotate.
     apply meq_right; apply meq_sym; trivial with datatypes.
@@ -291,17 +293,16 @@ Section defs.
 
   (** * Specification of treesort *)
 
-  Theorem treesort :
+  Theorem treesort A leA eqA (leA_dec:forall x y:A, {leA x y} + {leA y x}) eqA_dec
+    (leA_trans : forall x y z:A, leA x y -> leA y z -> leA x z) :
     forall l:list A,
-    {m : list A | Sorted leA m & permutation _ eqA_dec l m}.
+    {m : list A | Sorted leA m & permutation eqA eqA_dec l m}.
   Proof.
     intro l; unfold permutation.
-    elim (list_to_heap l).
+    elim (list_to_heap A leA eqA leA_dec eqA_dec leA_trans l).
     intros.
-    elim (heap_to_list T); auto with datatypes.
+    elim (heap_to_list A leA eqA eqA_dec leA_dec T); auto with datatypes.
     intros.
     exists l0; auto with datatypes.
-    apply meq_trans with (contents T); trivial with datatypes.
+    apply meq_trans with (contents A eqA eqA_dec T); trivial with datatypes.
   Qed.
-
-End defs.
