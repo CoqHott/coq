@@ -45,6 +45,12 @@ Hint Transparent key : core.
 
 (** * Trees *)
 
+Polymorphic Cumulative Inductive tree elt :=
+  | Leaf : tree elt
+  | Node : tree elt -> key -> elt -> tree elt -> int -> tree elt.
+
+Arguments Leaf {_}.
+
 Section Elt.
 
 Variable elt : Type.
@@ -53,12 +59,7 @@ Variable elt : Type.
 
    The fifth field of [Node] is the height of the tree *)
 
-#[universes(template)]
-Inductive tree :=
-  | Leaf : tree
-  | Node : tree -> key -> elt -> tree -> int -> tree.
-
-Notation t := tree.
+Notation t := (tree elt).
 
 (** * Basic functions on trees: height and cardinal *)
 
@@ -76,11 +77,11 @@ Fixpoint cardinal (m : t) : nat :=
 
 (** * Empty Map *)
 
-Definition empty := Leaf.
+Definition empty := @Leaf elt.
 
 (** * Emptyness test *)
 
-Definition is_empty m := match m with Leaf => true | _ => false end.
+Definition is_empty (m:t) := match m with Leaf => true | _ => false end.
 
 (** * Membership *)
 
@@ -88,7 +89,7 @@ Definition is_empty m := match m with Leaf => true | _ => false end.
     to achieve logarithmic complexity. *)
 
 Fixpoint mem x m : bool :=
-   match m with
+   match (m:t) with
      |  Leaf => false
      |  Node l y _ r _ => match X.compare x y with
              | LT _ => mem x l
@@ -343,12 +344,11 @@ Notation "t #l" := (t_left t) (at level 9, format "t '#l'").
 Notation "t #o" := (t_opt t) (at level 9, format "t '#o'").
 Notation "t #r" := (t_right t) (at level 9, format "t '#r'").
 
-
 (** * Map *)
 
 Fixpoint map (elt elt' : Type)(f : elt -> elt')(m : t elt) : t elt' :=
   match m with
-   | Leaf _   => Leaf _
+   | Leaf   => Leaf
    | Node l x d r h => Node (map f l) x (f d) (map f r) h
   end.
 
@@ -356,7 +356,7 @@ Fixpoint map (elt elt' : Type)(f : elt -> elt')(m : t elt) : t elt' :=
 
 Fixpoint mapi (elt elt' : Type)(f : key -> elt -> elt')(m : t elt) : t elt' :=
   match m with
-   | Leaf _ => Leaf _
+   | Leaf => Leaf
    | Node l x d r h => Node (mapi f l) x (f x d) (mapi f r) h
   end.
 
@@ -365,7 +365,7 @@ Fixpoint mapi (elt elt' : Type)(f : key -> elt -> elt')(m : t elt) : t elt' :=
 Fixpoint map_option (elt elt' : Type)(f : key -> elt -> option elt')(m : t elt)
   : t elt' :=
   match m with
-   | Leaf _ => Leaf _
+   | Leaf => Leaf
    | Node l x d r h =>
       match f x d with
        | Some d' => join (map_option f l) x d' (map_option f r)
@@ -395,8 +395,8 @@ Variable mapr : t elt' -> t elt''.
 
 Fixpoint map2_opt m1 m2 :=
  match m1, m2 with
-  | Leaf _, _ => mapr m2
-  | _, Leaf _ => mapl m1
+  | Leaf, _ => mapr m2
+  | _, Leaf => mapl m1
   | Node l1 x1 d1 r1 h1, _ =>
      let (l2',o2,r2') := split x1 m2 in
      match f x1 d1 o2 with
@@ -463,7 +463,7 @@ Definition gt_tree x m := forall y, In y m -> X.lt x y.
 (** [bst t] : [t] is a binary search tree *)
 
 Inductive bst : t elt -> Prop :=
-  | BSLeaf : bst (Leaf _)
+  | BSLeaf : bst Leaf
   | BSNode : forall x e l r h, bst l -> bst r ->
      lt_tree x l -> gt_tree x r -> bst (Node l x e r h).
 
@@ -589,14 +589,14 @@ Qed.
 Lemma MapsTo_1 :
  forall m x y e, X.eq x y -> MapsTo x e m -> MapsTo y e m.
 Proof.
- induction m; simpl; intuition_in; eauto.
+ induction m; simpl; intuition_in; eauto. inversion H0.
 Qed.
 Hint Immediate MapsTo_1 : core.
 
 Lemma In_1 :
  forall m x y, X.eq x y -> In x m -> In y m.
 Proof.
- intros m x y; induction m; simpl; intuition_in; eauto.
+ intros m x y; induction m; simpl; intuition_in; eauto. inversion H0.
 Qed.
 
 Lemma In_node_iff :
@@ -608,14 +608,14 @@ Qed.
 
 (** Results about [lt_tree] and [gt_tree] *)
 
-Lemma lt_leaf : forall x, lt_tree x (Leaf elt).
+Lemma lt_leaf : forall x, lt_tree x (@Leaf elt).
 Proof.
- unfold lt_tree; intros; intuition_in.
+ unfold lt_tree; intros; intuition_in. inversion H.
 Qed.
 
-Lemma gt_leaf : forall x, gt_tree x (Leaf elt).
+Lemma gt_leaf : forall x, gt_tree x (@Leaf elt).
 Proof.
-  unfold gt_tree; intros; intuition_in.
+  unfold gt_tree; intros; intuition_in. inversion H.
 Qed.
 
 Lemma lt_tree_node : forall x y l r e h,
@@ -695,7 +695,7 @@ Qed.
 
 Lemma empty_1 : Empty (empty elt).
 Proof.
- unfold empty, Empty; intuition_in.
+ unfold empty, Empty; intuition_in. inversion H.
 Qed.
 
 (** * Emptyness test *)
@@ -708,7 +708,7 @@ Qed.
 
 Lemma is_empty_2 : forall m, is_empty m = true -> Empty m.
 Proof.
- destruct m; simpl; intros; try discriminate; red; intuition_in.
+ destruct m; simpl; intros; try discriminate; red; intuition_in. inversion H0.
 Qed.
 
 (** * Membership *)
@@ -716,7 +716,7 @@ Qed.
 Lemma mem_1 : forall m x, bst m -> In x m -> mem x m = true.
 Proof.
  intros m x; functional induction (mem x m); auto; intros; clearf;
-  inv bst; intuition_in; order.
+  inv bst; intuition_in; try order. inversion H0.
 Qed.
 
 Lemma mem_2 : forall m x, mem x m = true -> In x m.
@@ -728,7 +728,8 @@ Lemma find_1 : forall m x e, bst m -> MapsTo x e m -> find x m = Some e.
 Proof.
  intros m x; functional induction (find x m); auto; intros; clearf;
   inv bst; intuition_in; simpl; auto;
- try solve [order | absurd (X.lt x y); eauto | absurd (X.lt y x); eauto].
+    try solve [order | absurd (X.lt x y); eauto | absurd (X.lt y x); eauto].
+ inversion H0.
 Qed.
 
 Lemma find_2 : forall m x e, find x m = Some e -> MapsTo x e m.
@@ -918,7 +919,7 @@ Lemma remove_min_in : forall l x e r h y,
   X.eq y (remove_min l x e r)#2#1 \/ In y (remove_min l x e r)#1.
 Proof.
  intros l x e r; functional induction (remove_min l x e r); simpl in *; intros.
- intuition_in.
+ intuition_in. inversion H0.
  rewrite e0 in *; simpl; intros.
  rewrite bal_in, In_node_iff, IHp; intuition.
 Qed.
@@ -929,7 +930,7 @@ Lemma remove_min_mapsto : forall l x e r h y e',
     \/ MapsTo y e' (remove_min l x e r)#1.
 Proof.
  intros l x e r; functional induction (remove_min l x e r); simpl in *; intros.
- intuition_in; subst; auto.
+ intuition_in; subst; auto. inversion H0.
  rewrite e0 in *; simpl; intros.
  rewrite bal_mapsto; auto; unfold create.
  simpl in *;destruct (IHp _x y e').
@@ -1000,8 +1001,8 @@ Lemma merge_in : forall m1 m2 y, bst m1 -> bst m2 ->
 Proof.
  intros m1 m2; functional induction (merge m1 m2);intros;
   try factornode _x _x0 _x1 _x2 _x3 as m1.
- intuition_in.
- intuition_in.
+ intuition_in. now inversion H0.
+ intuition_in. now inversion H2.
  rewrite bal_in, remove_min_in, e1; simpl; intuition.
 Qed.
 
@@ -1010,8 +1011,8 @@ Lemma merge_mapsto : forall m1 m2 y e, bst m1 -> bst m2 ->
 Proof.
  intros m1 m2; functional induction (merge m1 m2); intros;
   try factornode _x _x0 _x1 _x2 _x3 as m1.
- intuition_in.
- intuition_in.
+ intuition_in. now inversion H2.
+ intuition_in. now inversion H2.
  rewrite bal_mapsto, remove_min_mapsto, e1; simpl; auto.
  unfold create.
  intuition; subst; auto.
@@ -1038,7 +1039,7 @@ Lemma remove_in : forall m x y, bst m ->
  (In y (remove x m) <-> ~ X.eq y x /\ In y m).
 Proof.
  intros m x; functional induction (remove x m); simpl; intros.
- intuition_in.
+ intuition_in. inversion H0.
  (* LT *)
  inv bst; clear e0.
  rewrite bal_in; auto.
@@ -1108,8 +1109,8 @@ Lemma join_in : forall l x d r y,
 Proof.
  join_tac.
  simpl.
- rewrite add_in; intuition_in.
- rewrite add_in; intuition_in.
+ rewrite add_in; intuition_in. inversion H.
+ rewrite add_in; intuition_in. inversion H.
  rewrite bal_in, Hlr; clear Hlr Hrl; intuition_in.
  rewrite bal_in, Hrl; clear Hlr Hrl; intuition_in.
  apply create_in.
@@ -1130,7 +1131,7 @@ Lemma join_find : forall l x d r y,
  find y (join l x d r) = find y (create l x d r).
 Proof.
  join_tac; auto; inv bst;
-  simpl (join (Leaf elt));
+  simpl (join (@Leaf elt));
   try (assert (X.lt lx x) by auto);
   try (assert (X.lt x rx) by auto);
   rewrite ?add_find, ?bal_find; auto.
@@ -1160,7 +1161,7 @@ Lemma split_in_1 : forall m x, bst m -> forall y,
 Proof.
  intros m x; functional induction (split x m); simpl; intros;
   inv bst; try clear e0.
- intuition_in.
+ intuition_in. inversion H0.
  rewrite e1 in IHt; simpl in IHt; rewrite IHt; intuition_in; order.
  intuition_in; order.
  rewrite join_in.
@@ -1172,7 +1173,7 @@ Lemma split_in_2 : forall m x, bst m -> forall y,
 Proof.
  intros m x; functional induction (split x m); subst; simpl; intros;
   inv bst; try clear e0.
- intuition_in.
+ intuition_in. inversion H0.
  rewrite join_in.
  rewrite e1 in IHt; simpl in IHt; rewrite IHt; intuition_in; order.
  intuition_in; order.
@@ -1241,8 +1242,8 @@ Lemma concat_in : forall m1 m2 y,
 Proof.
  intros m1 m2; functional induction (concat m1 m2); intros;
   try factornode _x _x0 _x1 _x2 _x3 as m1.
- intuition_in.
- intuition_in.
+ intuition_in. inversion H0.
+ intuition_in. inversion H0.
  rewrite join_in, remove_min_in, e1; simpl; intuition.
 Qed.
 
@@ -2040,7 +2041,7 @@ Module IntMake_ord (I:Int)(X: OrderedType)(D : OrderedType) <:
 
   Fixpoint compare_cont s1 (cont:R.enumeration D.t -> comparison) e2 :=
    match s1 with
-    | R.Leaf _ => cont e2
+    | R.Leaf => cont e2
     | R.Node l1 x1 d1 r1 _ =>
        compare_cont l1 (compare_more x1 d1 (compare_cont r1 cont)) e2
    end.
