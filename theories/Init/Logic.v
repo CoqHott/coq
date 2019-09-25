@@ -60,6 +60,9 @@ where "A /\ B" := (and A B) : type_scope.
 Register and as core.and.type.
 Register conj as core.and.conj.
 
+Register conj as core.and.intro.
+Register and_rect as core.and.rect.
+
 Section Conjunction.
 
   Variables A B : Prop.
@@ -73,6 +76,9 @@ Section Conjunction.
   Proof.
     destruct 1; trivial.
   Qed.
+
+  Register proj1 as core.and.proj1.
+  Register proj2 as core.and.proj2.
 
 End Conjunction.
 

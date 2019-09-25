@@ -190,6 +190,10 @@ val build_bool_type : coq_bool_data delayed
 val build_prod : coq_sigma_data delayed
 [@@ocaml.deprecated "Please use Coqlib.lib_ref"]
 
+(** Non-dependent pairs in Prop from Datatypes *)
+val build_and : coq_sigma_data delayed
+[@@ocaml.deprecated "Please use Coqlib.lib_ref"]
+
 val build_coq_eq       : GlobRef.t delayed
 [@@ocaml.deprecated "Please use Coqlib.lib_ref"]
 (** = [(build_coq_eq_data()).eq] *)

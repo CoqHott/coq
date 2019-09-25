@@ -1703,9 +1703,7 @@ Definition equivalence_rel := forall x y z, R z z /\ (R x y -> R x z = R y z).
 Lemma equivalence_relP : equivalence_rel <-> (reflexive /\ left_transitive).
 Proof.
 split=> [eqiR | [Rxx trR] x y z]; last by split=> [|/trR->].
-split=> [x | x y Rxy z].
-- destruct (eqiR x x x). assumption.
-- destruct (eqiR x y z) as (H,H'). apply H'; assumption.
+by split=> [x | x y Rxy z]; [rewrite (eqiR x x x) | rewrite (eqiR x y z)].
 Qed.
 
 End RelationProperties.
@@ -1938,15 +1936,12 @@ Lemma sub_in21 T T3 d d' d3 d3' (P : T -> T -> T3 -> Prop) :
 Proof. by move=> /= sub sub3; apply: sub_in111. Qed.
 
 Lemma equivalence_relP_in T (R : rel T) (A : pred T) :
-  {in A, equivalence_rel R}
+  {in A & &, equivalence_rel R}
    <-> {in A, reflexive R} /\ {in A &, forall x y, R x y -> {in A, R x =1 R y}}.
 Proof.
-  split=> [eqiR | [Rxx trR] x y z *].
-  - split=> [x Ax|x y Ax Ay Rxy z Az].
-    + specialize (eqiR x Ax x x); exact (fst eqiR).
-    + specialize (eqiR x Ax y z). apply (snd eqiR); assumption.
-  (* - compute in trR. split=> [|/trR-> //]. Focus 2.  compute in Rxx.  apply: Rxx. *)
-Admitted.
+split=> [eqiR | [Rxx trR] x y z *]; last by split=> [|/trR-> //]; apply: Rxx.
+by split=> [x Ax|x y Ax Ay Rxy z Az]; [rewrite (eqiR x x) | rewrite (eqiR x y)].
+Qed.
 
 Section MonoHomoMorphismTheory.
 

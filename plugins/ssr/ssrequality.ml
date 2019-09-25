@@ -439,6 +439,9 @@ let rwcltac ?under ?map_redex cl rdx dir sr gl =
 let lz_coq_prod =
   let prod = lazy (Coqlib.build_prod ()) in fun () -> Lazy.force prod
 
+let lz_coq_and =
+  let coq_and = lazy (Coqlib.build_and ()) in fun () -> Lazy.force coq_and
+
 let lz_setoid_relation =
   let sdir = ["Classes"; "RelationClasses"] in
   let last_srel = ref None in
@@ -468,6 +471,7 @@ let dir_org = function L2R -> 1 | R2L -> 2
 let rwprocess_rule dir rule gl =
   let env = pf_env gl in
   let coq_prod = lz_coq_prod () in
+  let coq_and = lz_coq_and () in
   let is_setoid = ssr_is_setoid env in
   let r_sigma, rules =
     let rec loop d sigma r t0 rs red =
@@ -490,6 +494,25 @@ let rwprocess_rule dir rule gl =
             EConstr.mkApp (pi1, ra), sigma
           | _ ->
             let sigma, pi2 = Evd.fresh_global env sigma coq_prod.Coqlib.proj2 in
+            EConstr.mkApp (pi2, ra), sigma in
+        if EConstr.eq_constr sigma a.(0) (EConstr.of_constr (UnivGen.constr_of_global @@ Coqlib.(lib_ref "core.True.type"))) then
+         let s, sigma = sr sigma 2 in
+         loop (converse_dir d) sigma s a.(1) rs 0
+        else
+         let s, sigma = sr sigma 2 in
+         let sigma, rs2 = loop d sigma s a.(1) rs 0 in
+         let s, sigma = sr sigma 1 in
+         loop d sigma s a.(0) rs2 0
+      | App (pr, a) when is_ind_ref sigma pr coq_and.Coqlib.typ ->
+        let sr sigma = match EConstr.kind sigma (Tacred.hnf_constr env sigma r) with
+        | App (c, ra) when is_construct_ref sigma c coq_and.Coqlib.intro ->
+          fun i -> ra.(i + 1), sigma
+        | _ -> let ra = Array.append a [|r|] in
+          function 1 ->
+            let sigma, pi1 = Evd.fresh_global env sigma coq_and.Coqlib.proj1 in
+            EConstr.mkApp (pi1, ra), sigma
+          | _ ->
+            let sigma, pi2 = Evd.fresh_global env sigma coq_and.Coqlib.proj2 in
             EConstr.mkApp (pi2, ra), sigma in
         if EConstr.eq_constr sigma a.(0) (EConstr.of_constr (UnivGen.constr_of_global @@ Coqlib.(lib_ref "core.True.type"))) then
          let s, sigma = sr sigma 2 in

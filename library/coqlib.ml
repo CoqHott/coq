@@ -204,6 +204,8 @@ let build_prod       () = build_sigma_gen "prod"
 let build_sigma      () = build_sigma_gen "sig"
 let build_sigma_type () = build_sigma_gen "sigT"
 
+let build_and       () = build_sigma_gen "and"
+
 (* Booleans *)
 
 type coq_bool_data  = {
