@@ -51,6 +51,13 @@ Polymorphic Cumulative Inductive tree elt :=
 
 Arguments Leaf {_}.
 
+Polymorphic Cumulative Record triple elt := mktriple { t_left:(tree elt); t_opt:option elt; t_right:(tree elt) }.
+Notation "<< l , b , r >>" := (mktriple l b r) (at level 9).
+
+Polymorphic Cumulative Inductive enumeration elt :=
+ | End : enumeration elt
+ | More : key -> elt -> (tree elt) -> enumeration elt -> enumeration elt.
+
 Section Elt.
 
 Variable elt : Type.
@@ -237,11 +244,8 @@ Fixpoint join l : key -> elt -> t -> t :=
     - [o] is the result of [find x m].
 *)
 
-#[universes(template)]
-Record triple := mktriple { t_left:t; t_opt:option elt; t_right:t }.
-Notation "<< l , b , r >>" := (mktriple l b r) (at level 9).
 
-Fixpoint split x m : triple := match m with
+Fixpoint split x m : triple elt := match m with
   | Leaf => << Leaf, None, Leaf >>
   | Node l y d r h =>
      match X.compare x y with
@@ -294,15 +298,10 @@ Variable cmp : elt->elt->bool.
 
 (** ** Enumeration of the elements of a tree *)
 
-#[universes(template)]
-Inductive enumeration :=
- | End : enumeration
- | More : key -> elt -> t -> enumeration -> enumeration.
-
 (** [cons m e] adds the elements of tree [m] on the head of
     enumeration [e]. *)
 
-Fixpoint cons m e : enumeration :=
+Fixpoint cons m e : enumeration elt :=
  match m with
   | Leaf => e
   | Node l x d r h => cons l (More x d r e)
@@ -310,9 +309,9 @@ Fixpoint cons m e : enumeration :=
 
 (** One step of comparison of elements *)
 
-Definition equal_more x1 d1 (cont:enumeration->bool) e2 :=
+Definition equal_more x1 d1 (cont:enumeration elt -> bool) e2 :=
  match e2 with
- | End => false
+ | End _ => false
  | More x2 d2 r2 e2 =>
      match X.compare x1 x2 with
       | EQ _ => cmp d1 d2 &&& cont (cons r2 e2)
@@ -322,7 +321,7 @@ Definition equal_more x1 d1 (cont:enumeration->bool) e2 :=
 
 (** Comparison of left tree, middle element, then right tree *)
 
-Fixpoint equal_cont m1 (cont:enumeration->bool) e2 :=
+Fixpoint equal_cont m1 (cont:enumeration elt -> bool) e2 :=
  match m1 with
   | Leaf => cont e2
   | Node l1 x1 d1 r1 _ =>
@@ -331,11 +330,11 @@ Fixpoint equal_cont m1 (cont:enumeration->bool) e2 :=
 
 (** Initial continuation *)
 
-Definition equal_end e2 := match e2 with End => true | _ => false end.
+Definition equal_end (e2 : enumeration elt) := match e2 with End _ => true | _ => false end.
 
 (** The complete comparison *)
 
-Definition equal m1 m2 := equal_cont m1 equal_end (cons m2 End).
+Definition equal m1 m2 := equal_cont m1 equal_end (cons m2 (End _)).
 
 End Elt.
 Notation t := tree.
@@ -1821,8 +1820,7 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Module Raw := Raw I X.
  Import Raw.Proofs.
 
- #[universes(template)]
- Record bst (elt:Type) :=
+ Polymorphic Cumulative Record bst (elt:Type) :=
   Bst {this :> Raw.tree elt; is_bst : Raw.bst this}.
 
  Definition t := bst.

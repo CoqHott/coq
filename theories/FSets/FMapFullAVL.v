@@ -52,7 +52,7 @@ Implicit Types m r : t elt.
     differ by at most 2 *)
 
 Inductive avl : t elt -> Prop :=
-  | RBLeaf : avl (Leaf _)
+  | RBLeaf : avl Leaf
   | RBNode : forall x e l r h,
       avl l ->
       avl r ->
@@ -69,7 +69,7 @@ Lemma height_non_negative : forall (s : t elt), avl s ->
  height s >= 0.
 Proof.
  induction s; simpl; intros; auto with zarith.
- inv avl; intuition; omega_max.
+ inv avl; intuition. omega_max.
 Qed.
 
 Ltac avl_nn_hyp H :=
