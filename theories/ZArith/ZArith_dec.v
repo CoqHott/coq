@@ -19,7 +19,7 @@ Local Open Scope Z_scope.
 (* Trivial, to deprecate? *)
 Lemma Dcompare_inf : forall r:comparison, {r = Eq} + {r = Lt} + {r = Gt}.
 Proof.
-  induction r; auto.
+  induction r; first [left; solve [auto with arith] | right; solve [auto with arith]].
 Defined.
 (* end hide *)
 

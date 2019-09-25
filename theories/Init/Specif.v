@@ -24,31 +24,27 @@ Require Import Logic.
     Similarly [(sig2 A P Q)], or [{x:A | P x & Q x}], denotes the subset
     of elements of the type [A] which satisfy both [P] and [Q]. *)
 
-#[universes(template)]
-Inductive sig (A:Type) (P:A -> Prop) : Type :=
+Polymorphic Cumulative Inductive sig (A:Type) (P:A -> Prop) : Type :=
     exist : forall x:A, P x -> sig P.
 
 Register sig as core.sig.type.
 Register exist as core.sig.intro.
 Register sig_rect as core.sig.rect.
 
-#[universes(template)]
-Inductive sig2 (A:Type) (P Q:A -> Prop) : Type :=
+Polymorphic Cumulative Inductive sig2 (A:Type) (P Q:A -> Prop) : Type :=
     exist2 : forall x:A, P x -> Q x -> sig2 P Q.
 
 (** [(sigT A P)], or more suggestively [{x:A & (P x)}] is a Sigma-type.
     Similarly for [(sigT2 A P Q)], also written [{x:A & (P x) & (Q x)}]. *)
 
-#[universes(template)]
-Inductive sigT (A:Type) (P:A -> Type) : Type :=
+Polymorphic Cumulative Inductive sigT (A:Type) (P:A -> Type) : Type :=
     existT : forall x:A, P x -> sigT P.
 
 Register sigT as core.sigT.type.
 Register existT as core.sigT.intro.
 Register sigT_rect as core.sigT.rect.
 
-#[universes(template)]
-Inductive sigT2 (A:Type) (P Q:A -> Type) : Type :=
+Polymorphic Cumulative Inductive sigT2 (A:Type) (P Q:A -> Type) : Type :=
     existT2 : forall x:A, P x -> Q x -> sigT2 P Q.
 
 (* Notations *)
@@ -344,7 +340,7 @@ Section sigT.
       but for simplicity, we don't. *)
   Definition eq_sigT_uncurried_iff {A P}
              (u v : { a : A & P a })
-    : u = v <-> { p : u.1 = v.1 & rew p in u.2 = v.2 }.
+    : (u = v) <-T-> { p : u.1 = v.1 & rew p in u.2 = v.2 }.
   Proof.
     split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sigT_uncurried ].
   Defined.
@@ -439,7 +435,7 @@ Section sig.
       but for simplicity, we don't. *)
   Definition eq_sig_uncurried_iff {A} {P : A -> Prop}
              (u v : { a : A | P a })
-    : u = v <-> { p : proj1_sig u = proj1_sig v | rew p in proj2_sig u = proj2_sig v }.
+    : (u = v) <-T-> { p : proj1_sig u = proj1_sig v | rew p in proj2_sig u = proj2_sig v }.
   Proof.
     split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sig_uncurried ].
   Defined.
@@ -526,8 +522,8 @@ Section sigT2.
       but for simplicity, we don't. *)
   Definition eq_sigT2_uncurried_iff {A P Q}
              (u v : { a : A & P a & Q a })
-    : u = v
-      <-> { p : u.1 = v.1
+    : (u = v)
+      <-T-> { p : u.1 = v.1
           & rew p in u.2 = v.2 & rew p in projT3 u = projT3 v }.
   Proof.
     split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sigT2_uncurried ].
@@ -638,8 +634,8 @@ Section sig2.
       but for simplicity, we don't. *)
   Definition eq_sig2_uncurried_iff {A P Q}
              (u v : { a : A | P a & Q a })
-    : u = v
-      <-> { p : proj1_sig u = proj1_sig v
+    : (u = v)
+      <-T-> { p : proj1_sig u = proj1_sig v
           | rew p in proj2_sig u = proj2_sig v & rew p in proj3_sig u = proj3_sig v }.
   Proof.
     split; [ intro; subst; exists eq_refl; reflexivity | apply eq_sig2_uncurried ].
@@ -704,8 +700,7 @@ Register sumbool as core.sumbool.type.
 (** [sumor] is an option type equipped with the justification of why
     it may not be a regular value *)
 
-#[universes(template)]
-Inductive sumor (A:Type) (B:Prop) : Type :=
+Polymorphic Cumulative Inductive sumor (A:Type) (B:Prop) : Type :=
   | inleft : A -> A + {B}
   | inright : B -> A + {B}
  where "A + { B }" := (sumor A B) : type_scope.

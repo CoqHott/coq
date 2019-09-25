@@ -12,35 +12,33 @@ Set Implicit Arguments.
 
 (** Streams *)
 
+Polymorphic Cumulative CoInductive Stream (A : Type) : Type :=
+    Cons : A -> Stream A -> Stream A.
+
 Section Streams.
 
-Variable A : Type.
+  Variable A : Type.
 
-#[universes(template)]
-CoInductive Stream : Type :=
-    Cons : A -> Stream -> Stream.
-
-
-Definition hd (x:Stream) := match x with
+  Definition hd (x:Stream A) := match x with
                             | Cons a _ => a
                             end.
 
-Definition tl (x:Stream) := match x with
+  Definition tl (x:Stream A) := match x with
                             | Cons _ s => s
                             end.
 
 
-Fixpoint Str_nth_tl (n:nat) (s:Stream) : Stream :=
+Fixpoint Str_nth_tl (n:nat) (s:Stream A) : Stream A :=
   match n with
   | O => s
   | S m => Str_nth_tl m (tl s)
   end.
 
-Definition Str_nth (n:nat) (s:Stream) : A := hd (Str_nth_tl n s).
+Definition Str_nth (n:nat) (s:Stream A) : A := hd (Str_nth_tl n s).
 
 
 Lemma unfold_Stream :
- forall x:Stream, x = match x with
+ forall x:Stream A, x = match x with
                       | Cons a s => Cons a s
                       end.
 Proof.
@@ -50,14 +48,14 @@ Proof.
 Qed.
 
 Lemma tl_nth_tl :
- forall (n:nat) (s:Stream), tl (Str_nth_tl n s) = Str_nth_tl n (tl s).
+ forall (n:nat) (s:Stream A), tl (Str_nth_tl n s) = Str_nth_tl n (tl s).
 Proof.
   simple induction n; simpl; auto.
 Qed.
 Hint Resolve tl_nth_tl: datatypes.
 
 Lemma Str_nth_tl_plus :
- forall (n m:nat) (s:Stream),
+ forall (n m:nat) (s:Stream A),
    Str_nth_tl n (Str_nth_tl m s) = Str_nth_tl (n + m) s.
 simple induction n; simpl; intros; auto with datatypes.
 rewrite <- H.
@@ -65,14 +63,14 @@ rewrite tl_nth_tl; trivial with datatypes.
 Qed.
 
 Lemma Str_nth_plus :
- forall (n m:nat) (s:Stream), Str_nth n (Str_nth_tl m s) = Str_nth (n + m) s.
+ forall (n m:nat) (s:Stream A), Str_nth n (Str_nth_tl m s) = Str_nth (n + m) s.
 intros; unfold Str_nth; rewrite Str_nth_tl_plus;
  trivial with datatypes.
 Qed.
 
 (** Extensional Equality between two streams  *)
 
-CoInductive EqSt (s1 s2: Stream) : Prop :=
+CoInductive EqSt (s1 s2: Stream A) : Prop :=
     eqst :
         hd s1 = hd s2 -> EqSt (tl s1) (tl s2) -> EqSt s1 s2.
 
@@ -85,12 +83,12 @@ Ltac coinduction proof :=
 
 (** Extensional equality is an equivalence relation *)
 
-Theorem EqSt_reflex : forall s:Stream, EqSt s s.
+Theorem EqSt_reflex : forall s:Stream A, EqSt s s.
 coinduction EqSt_reflex.
 reflexivity.
 Qed.
 
-Theorem sym_EqSt : forall s1 s2:Stream, EqSt s1 s2 -> EqSt s2 s1.
+Theorem sym_EqSt : forall s1 s2:Stream A, EqSt s1 s2 -> EqSt s2 s1.
 coinduction Eq_sym.
 + case H; intros; symmetry ; assumption.
 + case H; intros; assumption.
@@ -98,7 +96,7 @@ Qed.
 
 
 Theorem trans_EqSt :
- forall s1 s2 s3:Stream, EqSt s1 s2 -> EqSt s2 s3 -> EqSt s1 s3.
+ forall s1 s2 s3:Stream A, EqSt s1 s2 -> EqSt s2 s3 -> EqSt s1 s3.
 coinduction Eq_trans.
 - transitivity (hd s2).
   + case H; intros; assumption.
@@ -112,7 +110,7 @@ Qed.
     position to be equal *)
 
 Theorem eqst_ntheq :
- forall (n:nat) (s1 s2:Stream), EqSt s1 s2 -> Str_nth n s1 = Str_nth n s2.
+ forall (n:nat) (s1 s2:Stream A), EqSt s1 s2 -> Str_nth n s1 = Str_nth n s2.
 unfold Str_nth; simple induction n.
 - intros s1 s2 H; case H; trivial with datatypes.
 - intros m hypind.
@@ -123,7 +121,7 @@ unfold Str_nth; simple induction n.
 Qed.
 
 Theorem ntheq_eqst :
- forall s1 s2:Stream,
+ forall s1 s2:Stream A,
    (forall n:nat, Str_nth n s1 = Str_nth n s2) -> EqSt s1 s2.
 coinduction Equiv2.
 - apply (H 0).
@@ -132,7 +130,7 @@ Qed.
 
 Section Stream_Properties.
 
-Variable P : Stream -> Prop.
+Variable P : Stream A -> Prop.
 
 (*i
 Inductive Exists : Stream -> Prop :=
@@ -140,11 +138,11 @@ Inductive Exists : Stream -> Prop :=
   | Further : forall x:Stream, ~ P x -> Exists (tl x) -> Exists x.
 i*)
 
-Inductive Exists ( x: Stream ) : Prop :=
+Inductive Exists ( x: Stream A) : Prop :=
   | Here : P x -> Exists x
   | Further : Exists (tl x) -> Exists x.
 
-CoInductive ForAll (x: Stream) : Prop :=
+CoInductive ForAll (x: Stream A) : Prop :=
     HereAndFurther : P x -> ForAll (tl x) -> ForAll x.
 
 Lemma ForAll_Str_nth_tl : forall m x, ForAll x -> ForAll (Str_nth_tl m x).
@@ -158,11 +156,11 @@ induction m.
 Qed.
 
 Section Co_Induction_ForAll.
-Variable Inv : Stream -> Prop.
-Hypothesis InvThenP : forall x:Stream, Inv x -> P x.
-Hypothesis InvIsStable : forall x:Stream, Inv x -> Inv (tl x).
+Variable Inv : Stream A -> Prop.
+Hypothesis InvThenP : forall x:Stream A, Inv x -> P x.
+Hypothesis InvIsStable : forall x:Stream A, Inv x -> Inv (tl x).
 
-Theorem ForAll_coind : forall x:Stream, Inv x -> ForAll x.
+Theorem ForAll_coind : forall x:Stream A, Inv x -> ForAll x.
 coinduction ForAll_coind; auto.
 Qed.
 End Co_Induction_ForAll.

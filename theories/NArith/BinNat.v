@@ -94,7 +94,7 @@ Defined.
 
 Definition discr n : { p:positive | n = pos p } + { n = 0 }.
 Proof.
- destruct n; auto with arith.
+ destruct n. right. auto with arith.
  left; exists p; auto.
 Defined.
 
