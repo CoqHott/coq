@@ -167,8 +167,7 @@ Register S as num.nat.S.
 
 (** [option A] is the extension of [A] with an extra element [None] *)
 
-#[universes(template)]
-Inductive option (A:Type) : Type :=
+Polymorphic Cumulative Inductive option (A:Type) : Type :=
   | Some : A -> option A
   | None : option A.
 
@@ -187,8 +186,7 @@ Definition option_map (A B:Type) (f:A->B) (o : option A) : option B :=
 
 (** [sum A B], written [A + B], is the disjoint sum of [A] and [B] *)
 
-#[universes(template)]
-Inductive sum (A B:Type) : Type :=
+Polymorphic Cumulative Inductive sum (A B:Type) : Type :=
   | inl : A -> sum A B
   | inr : B -> sum A B.
 
@@ -200,8 +198,7 @@ Arguments inr {A B} _ , A [B] _.
 (** [prod A B], written [A * B], is the product of [A] and [B];
     the pair [pair A B a b] of [a] and [b] is abbreviated [(a,b)] *)
 
-#[universes(template)]
-Inductive prod (A B:Type) : Type :=
+Polymorphic Cumulative Inductive prod (A B:Type) : Type :=
   pair : A -> B -> A * B
 
 where "x * y" := (prod x y) : type_scope.
@@ -228,6 +225,12 @@ Section projections.
 End projections.
 
 Hint Resolve pair inl inr: core.
+
+Definition iff_Type (A B:Type) := (A -> B) * (B -> A).
+
+Notation "A <-T-> B" := (iff_Type A B) (at level 50) : type_scope.
+
+Register iff_Type as core.iff.type_Type.
 
 Lemma surjective_pairing :
   forall (A B:Type) (p:A * B), p = (fst p, snd p).
@@ -259,8 +262,7 @@ Defined.
 
 (** Polymorphic lists and some operations *)
 
-#[universes(template)]
-Inductive list (A : Type) : Type :=
+Polymorphic Cumulative Inductive list (A : Type) : Type :=
  | nil : list A
  | cons : A -> list A -> list A.
 
@@ -388,8 +390,7 @@ Proof. intros. apply CompareSpec2Type; assumption. Defined.
     member is the singleton datatype [identity A a a] whose
     sole inhabitant is denoted [identity_refl A a] *)
 
-#[universes(template)]
-Inductive identity (A:Type) (a:A) : A -> Type :=
+Polymorphic Cumulative Inductive identity (A:Type) (a:A) : A -> Type :=
   identity_refl : identity a a.
 Hint Resolve identity_refl: core.
 

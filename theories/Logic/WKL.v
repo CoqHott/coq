@@ -217,10 +217,10 @@ assert (infinite_from P l).
       destruct (le_lt_dec n n') as [Hle|Hlt].
       * specialize (IHl' (S n')).
         apply is_path_from_restrict with n'; [assumption|].
-        apply find_left_path; trivial.
+        refine (find_left_path _ _ _ _ _); trivial.
       * specialize (IHl' (S n)).
         apply inductively_barred_at_monotone with (n:=n) in Hbar; [|apply lt_le_weak, Hlt].
-        apply find_left_path; trivial.
+        refine (find_left_path _ _ _ _ _); trivial.
     + apply inductively_barred_at_imp_is_path_from; firstorder. }
 specialize (H 0). inversion H. assumption.
 Qed.

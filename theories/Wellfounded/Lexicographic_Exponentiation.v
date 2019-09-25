@@ -45,8 +45,8 @@ Section Wf_Lexicographic_Exponentiation.
     simpl.
     intros.
     inversion_clear H.
-    apply (Lt_hd A leA); auto with sets.
-    apply (Lt_tl A leA).
+    refine (Lt_hd A leA _ _ _ _ _); auto with sets.
+    refine (Lt_tl A leA _ _ _ _).
     apply (HInd y y0); auto with sets.
   Qed.
 
@@ -62,11 +62,11 @@ Section Wf_Lexicographic_Exponentiation.
     exists x0; auto with sets.
     intros.
     inversion H0.
-    left; apply (Lt_nil A leA).
-    left; apply (Lt_hd A leA); auto with sets.
+    left; refine (Lt_nil A leA _ _).
+    left; refine (Lt_hd A leA _ _ _ _ _); auto with sets.
     generalize (H x1 z H3).
     simple induction 1.
-    left; apply (Lt_tl A leA); auto with sets.
+    left; refine (Lt_tl A leA _ _ _ _); auto with sets.
     simple induction 1.
     simple induction 1; intros.
     rewrite H8.
@@ -77,11 +77,11 @@ Section Wf_Lexicographic_Exponentiation.
   Proof.
     intros.
     inversion H.
-    - apply app_cons_not_nil in H1 as [].
+    - destruct (app_cons_not_nil _ _ _ H1).
     - assert (x ++ [a] = [x0]) by auto with sets.
       apply app_eq_unit in H0 as [(->, _)| (_, [=])].
-      auto using d_nil.
-    - apply app_inj_tail in H0 as (<-, _).
+      econstructor.
+    - pose (X := app_inj_tail _ _ _ _ H0). rewrite <- (proj1 X).
       assumption.
   Qed.
 
@@ -100,19 +100,18 @@ Section Wf_Lexicographic_Exponentiation.
       destruct (app_inj_tail (l ++ [y]) ([] ++ [b]) _ _ H0) as ((?, <-)%app_inj_tail, <-).
       inversion H1; subst; [ apply rt_step; assumption | apply rt_refl ].
     - inversion H0.
-      + apply app_cons_not_nil in H3 as [].
+      + destruct (app_cons_not_nil _ _ _ H3).
       + rewrite app_comm_cons in H0, H1. apply desc_prefix in H0.
         pose proof (H x0 b H0).
         apply rt_trans with (y := x0); auto with sets.
         enough (H5 : clos_refl A leA a x0)
          by (inversion H5; subst; [ apply rt_step | apply rt_refl ];
               assumption).
-        apply app_inj_tail in H1 as (H1, ->).
-        rewrite app_comm_cons in H1.
-        apply app_inj_tail in H1 as (_, <-).
+        pose (X := app_inj_tail _ _ _ _ H1). rewrite <- (proj2 X).
+        rewrite app_comm_cons in X.
+        pose (X' :=  app_inj_tail _ _ _ _ (proj1 X)). rewrite <- (proj2 X').
         assumption.
   Qed.
-
 
   Lemma dist_aux :
     forall z : List,
@@ -127,9 +126,9 @@ Section Wf_Lexicographic_Exponentiation.
       apply app_eq_unit in E as [(->, ->)| (->, ->)].
       + split.
         apply d_nil.
-        apply d_one.
+        refine (d_one _ _ _).
       + split.
-        apply d_one.
+        refine (d_one _ _ _).
         apply d_nil.
     - induction y0 using rev_ind in x0, H0 |- *.
       + rewrite <- app_nil_end in H0.
@@ -141,7 +140,7 @@ Section Wf_Lexicographic_Exponentiation.
         * simpl.
           split.
           apply app_inj_tail in H0 as (<-, _). assumption.
-          apply d_one.
+          refine (d_one _ _ _).
         * rewrite <- 2!app_assoc_reverse in H0.
           apply app_inj_tail in H0 as (H0, <-).
           pose proof H0 as H0'.
@@ -197,7 +196,7 @@ Section Wf_Lexicographic_Exponentiation.
 
     simpl; intros.
     inversion_clear H0.
-    apply (Lt_hd A leA a b); auto with sets.
+    refine (Lt_hd A leA a b _ _ _); auto with sets.
 
     inversion_clear H1.
   Qed.

@@ -164,7 +164,7 @@ Qed.
 Definition tearing_sequences (u : nat -> R) (v : R -> nat)
   : (enumeration R u v) -> nat -> { ab : prod R R | Rlt (fst ab) (snd ab) }.
 Proof.
-  intro pen. apply nat_rec.
+  intro pen. apply nat_rect.
   - exists (INR 0, INR 1). simpl. apply Rlt_0_1.
   - intros n [[a b] pr]. exists (first_two_in_interval u v a b pen pr).
     pose proof (first_two_in_interval_works u v a b pen pr).
@@ -356,7 +356,7 @@ Proof.
   simpl.
 
   assert ((r1,r2) = first_two_in_interval u v r r0 H H1).
-  { simpl in ISn. rewrite -> In in ISn. inversion ISn. reflexivity. }
+  { simpl in ISn. rewrite -> In in ISn. inversion ISn. symmetry. assumption. }
   assert ((r3,r4) = first_two_in_interval u v r1 r2 H H2).
   { pose proof (tearing_sequences_projsig u v H (S n)). rewrite -> ISn in H5.
     rewrite -> ISSn in H5. apply H5. }

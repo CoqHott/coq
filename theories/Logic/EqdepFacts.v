@@ -116,13 +116,29 @@ Arguments eq_dep1 [U P] p x q y.
 
 (** Dependent equality is equivalent to equality on dependent pairs *)
 
+Definition transport {A : Type} (P : A -> Type) {x y : A} (p : x = y) (u : P x) : P y :=
+  match p with eq_refl => u end.
+
+Notation "p # x" := (transport _ p x) (right associativity, at level 65, only parsing).
+
+Definition prT1_path {A} `{P : A -> Type} {u v : sigT P} (p : u = v) : projT1 u = projT1 v
+  := f_equal (@projT1 A P) p.
+
+Notation "p ..1" := (prT1_path p) (at level 50).
+
+Definition prT2_path {A} `{P : A -> Type} {u v : sigT P} (p : u = v)
+  : projT2 u = eq_sym (p..1) # projT2 v.
+  destruct p. reflexivity.
+Defined.
+
+Notation "p ..2" := (prT2_path p) (at level 50).
+
 Lemma eq_sigT_eq_dep :
   forall (U:Type) (P:U -> Type) (p q:U) (x:P p) (y:P q),
     existT P p x = existT P q y -> eq_dep p x q y.
 Proof.
-  intros.
-  dependent rewrite H.
-  apply eq_dep_intro.
+  intros. pose (H2 := H..2). cbn in H2. rewrite H2. set (H1 := H..1). cbn in H1.
+  destruct H1. apply eq_dep_intro.
 Qed.
 
 Lemma eq_dep_eq_sigT :
@@ -141,13 +157,21 @@ Qed.
 
 Notation equiv_eqex_eqdep := eq_sigT_iff_eq_dep (only parsing). (* Compat *)
 
+Definition pr1_path {A} `{P : A -> Prop} {u v : sig P} (p : u = v) : proj1_sig u = proj1_sig v
+  := f_equal (@proj1_sig A P) p.
+
+Definition pr2_path {A} `{P : A -> Prop} {u v : sig P} (p : u = v)
+  : proj2_sig u = eq_sym (pr1_path p) # proj2_sig v.
+  destruct p. reflexivity.
+Defined.
+
 Lemma eq_sig_eq_dep :
   forall (U:Type) (P:U -> Prop) (p q:U) (x:P p) (y:P q),
     exist P p x = exist P q y -> eq_dep p x q y.
 Proof.
   intros.
-  dependent rewrite H.
-  apply eq_dep_intro.
+  intros. pose (H2 := pr2_path H). cbn in H2. rewrite H2. set (H1 := pr1_path H). cbn in H1.
+  destruct H1. apply eq_dep_intro.
 Qed.
 
 Lemma eq_dep_eq_sig :
@@ -168,7 +192,7 @@ Qed.
 
 Set Implicit Arguments.
 
-Lemma eq_sigT_sig_eq : forall X P (x1 x2:X) H1 H2, existT P x1 H1 = existT P x2 H2 <->
+Lemma eq_sigT_sig_eq : forall X P (x1 x2:X) H1 H2, (existT P x1 H1 = existT P x2 H2) <-T->
                                                    {H:x1=x2 | rew H in H1 = H2}.
 Proof.
   intros; split; intro H.

@@ -23,7 +23,7 @@ Definition lt_eq_lt_dec n m : {n < m} + {n = m} + {m < n}.
 Proof.
   induction n in m |- *; destruct m; auto with arith.
   destruct (IHn m) as [H|H]; auto with arith.
-  destruct H; auto with arith.
+  destruct H ; auto with arith.
 Defined.
 
 Definition gt_eq_gt_dec n m : {m > n} + {n = m} + {n > m}.
@@ -34,7 +34,7 @@ Defined.
 Definition le_lt_dec n m : {n <= m} + {m < n}.
 Proof.
   induction n in m |- *.
-  - left; auto with arith.
+  - auto with arith.
   - destruct m.
     + right; auto with arith.
     + elim (IHn m); [left|right]; auto with arith.
