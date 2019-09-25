@@ -14,19 +14,13 @@
 
 Require Import Eqdep.
 
-Section WellOrdering.
-  Variable A : Type.
-  Variable B : A -> Type.
+  Polymorphic Cumulative Inductive WO A (B: A -> Type): Type :=
+    sup : forall (a:A) (f:B a -> WO A B), WO A B.
 
-  #[universes(template)]
-  Inductive WO : Type :=
-    sup : forall (a:A) (f:B a -> WO), WO.
+  Polymorphic Cumulative Inductive le_WO A (B: A -> Type) : WO A B -> WO A B -> Prop :=
+    le_sup : forall (a:A) (f:B a -> WO A B) (v:B a), le_WO A B (f v) (sup _ _ a f).
 
-
-  Inductive le_WO : WO -> WO -> Prop :=
-    le_sup : forall (a:A) (f:B a -> WO) (v:B a), le_WO (f v) (sup a f).
-
-  Theorem wf_WO : well_founded le_WO.
+  Theorem wf_WO A B : well_founded (le_WO A B).
   Proof.
     unfold well_founded; intro.
     apply Acc_intro.
@@ -41,10 +35,8 @@ Section WellOrdering.
     cut (f = f1).
     - intros E; rewrite E; auto.
     - symmetry .
-      apply (inj_pair2 A (fun a0:A => B a0 -> WO) a0 f1 f H5).
+      apply (inj_pair2 A (fun a0:A => B a0 -> WO A B) a0 f1 f H5).
   Qed.
-
-End WellOrdering.
 
 
 Section Characterisation_wf_relations.
