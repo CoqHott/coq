@@ -325,7 +325,7 @@ Qed.
 
 Lemma linear_le_compat : forall k l p, linear k p -> (k <= l)%positive -> linear l p.
 Proof.
-intros k l p H; revert l; induction H; constructor; eauto; lia.
+intros k l p H; revert l; induction H; constructor; eauto. lia.
 Qed.
 
 Lemma linear_valid_incl : forall k p, linear k p -> valid k p.
