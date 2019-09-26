@@ -451,8 +451,7 @@ Module IntMake (I:Int)(X: OrderedType) <: S with Module E := X.
  Import Raw.
  Import Raw.Proofs.
 
- #[universes(template)]
- Record bbst (elt:Type) :=
+Polymorphic Cumulative Record bbst (elt:Type) :=
   Bbst {this :> tree elt; is_bst : bst this; is_avl: avl this}.
 
  Definition t := bbst.

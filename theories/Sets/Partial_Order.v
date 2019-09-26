@@ -29,6 +29,12 @@
 Require Export Ensembles.
 Require Export Relations_1.
 
+Polymorphic Cumulative Record PO U : Type := Definition_of_PO
+    { Carrier_of : Ensemble U;
+      Rel_of : Relation U;
+      PO_cond1 : Inhabited U Carrier_of;
+      PO_cond2 : Order U Rel_of }.
+
 Section Partial_orders.
   Variable U : Type.
 
@@ -36,15 +42,9 @@ Section Partial_orders.
 
   Definition Rel := Relation U.
 
-  #[universes(template)]
-  Record PO : Type := Definition_of_PO
-    { Carrier_of : Ensemble U;
-      Rel_of : Relation U;
-      PO_cond1 : Inhabited U Carrier_of;
-      PO_cond2 : Order U Rel_of }.
-  Variable p : PO.
+  Variable p : PO U.
 
-  Definition Strict_Rel_of : Rel := fun x y:U => Rel_of p x y /\ x <> y.
+  Definition Strict_Rel_of : Rel := fun x y:U => Rel_of U p x y /\ x <> y.
 
   Inductive covers (y x:U) : Prop :=
     Definition_of_covers :

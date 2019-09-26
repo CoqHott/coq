@@ -64,11 +64,30 @@ Qed.
 
 Local Obligation Tactic := zcongruence.
 
-Program Instance succ_wd : Proper (eq ==> eq) succ.
-Program Instance pred_wd : Proper (eq ==> eq) pred.
-Program Instance add_wd : Proper (eq ==> eq ==> eq) add.
-Program Instance sub_wd : Proper (eq ==> eq ==> eq) sub.
-Program Instance mul_wd : Proper (eq ==> eq ==> eq) mul.
+Instance succ_wd : Proper (eq ==> eq) succ.
+intros x y e. unfold S, eq. repeat rewrite ZnZ.spec_succ.
+f_equal. now f_equal.
+Defined.
+
+Instance pred_wd : Proper (eq ==> eq) pred.
+intros x y e. unfold P, eq. repeat rewrite ZnZ.spec_pred.
+f_equal. now f_equal.
+Defined.
+
+Instance add_wd : Proper (eq ==> eq ==> eq) add.
+intros x y e x' y' e'. unfold add, eq. repeat rewrite ZnZ.spec_add.
+f_equal. now f_equal.
+Defined.
+
+Instance sub_wd : Proper (eq ==> eq ==> eq) sub.
+intros x y e x' y' e'. unfold sub, eq. repeat rewrite ZnZ.spec_sub.
+f_equal. now f_equal.
+Defined.
+
+Instance mul_wd : Proper (eq ==> eq ==> eq) mul.
+intros x y e x' y' e'. unfold mul, eq. repeat rewrite ZnZ.spec_mul.
+f_equal. now f_equal.
+Defined.
 
 Theorem gt_wB_1 : 1 < wB.
 Proof.

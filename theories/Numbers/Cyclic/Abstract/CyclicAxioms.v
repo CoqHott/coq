@@ -28,8 +28,7 @@ Local Open Scope Z_scope.
 
 Module ZnZ.
 
- #[universes(template)]
- Class Ops (t:Type) := MkOps {
+ Polymorphic Cumulative Class Ops (t:Type) := MkOps {
 
     (* Conversion functions with Z *)
     digits : positive;
@@ -97,23 +96,20 @@ Module ZnZ.
     land        : t -> t -> t;
     lxor        : t -> t -> t }.
  
- Section Specs.
- Context {t : Type}{ops : Ops t}.
-
  Notation "[| x |]" := (to_Z x)  (at level 0, x at level 99).
 
- Let wB := base digits.
+ Notation wB := (base digits).
 
  Notation "[+| c |]" :=
    (interp_carry 1 wB to_Z c)  (at level 0, c at level 99).
 
- Notation "[-| c |]" :=
-   (interp_carry (-1) wB to_Z c)  (at level 0, c at level 99).
+  Notation "[-| c |]" :=
+    (interp_carry (-1) wB to_Z c)  (at level 0, c at level 99).
 
- Notation "[|| x ||]" :=
-   (zn2z_to_Z wB to_Z x)  (at level 0, x at level 99).
+  Notation "[|| x ||]" :=
+    (zn2z_to_Z wB to_Z x)  (at level 0, x at level 99).
 
- Class Specs := MkSpecs {
+ Polymorphic Cumulative Class Specs {t : Type}{ops : Ops t} := MkSpecs {
 
     (* Conversion functions with Z *)
     spec_to_Z   : forall x, 0 <= [| x |] < wB;
@@ -212,8 +208,6 @@ Module ZnZ.
     spec_lxor : forall x y, [|lxor x y|] = Z.lxor [|x|] [|y|]
   }.
 
- End Specs.
-
  Arguments Specs {t} ops.
 
  (** Generic construction of double words *)
@@ -291,8 +285,8 @@ Module ZnZ.
    forall p, Zpos p < base digits -> [|(snd (of_pos p))|] = Zpos p.
  Proof.
  intros p Hp.
- generalize (spec_of_pos p).
- case (of_pos p); intros n w1; simpl.
+ generalize (spec_of_pos p). set (w1 := of_pos p).
+ case w1. clear w1. intros n w1; simpl.
  case n; auto with zarith.
  intros p1 Hp1; contradict Hp; apply Z.le_ngt.
  replace (base digits) with (1 * base digits + 0) by ring.
@@ -394,7 +388,9 @@ Qed.
 Lemma add_opp_r : forall x y, x + - y == x-y.
 Proof.
 intros. zify. rewrite <- Zminus_mod_idemp_r. unfold Z.sub.
-destruct (Z.eq_dec ([|y|] mod wB) 0) as [EQ|NEQ].
+set (y' := ([|y|] mod wB)).
+change (([|x|] + - [|y|] mod ZnZ.wB) mod ZnZ.wB = ([|x|] + - y') mod ZnZ.wB).
+destruct (Z.eq_dec y' 0) as [EQ|NEQ].
 rewrite Z_mod_zero_opp_full, EQ, 2 Z.add_0_r; auto.
 rewrite Z_mod_nz_opp_full by auto.
 rewrite <- Zplus_mod_idemp_r, <- Zminus_mod_idemp_l.

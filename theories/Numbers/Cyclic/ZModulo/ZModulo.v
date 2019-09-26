@@ -891,7 +891,7 @@ Section ZModulo.
     (land         : t -> t -> t)
     (lxor         : t -> t -> t).
 
- Instance zmod_specs : ZnZ.Specs zmod_ops := ZnZ.MkSpecs
+ Instance zmod_specs : ZnZ.Specs zmod_ops := ZnZ.MkSpecs zmod_ops
     spec_to_Z
     spec_of_pos
     spec_zdigits
