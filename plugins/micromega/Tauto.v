@@ -20,6 +20,20 @@ Require Import Bool.
 
 Set Implicit Arguments.
 
+Polymorphic Cumulative Inductive GFormula TA TX AA AF : Type :=
+  | TT   : GFormula TA TX AA AF
+  | FF   : GFormula TA TX AA AF
+  | X    : TX -> GFormula TA TX AA AF
+  | A    : TA -> AA -> GFormula TA TX AA AF
+  | Cj   : GFormula TA TX AA AF  -> GFormula TA TX AA AF  -> GFormula TA TX AA AF
+  | D    : GFormula TA TX AA AF  -> GFormula TA TX AA AF  -> GFormula TA TX AA AF
+  | N    : GFormula TA TX AA AF  -> GFormula TA TX AA AF
+  | I    : GFormula TA TX AA AF  -> option AF -> GFormula TA TX AA AF  -> GFormula TA TX AA AF.
+
+Arguments TT {_ _ _ _}.
+Arguments FF {_ _ _ _}.
+Arguments X {_ _ _ _} _.
+Arguments A {_ _ _ _} _ _.
 
 Section S.
   Context {TA  : Type}. (* type of interpreted atoms *)
@@ -27,21 +41,10 @@ Section S.
   Context {AA  : Type}. (* type of annotations for atoms *)
   Context {AF  : Type}. (* type of formulae identifiers *)
 
-  #[universes(template)]
-   Inductive GFormula  : Type :=
-  | TT   : GFormula
-  | FF   : GFormula
-  | X    : TX -> GFormula
-  | A    : TA -> AA -> GFormula
-  | Cj   : GFormula  -> GFormula  -> GFormula
-  | D    : GFormula  -> GFormula  -> GFormula
-  | N    : GFormula  -> GFormula
-  | I    : GFormula  -> option AF -> GFormula  -> GFormula.
-
   Section MAPX.
     Variable F : TX -> TX.
 
-    Fixpoint mapX (f : GFormula) : GFormula :=
+    Fixpoint mapX (f : GFormula TA TX AA AF) : GFormula TA TX AA AF :=
       match f with
       | TT => TT
       | FF => FF
@@ -59,7 +62,7 @@ Section S.
     Variable ACC : Type.
     Variable F : ACC -> AA -> ACC.
 
-    Fixpoint foldA (f : GFormula) (acc : ACC) : ACC :=
+    Fixpoint foldA (f : GFormula TA TX AA AF) (acc : ACC) : ACC :=
       match f with
       | TT => acc
       | FF => acc
@@ -80,13 +83,13 @@ Section S.
     | Some id => id :: l
     end.
 
-  Fixpoint ids_of_formula f :=
+  Fixpoint ids_of_formula (f : GFormula TA TX AA AF) :=
     match f with
     | I f id f' => cons_id id (ids_of_formula f')
     |  _           => nil
     end.
 
-  Fixpoint collect_annot (f : GFormula) : list AA :=
+  Fixpoint collect_annot (f : GFormula TA TX AA AF) : list AA :=
     match f with
     | TT | FF | X _ => nil
     | A _ a => a ::nil
@@ -102,7 +105,7 @@ Section S.
 
   Variable ea : TA -> Prop.
 
-  Fixpoint eval_f (f:GFormula) {struct f}: Prop :=
+  Fixpoint eval_f (f:GFormula TA TX AA AF) {struct f}: Prop :=
   match f with
   | TT  => True
   | FF  => False
@@ -122,7 +125,7 @@ Section S.
 
 
   Lemma eval_f_morph :
-    forall  (ev ev' : TA -> Prop) (f : GFormula),
+    forall  (ev ev' : TA -> Prop) (f : GFormula TA TX AA AF),
       (forall a, ev a <-> ev' a) -> (eval_f ev f <-> eval_f ev' f).
   Proof.
     induction f ; simpl ; try tauto.
@@ -136,7 +139,7 @@ End S.
 
 
 (** Typical boolean formulae *)
-Definition BFormula (A : Type) := @GFormula A Prop unit unit.
+Definition BFormula (A : Type) := GFormula A Prop unit unit.
 
 Section MAPATOMS.
   Context {TA TA':Type}.
@@ -145,7 +148,7 @@ Section MAPATOMS.
   Context {AF  : Type}.
 
 
-Fixpoint map_bformula (fct : TA -> TA') (f : @GFormula TA TX AA AF ) : @GFormula TA' TX AA AF :=
+Fixpoint map_bformula (fct : TA -> TA') (f : GFormula TA TX AA AF ) : GFormula TA' TX AA AF :=
   match f with
   | TT  => TT
   | FF  => FF
@@ -248,7 +251,7 @@ Section S.
     (** TX is Prop in Coq and EConstr.constr in Ocaml.
       AF i s unit in Coq and Names.Id.t in Ocaml
      *)
-    Definition TFormula (TX: Type) (AF: Type) := @GFormula Term TX Annot AF.
+    Definition TFormula (TX: Type) (AF: Type) := GFormula Term TX Annot AF.
 
     Fixpoint xcnf {TX AF: Type} (pol : bool) (f : TFormula TX AF)  {struct f}: cnf :=
       match f with
@@ -552,7 +555,7 @@ Section S.
 
   Variable negate_correct : forall env t tg, eval_cnf env (negate t tg) -> ~ eval env t.
 
-  Lemma xcnf_correct : forall (f : @GFormula Term Prop Annot unit)  pol env, eval_cnf env (xcnf pol f) -> eval_f (fun x => x) (eval env) (if pol then f else N f).
+  Lemma xcnf_correct : forall (f : GFormula Term Prop Annot unit)  pol env, eval_cnf env (xcnf pol f) -> eval_f (fun x => x) (eval env) (if pol then f else N f).
   Proof.
     induction f.
     (* TT *)
@@ -696,7 +699,7 @@ Section S.
   Qed.
 
 
-  Definition tauto_checker (f:@GFormula Term Prop Annot unit) (w:list Witness) : bool :=
+  Definition tauto_checker (f:GFormula Term Prop Annot unit) (w:list Witness) : bool :=
     cnf_checker (xcnf true f) w.
 
   Lemma tauto_checker_sound : forall t  w, tauto_checker t w = true -> forall env, eval_f (fun x => x) (eval env)  t.

@@ -27,6 +27,33 @@ Set Implicit Arguments.
 
 Import OrderedRingSyntax.
 
+Polymorphic Cumulative Inductive Psatz C : Type :=
+| PsatzIn : nat -> Psatz C
+| PsatzSquare : Pol C -> Psatz C
+| PsatzMulC : Pol C -> Psatz C -> Psatz C
+| PsatzMulE : Psatz C -> Psatz C -> Psatz C
+| PsatzAdd  : Psatz C -> Psatz C -> Psatz C
+| PsatzC    : C -> Psatz C
+| PsatzZ    : Psatz C.
+
+Arguments PsatzIn {_} _.
+Arguments PsatzZ {_}.
+
+Inductive Op2 : Set := (* binary relations *)
+| OpEq
+| OpNEq
+| OpLe
+| OpGe
+| OpLt
+| OpGt.
+
+Polymorphic Cumulative Record Formula (T:Type) : Type := {
+  Flhs : PExpr T;
+  Fop : Op2;
+  Frhs : PExpr T
+}.
+
+
 Section Micromega.
 
 (* Assume we have a strict(ly?) ordered ring *)
@@ -289,16 +316,6 @@ destruct o' ; rewrite H1 ; now rewrite  (Rplus_0_l sor).
  now apply (Rplus_nonneg_nonneg sor).
 Qed.
 
-#[universes(template)]
-Inductive Psatz : Type :=
-| PsatzIn : nat -> Psatz
-| PsatzSquare : PolC -> Psatz
-| PsatzMulC : PolC -> Psatz -> Psatz
-| PsatzMulE : Psatz -> Psatz -> Psatz
-| PsatzAdd  : Psatz -> Psatz -> Psatz
-| PsatzC    : C -> Psatz
-| PsatzZ    : Psatz.
-
 (** Given a list [l] of NFormula and an extended polynomial expression
    [e], if [eval_Psatz l e] succeeds (= Some f) then [f] is a
    logic consequence of the conjunction of the formulae in l.
@@ -347,7 +364,7 @@ Definition nformula_times_nformula (f1 f2 : NFormula) : option NFormula :=
       map_option  (fun x => (Some (Padd cO cplus ceqb e1 e2,x)))    (OpAdd o1 o2).
 
 
-Fixpoint eval_Psatz (l : list NFormula) (e : Psatz) {struct e} : option NFormula :=
+Fixpoint eval_Psatz (l : list NFormula) (e : Psatz C) {struct e} : option NFormula :=
   match e with
     | PsatzIn n => Some (nth n l (Pc cO, Equal))
     | PsatzSquare e => Some (Psquare cO cI cplus ctimes ceqb e  , NonStrict)
@@ -410,7 +427,7 @@ Qed.
 Lemma eval_Psatz_Sound :
   forall (l : list NFormula) (env : PolEnv),
     (forall (f : NFormula), In f l -> eval_nformula env f) ->
-      forall (e : Psatz) (f : NFormula), eval_Psatz l e = Some f ->
+      forall (e : Psatz C) (f : NFormula), eval_Psatz l e = Some f ->
         eval_nformula env f.
 Proof.
   induction e.
@@ -418,7 +435,7 @@ Proof.
   simpl ; intros.
   destruct (nth_in_or_default n l (Pc cO, Equal)) as [Hin|Heq].
   (* index is in bounds *)
-  apply H. congruence.
+  apply H. now inversion H0.
   (* index is out-of-bounds *)
   inversion H0.
   rewrite Heq. simpl.
@@ -481,7 +498,7 @@ Proof.
 Qed.
 
 
-Fixpoint xhyps_of_psatz (base:nat) (acc : list nat) (prf : Psatz)  : list nat :=
+Fixpoint xhyps_of_psatz (base:nat) (acc : list nat) (prf : Psatz C)  : list nat :=
   match prf with
     | PsatzC _ | PsatzZ | PsatzSquare _ => acc
     | PsatzMulC _ prf => xhyps_of_psatz base acc prf
@@ -489,7 +506,7 @@ Fixpoint xhyps_of_psatz (base:nat) (acc : list nat) (prf : Psatz)  : list nat :=
     | PsatzIn n => if ge_bool n base then (n::acc) else acc
   end.
 
-Fixpoint nhyps_of_psatz (prf : Psatz) : list nat :=
+Fixpoint nhyps_of_psatz (prf : Psatz C) : list nat :=
   match prf with
     | PsatzC _ | PsatzZ | PsatzSquare _ => nil
     | PsatzMulC _ prf => nhyps_of_psatz prf
@@ -516,7 +533,7 @@ Qed.
   
 Ltac inv H := inversion H ; try subst ; clear H.
 
-Lemma nhyps_of_psatz_correct :  forall (env : PolEnv) (e:Psatz)  (l : list NFormula)  (f: NFormula),
+Lemma nhyps_of_psatz_correct :  forall (env : PolEnv) (e:Psatz C)  (l : list NFormula)  (f: NFormula),
   eval_Psatz l e = Some f -> 
   ((forall f', In f' (extract_hyps l (nhyps_of_psatz e)) -> eval_nformula env f') ->  eval_nformula env f).
 Proof.
@@ -639,7 +656,7 @@ apply cltb_sound in H1. now apply -> (Rlt_nge sor).
 Qed.
 
 
-Definition check_normalised_formulas : list NFormula -> Psatz -> bool :=
+Definition check_normalised_formulas : list NFormula -> Psatz C -> bool :=
   fun l cm =>
     match eval_Psatz l cm with
       | None => false
@@ -647,7 +664,7 @@ Definition check_normalised_formulas : list NFormula -> Psatz -> bool :=
     end.
 
 Lemma checker_nf_sound :
-  forall (l : list NFormula) (cm : Psatz),
+  forall (l : list NFormula) (cm : Psatz C),
     check_normalised_formulas l cm = true ->
       forall env : PolEnv, make_impl (eval_nformula env) l False.
 Proof.
@@ -665,14 +682,6 @@ Qed.
 
 (** Normalisation of formulae **)
 
-Inductive Op2 : Set := (* binary relations *)
-| OpEq
-| OpNEq
-| OpLe
-| OpGe
-| OpLt
-| OpGt.
-
 Definition eval_op2 (o : Op2) : R -> R -> Prop :=
 match o with
 | OpEq => req
@@ -685,13 +694,6 @@ end.
 
 Definition  eval_pexpr : PolEnv -> PExpr C -> R :=
  PEeval rplus rtimes rminus ropp phi pow_phi rpow.
-
-#[universes(template)]
-Record Formula (T:Type) : Type := {
-  Flhs : PExpr T;
-  Fop : Op2;
-  Frhs : PExpr T
-}.
 
 Definition eval_formula (env : PolEnv) (f : Formula C) : Prop :=
   let (lhs, op, rhs) := f in
@@ -1005,7 +1007,7 @@ Qed.
 (** Some syntactic simplifications of expressions  *)
 
 
-Definition simpl_cone (e:Psatz) : Psatz :=
+Definition simpl_cone (e:Psatz C) : Psatz C :=
   match e with
     | PsatzSquare t =>
                     match t with

@@ -25,18 +25,19 @@ Set Implicit Arguments.
  * As a side note, by dropping the polymorphism, one gets small, yet noticeable, speed-up.
  *)
 
+Polymorphic Cumulative Inductive t A : Type :=
+| Empty : t A
+| Elt : A -> t A
+| Branch : t A -> A -> t A -> t A.
+
+Arguments Empty {_}.
+
 Section MakeVarMap.
   
   Variable A : Type.
   Variable default : A.
 
-  #[universes(template)]
-  Inductive t  : Type :=
-  | Empty : t
-  | Elt : A -> t
-  | Branch : t  -> A -> t  -> t .
-
-  Fixpoint find (vm : t) (p:positive) {struct vm} : A :=
+  Fixpoint find (vm : t A) (p:positive) {struct vm} : A :=
     match vm with
       | Empty => default
       | Elt i => i
@@ -48,14 +49,14 @@ Section MakeVarMap.
     end.
 
 
-  Fixpoint singleton (x:positive) (v : A) : t :=
+  Fixpoint singleton (x:positive) (v : A) : t A :=
     match x with
     | xH => Elt v
     | xO p => Branch (singleton p v) default Empty
     | xI p => Branch Empty default (singleton p v)
     end.
   
-  Fixpoint vm_add (x: positive) (v : A) (m : t) {struct m} : t :=
+  Fixpoint vm_add (x: positive) (v : A) (m : t A) {struct m} : t A :=
     match m with
     | Empty   => singleton x v
     | Elt vl =>
