@@ -373,8 +373,7 @@ Lemma unitE : all_equal_to tt. Proof. by case. Qed.
 
 (**  A generic wrapper type  **)
 
-#[universes(template)]
-Structure wrapped T := Wrap {unwrap : T}.
+Polymorphic Cumulative Structure wrapped T := Wrap {unwrap : T}.
 Canonical wrap T x := @Wrap T x.
 
 Prenex Implicits unwrap wrap Wrap.
@@ -391,14 +390,13 @@ Notation "@^~ x" := (fun f => f x) : fun_scope.
  Definitions and notation for explicit functions with simplification,
  i.e., which simpl and /= beta expand (this is complementary to nosimpl).  **)
 
+Polymorphic Cumulative Variant simpl_fun aT rT := SimplFun of aT -> rT.
+
 Section SimplFun.
 
 Variables aT rT : Type.
 
-#[universes(template)]
-Variant simpl_fun := SimplFun of aT -> rT.
-
-Definition fun_of_simpl f := fun x => let: SimplFun lam := f in lam x.
+Definition fun_of_simpl (f: simpl_fun aT rT) := fun x => let: SimplFun lam := f in lam x.
 
 Coercion fun_of_simpl : simpl_fun >-> Funclass.
 

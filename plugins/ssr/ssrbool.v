@@ -725,8 +725,7 @@ Hint View for apply// equivPif|3 xorPif|3 equivPifn|3 xorPifn|3.
 (**  Allow the direct application of a reflection lemma to a boolean assertion.  **)
 Coercion elimT : reflect >-> Funclass.
 
-#[universes(template)]
-Variant implies P Q := Implies of P -> Q.
+Polymorphic Cumulative Variant implies P Q := Implies of P -> Q.
 Lemma impliesP P Q : implies P Q -> P -> Q. Proof. by case. Qed.
 Lemma impliesPn (P Q : Prop) : implies P Q -> ~ Q -> ~ P.
 Proof. by case=> iP ? /iP. Qed.
@@ -1184,8 +1183,7 @@ Notation xpreim := (fun f (p : pred _) x => p (f x)).
 
 (** The packed class interface for pred-like types. **)
 
-#[universes(template)]
-Structure predType T :=
+Polymorphic Cumulative Structure predType T :=
    PredType {pred_sort :> Type; topred : pred_sort -> pred T}.
 
 Definition clone_pred T U :=
@@ -1323,8 +1321,7 @@ Proof. by move=> x y r2xy; apply/orP; right. Qed.
 
 (** Variant of simpl_pred specialised to the membership operator. **)
 
-#[universes(template)]
-Variant mem_pred T := Mem of pred T.
+Polymorphic Cumulative Variant mem_pred T := Mem of pred T.
 
 (**
   We mainly declare pred_of_mem as a coercion so that it is not displayed.
@@ -1411,12 +1408,6 @@ Coercion collective_pred_of_simpl T (sp : simpl_pred T) : collective_pred T :=
   let: SimplFun p := sp in p.
 
 (** Explicit simplification rules for predicate application and membership. **)
-Section PredicateSimplification.
-
-Variables T : Type.
-
-Implicit Types (p : pred T) (pT : predType T) (sp : simpl_pred T).
-Implicit Types (mp : mem_pred T).
 
 (**
  The following four bespoke structures provide fine-grained control over
@@ -1464,34 +1455,39 @@ Implicit Types (mp : mem_pred T).
    Definition Acoll : collective_pred T := [pred x | ...].
  as the collective_pred_of_simpl is _not_ convertible to pred_of_simpl.  **)
 
-#[universes(template)]
-Structure registered_applicative_pred p := RegisteredApplicativePred {
+Polymorphic Cumulative Structure registered_applicative_pred T p := RegisteredApplicativePred {
   applicative_pred_value :> pred T;
   _ : applicative_pred_value = p
 }.
-Definition ApplicativePred p := RegisteredApplicativePred (erefl p).
-Canonical applicative_pred_applicative sp :=
-  ApplicativePred (applicative_pred_of_simpl sp).
 
-#[universes(template)]
-Structure manifest_simpl_pred p := ManifestSimplPred {
+Definition ApplicativePred T p := RegisteredApplicativePred (T:=T) (erefl p).
+
+Canonical applicative_pred_applicative (T:Type) sp :=
+  ApplicativePred (T:=T) (applicative_pred_of_simpl sp).
+
+Polymorphic Cumulative Structure manifest_simpl_pred T p := ManifestSimplPred {
   simpl_pred_value :> simpl_pred T;
   _ : simpl_pred_value = SimplPred p
 }.
-Canonical expose_simpl_pred p := ManifestSimplPred (erefl (SimplPred p)).
+Canonical expose_simpl_pred T p := ManifestSimplPred (T:=T) (erefl (SimplPred p)).
 
-#[universes(template)]
-Structure manifest_mem_pred p := ManifestMemPred {
+Polymorphic Cumulative Structure manifest_mem_pred T p := ManifestMemPred {
   mem_pred_value :> mem_pred T;
   _ : mem_pred_value = Mem [eta p]
 }.
-Canonical expose_mem_pred p := ManifestMemPred (erefl (Mem [eta p])).
+Canonical expose_mem_pred T p := ManifestMemPred (T:=T) (erefl (Mem [eta p])).
 
-#[universes(template)]
-Structure applicative_mem_pred p :=
-  ApplicativeMemPred {applicative_mem_pred_value :> manifest_mem_pred p}.
-Canonical check_applicative_mem_pred p (ap : registered_applicative_pred p) :=
-  [eta @ApplicativeMemPred ap].
+Polymorphic Cumulative Structure applicative_mem_pred T p :=
+  ApplicativeMemPred {applicative_mem_pred_value :> manifest_mem_pred (T:=T) p}.
+Canonical check_applicative_mem_pred T p (ap : registered_applicative_pred p) :=
+  [eta @ApplicativeMemPred T ap].
+
+Section PredicateSimplification.
+
+Variables T : Type.
+
+Implicit Types (p : pred T) (pT : predType T) (sp : simpl_pred T).
+Implicit Types (mp : mem_pred T).
 
 Lemma mem_topred pT (pp : pT) : mem (topred pp) = mem pp.
 Proof. by case: pT pp. Qed.
@@ -1538,8 +1534,7 @@ End PredicateSimplification.
 
 (**  Qualifiers and keyed predicates.  **)
 
-#[universes(template)]
-Variant qualifier (q : nat) T := Qualifier of {pred T}.
+Polymorphic Cumulative Variant qualifier (q : nat) T := Qualifier of {pred T}.
 
 Coercion has_quality n T (q : qualifier n T) : {pred T} :=
   fun x => let: Qualifier _ p := q in p x.
@@ -1566,19 +1561,19 @@ Notation "[ 'qualify' 'an' x : T | P ]" :=
 
 (**  Keyed predicates: support for property-bearing predicate interfaces.  **)
 
+Polymorphic Cumulative Variant pred_key T (p : {pred T}) := DefaultPredKey.
+
+Polymorphic Cumulative Structure keyed_pred T p (k : pred_key p) :=
+  PackKeyedPred {unkey_pred :> {pred T}; _ : unkey_pred =i p}.
+
 Section KeyPred.
 
 Variable T : Type.
-#[universes(template)]
-Variant pred_key (p : {pred T}) := DefaultPredKey.
 
 Variable p : {pred T}.
-#[universes(template)]
-Structure keyed_pred (k : pred_key p) :=
-  PackKeyedPred {unkey_pred :> {pred T}; _ : unkey_pred =i p}.
 
 Variable k : pred_key p.
-Definition KeyedPred := @PackKeyedPred k p (frefl _).
+Definition KeyedPred := @PackKeyedPred T p k p (frefl _).
 
 Variable k_p : keyed_pred k.
 Lemma keyed_predE : k_p =i p. Proof. by case: k_p. Qed.
@@ -1592,22 +1587,23 @@ Lemma keyed_predE : k_p =i p. Proof. by case: k_p. Qed.
  must write down the coercions explicitly as the Canonical head constant
  computation does not strip casts.                                        **)
 Canonical keyed_mem :=
-  @PackKeyedPred k (pred_of_mem (mem k_p)) keyed_predE.
+  @PackKeyedPred T p k (pred_of_mem (mem k_p)) keyed_predE.
 Canonical keyed_mem_simpl :=
-  @PackKeyedPred k (pred_of_simpl (mem k_p)) keyed_predE.
+  @PackKeyedPred T p k (pred_of_simpl (mem k_p)) keyed_predE.
 
 End KeyPred.
 
 Local Notation in_unkey x S := (x \in @unkey_pred _ S _ _) (only parsing).
 Notation "x \in S" := (in_unkey x S) (only printing) : bool_scope.
 
+Polymorphic Cumulative Structure keyed_qualifier (T : Type) (n : nat) (q : qualifier n T)
+            (k : pred_key q) :=
+  PackKeyedQualifier {unkey_qualifier; _ : unkey_qualifier = q}.
+
 Section KeyedQualifier.
 
 Variables (T : Type) (n : nat) (q : qualifier n T).
 
-#[universes(template)]
-Structure keyed_qualifier (k : pred_key q) :=
-  PackKeyedQualifier {unkey_qualifier; _ : unkey_qualifier = q}.
 Definition KeyedQualifier k := PackKeyedQualifier k (erefl q).
 Variables (k : pred_key q) (k_q : keyed_qualifier k).
 Fact keyed_qualifier_suproof : unkey_qualifier k_q =i q.
