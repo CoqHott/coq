@@ -795,15 +795,14 @@ Section BOUND.
                            (A (bound_var z) (tag_of_var fr k (Some true)))))
                    acc) v TT.
 
-  Definition bound_problem  (F : @GFormula (Formula Z) TX TG ID) : GFormula :=
+  Definition bound_problem  (F : GFormula (Formula Z) TX TG ID) : GFormula _ _ _ _ :=
     let v := vars_of_bformula F in
     I (bound_vars (Pos.succ (Vars.max_element v)) v) None F.
 
 
-  Definition bound_problem_fr (fr : positive) (F : @GFormula (Formula Z) TX TG ID) : GFormula :=
+  Definition bound_problem_fr (fr : positive) (F : GFormula (Formula Z) TX TG ID) : GFormula _ _ _ _ :=
     let v := vars_of_bformula F in
     I (bound_vars fr v) None F.
-
 
 End BOUND.
 
