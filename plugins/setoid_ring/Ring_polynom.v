@@ -17,6 +17,11 @@ Local Open Scope positive_scope.
 Import RingSyntax.
 (* Set Universe Polymorphism. *)
 
+Polymorphic Cumulative Inductive Pol C : Type :=
+| Pc : C -> Pol C
+| Pinj : positive -> Pol C -> Pol C
+| PX : Pol C -> positive -> Pol C -> Pol C.
+
 Section MakeRingPol.
 
  (* Ring elements *)
@@ -121,16 +126,10 @@ Section MakeRingPol.
     - (Pinj i (Pc c)) is (Pc c)
  *)
 
- #[universes(template)]
- Inductive Pol : Type :=
-  | Pc : C -> Pol
-  | Pinj : positive -> Pol -> Pol
-  | PX : Pol -> positive -> Pol -> Pol.
-
  Definition P0 := Pc cO.
  Definition P1 := Pc cI.
 
- Fixpoint Peq (P P' : Pol) {struct P'} : bool :=
+ Fixpoint Peq (P P' : Pol C) {struct P'} : bool :=
   match P, P' with
   | Pc c, Pc c' => c ?=! c'
   | Pinj j Q, Pinj j' Q' =>
@@ -152,14 +151,14 @@ Section MakeRingPol.
   match P with
   | Pc _ => P
   | Pinj j' Q => Pinj (j + j') Q
-  | _ => Pinj j P
+  | _ => Pinj (C:=C) j P
   end.
 
  Definition mkPinj_pred j P:=
   match j with
   | xH => P
   | xO j => Pinj (Pos.pred_double j) P
-  | xI j => Pinj (xO j) P
+  | xI j => Pinj (C:=C) (xO j) P
   end.
 
  Definition mkPX P i Q :=
@@ -175,7 +174,7 @@ Section MakeRingPol.
 
  (** Opposite of addition *)
 
- Fixpoint Popp (P:Pol) : Pol :=
+ Fixpoint Popp (P:Pol C) : Pol C :=
   match P with
   | Pc c => Pc (-! c)
   | Pinj j Q => Pinj j (Popp Q)
@@ -186,14 +185,14 @@ Section MakeRingPol.
 
  (** Addition et subtraction *)
 
- Fixpoint PaddC (P:Pol) (c:C) : Pol :=
+ Fixpoint PaddC (P:Pol C) (c:C) : Pol C :=
   match P with
   | Pc c1 => Pc (c1 +! c)
   | Pinj j Q => Pinj j (PaddC Q c)
   | PX P i Q => PX P i (PaddC Q c)
   end.
 
- Fixpoint PsubC (P:Pol) (c:C) : Pol :=
+ Fixpoint PsubC (P:Pol C) (c:C) : Pol C :=
   match P with
   | Pc c1 => Pc (c1 -! c)
   | Pinj j Q => Pinj j (PsubC Q c)
@@ -202,10 +201,10 @@ Section MakeRingPol.
 
  Section PopI.
 
-  Variable Pop : Pol -> Pol -> Pol.
-  Variable Q : Pol.
+  Variable Pop : Pol C -> Pol C -> Pol C.
+  Variable Q : Pol C.
 
-  Fixpoint PaddI (j:positive) (P:Pol) : Pol :=
+  Fixpoint PaddI (j:positive) (P:Pol C) : Pol C :=
    match P with
    | Pc c => mkPinj j (PaddC Q c)
    | Pinj j' Q' =>
@@ -222,7 +221,7 @@ Section MakeRingPol.
      end
    end.
 
-  Fixpoint PsubI (j:positive) (P:Pol) : Pol :=
+  Fixpoint PsubI (j:positive) (P:Pol C) : Pol C :=
    match P with
    | Pc c => mkPinj j (PaddC (--Q) c)
    | Pinj j' Q' =>
@@ -239,9 +238,9 @@ Section MakeRingPol.
      end
    end.
 
- Variable P' : Pol.
+ Variable P' : Pol C.
 
- Fixpoint PaddX (i':positive) (P:Pol) : Pol :=
+ Fixpoint PaddX (i':positive) (P:Pol C) : Pol C :=
   match P with
   | Pc c => PX P' i' P
   | Pinj j Q' =>
@@ -258,7 +257,7 @@ Section MakeRingPol.
     end
   end.
 
- Fixpoint PsubX (i':positive) (P:Pol) : Pol :=
+ Fixpoint PsubX (i':positive) (P:Pol C) : Pol C :=
   match P with
   | Pc c => PX (--P') i' P
   | Pinj j Q' =>
@@ -278,7 +277,7 @@ Section MakeRingPol.
 
  End PopI.
 
- Fixpoint Padd (P P': Pol) {struct P'} : Pol :=
+ Fixpoint Padd (P P': Pol C) {struct P'} : Pol C :=
   match P' with
   | Pc c' => PaddC P c'
   | Pinj j' Q' => PaddI Padd Q' j' P
@@ -301,7 +300,7 @@ Section MakeRingPol.
   end.
  Infix "++" := Padd.
 
- Fixpoint Psub (P P': Pol) {struct P'} : Pol :=
+ Fixpoint Psub (P P': Pol C) {struct P'} : Pol C :=
   match P' with
   | Pc c' => PsubC P c'
   | Pinj j' Q' => PsubI Psub Q' j' P
@@ -326,7 +325,7 @@ Section MakeRingPol.
 
  (** Multiplication *)
 
- Fixpoint PmulC_aux (P:Pol) (c:C) : Pol :=
+ Fixpoint PmulC_aux (P:Pol C) (c:C) : Pol C :=
   match P with
   | Pc c' => Pc (c' *! c)
   | Pinj j Q => mkPinj j (PmulC_aux Q c)
@@ -338,9 +337,9 @@ Section MakeRingPol.
   if c ?=! cI then P else PmulC_aux P c.
 
  Section PmulI.
-  Variable Pmul : Pol -> Pol -> Pol.
-  Variable Q : Pol.
-  Fixpoint PmulI (j:positive) (P:Pol) : Pol :=
+  Variable Pmul : Pol C -> Pol C -> Pol C.
+  Variable Q : Pol C.
+  Fixpoint PmulI (j:positive) (P:Pol C) : Pol C :=
    match P with
    | Pc c => mkPinj j (PmulC Q c)
    | Pinj j' Q' =>
@@ -359,7 +358,7 @@ Section MakeRingPol.
 
  End PmulI.
 
- Fixpoint Pmul (P P'' : Pol) {struct P''} : Pol :=
+ Fixpoint Pmul (P P'' : Pol C) {struct P''} : Pol C :=
    match P'' with
    | Pc c => PmulC P c
    | Pinj j' Q' => PmulI Pmul Q' j' P
@@ -415,7 +414,7 @@ Section MakeRingPol.
    | vmon i' m => vmon (i+i') m
    end.
 
- Fixpoint CFactor (P: Pol) (c: C) {struct P}: Pol * Pol :=
+ Fixpoint CFactor (P: Pol C) (c: C) {struct P}: Pol C * Pol C :=
    match P with
    | Pc c1   => let (q,r) := cdiv c1 c in (Pc r, Pc q)
    | Pinj j1 P1  =>
@@ -427,7 +426,7 @@ Section MakeRingPol.
         (mkPX R1 i R2, mkPX S1 i S2)
    end.
 
- Fixpoint MFactor (P: Pol) (c: C) (M: Mon) {struct P}: Pol * Pol :=
+ Fixpoint MFactor (P: Pol C) (c: C) (M: Mon) {struct P}: Pol C * Pol C :=
    match P, M with
         _, mon0 => if (ceqb c cI) then (Pc cO, P) else CFactor P c
    | Pc _, _    => (P, Pc cO)
@@ -456,7 +455,7 @@ Section MakeRingPol.
       end
    end.
 
-  Definition POneSubst (P1: Pol) (cM1: C * Mon) (P2: Pol): option Pol :=
+  Definition POneSubst (P1: Pol C) (cM1: C * Mon) (P2: Pol C): option (Pol C) :=
     let (c,M1) := cM1 in
     let (Q1,R1) := MFactor P1 c M1 in
     match R1 with
@@ -465,25 +464,25 @@ Section MakeRingPol.
     | _ => Some (Padd Q1 (Pmul P2 R1))
     end.
 
-  Fixpoint PNSubst1 (P1: Pol) (cM1: C * Mon) (P2: Pol) (n: nat) : Pol :=
+  Fixpoint PNSubst1 (P1: Pol C) (cM1: C * Mon) (P2: Pol C) (n: nat) : Pol C :=
     match POneSubst P1 cM1 P2 with
      Some P3 => match n with S n1 => PNSubst1 P3 cM1 P2 n1 | _ => P3 end
     | _ => P1
     end.
 
-  Definition PNSubst (P1: Pol) (cM1: C * Mon) (P2: Pol) (n: nat): option Pol :=
+  Definition PNSubst (P1: Pol C) (cM1: C * Mon) (P2: Pol C) (n: nat): option (Pol C) :=
     match POneSubst P1 cM1 P2 with
      Some P3 => match n with S n1 => Some (PNSubst1 P3 cM1 P2 n1) | _ => None end
     | _ => None
     end.
 
-  Fixpoint PSubstL1 (P1: Pol) (LM1: list ((C * Mon) * Pol)) (n: nat) : Pol :=
+  Fixpoint PSubstL1 (P1: Pol C) (LM1: list ((C * Mon) * Pol C)) (n: nat) : Pol C :=
     match LM1 with
      cons (M1,P2) LM2 => PSubstL1 (PNSubst1 P1 M1 P2 n) LM2 n
     | _ => P1
     end.
 
-  Fixpoint PSubstL (P1: Pol) (LM1: list ((C * Mon) * Pol)) (n: nat) : option Pol :=
+  Fixpoint PSubstL (P1: Pol C) (LM1: list ((C * Mon) * Pol C)) (n: nat) : option (Pol C) :=
     match LM1 with
      cons (M1,P2) LM2 =>
       match PNSubst P1 M1 P2 n with
@@ -493,7 +492,7 @@ Section MakeRingPol.
     | _ => None
     end.
 
-  Fixpoint PNSubstL (P1: Pol) (LM1: list ((C * Mon) * Pol)) (m n: nat) : Pol :=
+  Fixpoint PNSubstL (P1: Pol C) (LM1: list ((C * Mon) * Pol C)) (m n: nat) : Pol C :=
     match PSubstL P1 LM1 n with
      Some P3 => match m with S m1 => PNSubstL P3 LM1 m1 n | _ => P3 end
     | _ => P1
@@ -503,7 +502,7 @@ Section MakeRingPol.
 
  Local Notation hd := (List.hd 0).
 
- Fixpoint Pphi(l:list R) (P:Pol) : R :=
+ Fixpoint Pphi(l:list R) (P:Pol C) : R :=
   match P with
   | Pc c => [c]
   | Pinj j Q => Pphi (jump j l) Q
@@ -513,7 +512,7 @@ Section MakeRingPol.
  Reserved Notation "P @ l " (at level 10, no associativity).
  Notation "P @ l " := (Pphi l P).
 
- Definition Pequiv (P Q : Pol) := forall l, P@l == Q@l.
+ Definition Pequiv (P Q : Pol C) := forall l, P@l == Q@l.
  Infix "===" := Pequiv (at level 70, no associativity).
 
  Instance Pequiv_eq : Equivalence Pequiv.
@@ -526,12 +525,12 @@ Section MakeRingPol.
   now intros l l' <- P Q H.
  Qed.
 
- Instance Pinj_ext : Proper (eq ==> Pequiv ==> Pequiv) Pinj.
+ Instance Pinj_ext : Proper (eq ==> Pequiv ==> Pequiv) (Pinj (C:=C)).
  Proof.
   intros i j <- P P' HP l. simpl. now rewrite HP.
  Qed.
 
- Instance PX_ext : Proper (Pequiv ==> eq ==> Pequiv ==> Pequiv) PX.
+ Instance PX_ext : Proper (Pequiv ==> eq ==> Pequiv ==> Pequiv) (PX (C:=C)).
  Proof.
   intros P P' HP p p' <- Q Q' HQ l. simpl. now rewrite HP, HQ.
  Qed.
@@ -874,7 +873,7 @@ Section MakeRingPol.
  intros. rewrite <- PNSubst1_ok; auto.
  Qed.
 
- Fixpoint MPcond (LM1: list (C * Mon * Pol)) (l: list R) : Prop :=
+ Fixpoint MPcond (LM1: list (C * Mon * Pol C)) (l: list R) : Prop :=
    match LM1 with
    | (M1,P2) :: LM2 => ([fst M1] * (snd M1)@@l == P2@l) /\ MPcond LM2 l
    | _ => True
@@ -962,8 +961,8 @@ Strategy expand [PEeval].
  Hint Rewrite Padd_ok Psub_ok : Esimpl.
 
 Section POWER.
-  Variable subst_l : Pol -> Pol.
-  Fixpoint Ppow_pos (res P:Pol) (p:positive) : Pol :=
+  Variable subst_l : Pol C -> Pol C.
+  Fixpoint Ppow_pos (res P:Pol C) (p:positive) : Pol C :=
    match p with
    | xH => subst_l (res ** P)
    | xO p => Ppow_pos (Ppow_pos res P p) P p
@@ -1000,12 +999,12 @@ Section POWER.
 
  Section NORM_SUBST_REC.
   Variable n : nat.
-  Variable lmp:list (C*Mon*Pol).
+  Variable lmp:list (C*Mon*Pol C).
   Let subst_l P := PNSubstL P lmp n n.
   Let Pmul_subst P1 P2 := subst_l (P1 ** P2).
   Let Ppow_subst := Ppow_N subst_l.
 
-  Fixpoint norm_aux (pe:PExpr) : Pol :=
+  Fixpoint norm_aux (pe:PExpr) : Pol C :=
    match pe with
    | PEO => Pc cO
    | PEI => Pc cI
@@ -1097,7 +1096,7 @@ Section POWER.
      end
   end.
 
-  Fixpoint mon_of_pol (P:Pol) : option (C * Mon) :=
+  Fixpoint mon_of_pol (P:Pol C) : option (C * Mon) :=
   match P with
   | Pc c => if (c ?=! cO) then None else Some (c, mon0)
   | Pinj j P =>
@@ -1114,7 +1113,7 @@ Section POWER.
     else None
   end.
 
- Fixpoint mk_monpol_list (lpe:list (PExpr * PExpr)) : list (C*Mon*Pol) :=
+ Fixpoint mk_monpol_list (lpe:list (PExpr * PExpr)) : list (C*Mon*Pol C) :=
   match lpe with
   | nil => nil
   | (me,pe)::lpe =>
@@ -1246,7 +1245,7 @@ Section POWER.
    end.
 
   Fixpoint add_mult_dev
-      (rP:R) (P:Pol) (fv:list R) (n:N) (lm:list (R*positive)) {struct P} : R :=
+      (rP:R) (P:Pol C) (fv:list R) (n:N) (lm:list (R*positive)) {struct P} : R :=
    match P with
    | Pc c =>
      let lm := add_pow_list (hd fv) n lm in
@@ -1259,7 +1258,7 @@ Section POWER.
      else add_mult_dev rP Q (tail fv) N0 (add_pow_list (hd fv) n lm)
    end.
 
-  Fixpoint mult_dev (P:Pol) (fv : list R) (n:N)
+  Fixpoint mult_dev (P:Pol C) (fv : list R) (n:N)
                      (lm:list (R*positive)) {struct P} : R :=
   (* P@l * (hd 0 l)^n * lm *)
   match P with

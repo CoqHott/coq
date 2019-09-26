@@ -730,8 +730,7 @@ Qed.
 
 (* The input: syntax of a field expression *)
 
-#[universes(template)]
-Inductive FExpr : Type :=
+Polymorphic Cumulative Inductive FExpr : Type :=
  | FEO : FExpr
  | FEI : FExpr
  | FEc: C ->  FExpr

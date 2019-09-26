@@ -19,6 +19,15 @@ Require Import BinInt.
 Require Export Ring_polynom. (* n'utilise que PExpr *)
 Require Export Ncring.
 
+(* Definition of non commutative multivariable polynomials
+   with coefficients in C :
+ *)
+
+Polymorphic Cumulative Inductive Pol C: Type :=
+  | Pc : C -> Pol C
+  | PX : Pol C -> positive -> positive -> Pol C -> Pol C.
+    (* PX P i n Q represents P * X_i^n + Q *)
+
 Section MakeRingPol.
 
 Context (C R:Type) `{Rh:Ring_morphism C R}.
@@ -28,23 +37,14 @@ Variable phiCR_comm: forall (c:C)(x:R), x * [c] == [c] * x.
  Ltac rsimpl := repeat (gen_rewrite || rewrite phiCR_comm).
  Ltac add_push := gen_add_push .
 
-(* Definition of non commutative multivariable polynomials 
-   with coefficients in C :
- *)
-
-#[universes(template)]
- Inductive Pol : Type :=
-  | Pc : C -> Pol
-  | PX : Pol -> positive -> positive -> Pol -> Pol. 
-    (* PX P i n Q represents P * X_i^n + Q *)
 Definition cO:C . exact ring0. Defined.
 Definition cI:C . exact ring1. Defined.
 
- Definition P0 := Pc 0.
- Definition P1 := Pc 1.
+ Definition P0 := Pc (C:=C) 0.
+ Definition P1 := Pc (C:=C) 1.
 
 Variable Ceqb:C->C->bool.
-#[universes(template)]
+
 Class Equalityb (A : Type):= {equalityb : A -> A -> bool}.
 Notation "x =? y" := (equalityb x y) (at level 70, no associativity).
 Variable Ceqb_eq: forall x y:C, Ceqb x y = true -> (x == y).
@@ -52,7 +52,7 @@ Variable Ceqb_eq: forall x y:C, Ceqb x y = true -> (x == y).
 Instance equalityb_coef : Equalityb C :=
   {equalityb x y := Ceqb x y}.
 
- Fixpoint Peq (P P' : Pol) {struct P'} : bool :=
+ Fixpoint Peq (P P' : Pol C) {struct P'} : bool :=
   match P, P' with
   | Pc c, Pc c' => c =? c'
   | PX P i n Q, PX P' i' n' Q' =>
@@ -63,11 +63,11 @@ Instance equalityb_coef : Equalityb C :=
   | _, _ => false
   end.
 
-Instance equalityb_pol : Equalityb Pol :=
+Instance equalityb_pol : Equalityb (Pol C) :=
   {equalityb x y := Peq x y}.
 
 (* Q a ses variables de queue < i *)
- Definition mkPX P i n Q :=
+ Definition mkPX (P:Pol C) i n Q :=
   match P with
   | Pc c => if c =? 0 then Q else PX P i n Q 
   | PX P' i' n' Q' => 
@@ -83,7 +83,7 @@ Instance equalityb_pol : Equalityb Pol :=
 
  (** Opposite of addition *)
 
- Fixpoint Popp (P:Pol) : Pol :=
+ Fixpoint Popp (P:Pol C) : Pol C :=
   match P with
   | Pc c => Pc (- c)
   | PX P i n Q => PX (Popp P) i n (Popp Q)
@@ -93,7 +93,7 @@ Instance equalityb_pol : Equalityb Pol :=
 
  (** Addition et subtraction *)
 
- Fixpoint PaddCl (c:C)(P:Pol) {struct P} : Pol :=
+ Fixpoint PaddCl (c:C)(P:Pol C) {struct P} : Pol C :=
   match P with
   | Pc c1 => Pc (c + c1)
   | PX P i n Q => PX P i n (PaddCl c Q)
@@ -102,14 +102,14 @@ Instance equalityb_pol : Equalityb Pol :=
 (* Q quelconque *)
 
 Section PaddX.
-Variable Padd:Pol->Pol->Pol.
-Variable P:Pol.
+Variable Padd:Pol C->Pol C->Pol C.
+Variable P:Pol C.
 
 (* Xi^n * P + Q
 les variables de tete de Q ne sont pas forcement < i 
 mais Q est normalisé : variables de tete decroissantes *)
 
-Fixpoint PaddX (i n:positive)(Q:Pol){struct Q}:=
+Fixpoint PaddX (i n:positive)(Q:Pol C){struct Q}:=
   match Q with
   | Pc c => mkPX P i n Q
   | PX P' i' n' Q' => 
@@ -132,7 +132,7 @@ Fixpoint PaddX (i n:positive)(Q:Pol){struct Q}:=
 
 End PaddX.
 
-Fixpoint Padd (P1 P2: Pol) {struct P1} : Pol :=
+Fixpoint Padd (P1 P2: Pol C) {struct P1} : Pol C :=
   match P1 with
   | Pc c => PaddCl c P2
   | PX P' i' n' Q' =>
@@ -141,13 +141,13 @@ Fixpoint Padd (P1 P2: Pol) {struct P1} : Pol :=
 
  Notation "P ++ P'" := (Padd P P').
 
-Definition Psub(P P':Pol):= P ++ (--P').
+Definition Psub(P P':Pol C):= P ++ (--P').
 
  Notation "P -- P'" := (Psub P P')(at level 50).
 
  (** Multiplication *)
 
- Fixpoint PmulC_aux (P:Pol) (c:C)  {struct P} : Pol :=
+ Fixpoint PmulC_aux (P:Pol C) (c:C)  {struct P} : Pol C :=
   match P with
   | Pc c' => Pc (c' * c)
   | PX P i n Q => mkPX (PmulC_aux P c) i n (PmulC_aux Q c)
@@ -157,7 +157,7 @@ Definition Psub(P P':Pol):= P ++ (--P').
   if c =? 0 then P0 else
   if c =? 1 then P else PmulC_aux P c.
 
- Fixpoint Pmul (P1 P2 : Pol) {struct P2} : Pol :=
+ Fixpoint Pmul (P1 P2 : Pol C) {struct P2} : Pol C :=
    match P2 with
    | Pc c => PmulC P1 c
    | PX P i n Q =>
@@ -166,12 +166,12 @@ Definition Psub(P P':Pol):= P ++ (--P').
 
  Notation "P ** P'" := (Pmul P P')(at level 40).
 
- Definition Psquare (P:Pol) : Pol := P ** P.
+ Definition Psquare (P:Pol C) : Pol C := P ** P.
 
 
  (** Evaluation of a polynomial towards R *)
 
- Fixpoint Pphi(l:list R) (P:Pol) {struct P} : R :=
+ Fixpoint Pphi(l:list R) (P:Pol C) {struct P} : R :=
   match P with
   | Pc c => [c]
   | PX P i n Q =>
@@ -454,8 +454,8 @@ Strategy expand [PEeval].
 (* Power using the chinise algorithm *)
 
 Section POWER2.
-  Variable subst_l : Pol -> Pol.
-  Fixpoint Ppow_pos (res P:Pol) (p:positive){struct p} : Pol :=
+  Variable subst_l : Pol C -> Pol C.
+  Fixpoint Ppow_pos (res P:Pol C) (p:positive){struct p} : Pol C :=
    match p with
    | xH => subst_l (Pmul P res)
    | xO p => Ppow_pos (Ppow_pos res P p) P p
@@ -501,11 +501,11 @@ Definition pow_N_gen (R:Type)(x1:R)(m:R->R->R)(x:R) (p:N) :=
  (** Normalization and rewriting *)
 
  Section NORM_SUBST_REC.
-  Let subst_l (P:Pol) := P.
+  Let subst_l (P:Pol C) := P.
   Let Pmul_subst P1 P2 := subst_l (Pmul P1 P2).
   Let Ppow_subst := Ppow_N subst_l.
 
-  Fixpoint norm_aux (pe:PExpr C) : Pol :=
+  Fixpoint norm_aux (pe:PExpr C) : Pol C :=
    match pe with
    | PEO => Pc cO
    | PEI => Pc cI

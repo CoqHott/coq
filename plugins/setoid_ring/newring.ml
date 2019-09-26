@@ -253,7 +253,7 @@ let plugin_modules =
     ]
 
 let my_constant c =
-  lazy (EConstr.of_constr (UnivGen.constr_of_monomorphic_global @@ Coqlib.gen_reference_in_modules "Ring" plugin_modules c))
+  lazy (EConstr.of_constr (Evarutil.new_global @@ Coqlib.gen_reference_in_modules "Ring" plugin_modules c))
     [@@ocaml.warning "-3"]
 let my_reference c =
   lazy (Coqlib.gen_reference_in_modules "Ring" plugin_modules c)
